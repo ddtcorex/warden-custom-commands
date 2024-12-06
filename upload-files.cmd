@@ -14,7 +14,7 @@ function dumpCloud () {
 
 function dumpPremise () {
     echo -e "⌛ \033[1;32mUploading files to $ENV_SOURCE_HOST\033[0m ..."
-    rsync -azvP -e 'ssh -p '"$ENV_SOURCE_PORT" \
+    warden env exec php-fpm rsync -azvP -e 'ssh -p '"$ENV_SOURCE_PORT" \
         "${exclude_opts[@]}" \
         $UPLOAD_PATH $ENV_SOURCE_USER@$ENV_SOURCE_HOST:$ENV_SOURCE_DIR/$UPLOAD_PATH
 }

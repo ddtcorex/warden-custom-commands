@@ -142,7 +142,7 @@ done
 
 :: Starting Warden
 warden svc up
-if [[ ! -f ~/.den/ssl/certs/${TRAEFIK_DOMAIN}.crt.pem ]]; then
+if [[ ! -f ${WARDEN_HOME_DIR}/ssl/certs/${TRAEFIK_DOMAIN}.crt.pem ]]; then
     warden sign-certificate ${TRAEFIK_DOMAIN}
 fi
 
@@ -154,8 +154,6 @@ warden shell -c "while ! nc -z db 3306 </dev/null; do sleep 2; done"
 
 if [[ $COMPOSER_INSTALL ]]; then
     :: Installing dependencies
-    warden env exec php-fpm bash \
-      -c '[[ $(composer -V | cut -d\  -f3 | cut -d. -f1) == 2 ]] || composer global require hirak/prestissimo'
     warden env exec php-fpm composer install
 fi
 

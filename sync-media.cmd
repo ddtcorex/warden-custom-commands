@@ -18,13 +18,26 @@ function dumpCloud () {
         --target=pub/media/ \
         -y \
         || true
+
+    if [[ "$DUMP_INCLUDE_PRODUCT" -eq "0" ]]; then
+        magento-cloud mount:download -p "$CLOUD_PROJECT" \
+            --environment="$ENV_SOURCE_HOST" \
+            --mount=pub/media/catalog/product/placeholder/ \
+            --target=pub/media/catalog/product/placeholder/ \
+            -y
+    fi
 }
 
 function dumpPremise () {
     echo -e "⌛ \033[1;32mDownloading files from $ENV_SOURCE_HOST\033[0m ..."
-    rsync -azvP -e 'ssh -p '"$ENV_SOURCE_PORT" \
+    warden env exec php-fpm rsync -azvP -e 'ssh -p '"$ENV_SOURCE_PORT" \
         "${exclude_opts[@]}" \
-        $ENV_SOURCE_USER@$ENV_SOURCE_HOST:$ENV_SOURCE_DIR/pub/media/ pub/media/
+        $ENV_SOURCE_USER@$ENV_SOURCE_HOST:$ENV_SOURCE_DIR/pub/media/ pub/media/ || true
+
+    if [[ "$DUMP_INCLUDE_PRODUCT" -eq "0" ]]; then
+        warden env exec php-fpm rsync -azvP -e 'ssh -p '"$ENV_SOURCE_PORT" \
+            $ENV_SOURCE_USER@$ENV_SOURCE_HOST:$ENV_SOURCE_DIR/pub/media/catalog/product/placeholder/ pub/media/catalog/product/placeholder/
+    fi
 }
 
 DUMP_INCLUDE_PRODUCT=0
@@ -41,15 +54,13 @@ while (( "$#" )); do
     esac
 done
 
-EXCLUDE=('*.gz' '*.zip' '*.tar' '*.7z' '*.sql' 'tmp' 'itm' 'import' 'export' 'importexport' 'captcha' 'analytics' 'opti_image' 'webp_image' 'shoppingfeed' 'amasty/blog/cache')
+EXCLUDE=('*.gz' '*.zip' '*.tar' '*.7z' '*.sql' 'tmp' 'itm' 'import' 'export' 'importexport' 'captcha' 'analytics' 'opti_image' 'webp_image' 'shoppingfeed' 'amasty/blog/cache' 'catalog/product.rm' 'catalog/product/cache' 'catalog/product/product')
+exclude_opts=()
 
-if [[ "$DUMP_INCLUDE_PRODUCT" -eq "1" ]]; then
-    EXCLUDE+=('catalog/product/cache')
-else
-    EXCLUDE+=('catalog/product')
+if [[ "$DUMP_INCLUDE_PRODUCT" -eq "0" ]]; then
+  EXCLUDE+=('catalog/product')
 fi
 
-exclude_opts=()
 for item in "${EXCLUDE[@]}"; do
     exclude_opts+=( --exclude="$item" )
 done

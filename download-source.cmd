@@ -3,12 +3,12 @@
 
 function dumpCloud () {
     echo -e "\033[1;32mDownloading files from \033[33mAdobe Commerce Cloud \033[1;36m${ENV_SOURCE}\033[0m ..."
-    rsync -avz --progress "${exclude_opts[@]}" $(magento-cloud ssh --pipe -p "$CLOUD_PROJECT" -e "$ENV_SOURCE_HOST"):/app/ . || true
+    warden env exec php-fpm rsync -avz --progress "${exclude_opts[@]}" $(magento-cloud ssh --pipe -p "$CLOUD_PROJECT" -e "$ENV_SOURCE_HOST"):/app/ . || true
 }
 
 function dumpPremise () {
     echo -e "⌛ \033[1;32mDownloading files from $ENV_SOURCE_HOST\033[0m ..."
-    rsync -azvP -e 'ssh -p '"$ENV_SOURCE_PORT" \
+    warden env exec php-fpm rsync -azvP -e 'ssh -p '"$ENV_SOURCE_PORT" \
         "${exclude_opts[@]}" \
         $ENV_SOURCE_USER@$ENV_SOURCE_HOST:$ENV_SOURCE_DIR/ .
 }

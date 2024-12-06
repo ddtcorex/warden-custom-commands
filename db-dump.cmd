@@ -10,6 +10,10 @@ if [ -z ${!ENV_SOURCE_HOST_VAR+x} ]; then
 fi
 
 IGNORED_TABLES=(
+    'admin_system_messages'
+    'admin_user_expiration'
+    'admin_user_session'
+    'adminnotification_inbox'
     'cache_tag'
     'catalog_product_index_price_final_idx'
     'catalog_product_index_price_bundle_opt_idx'
@@ -39,6 +43,7 @@ IGNORED_TABLES=(
     'catalog_product_index_price_bundle_opt_tmp'
     'catalog_category_product_index_tmp'
     'catalog_category_product_index_replica'
+    'catalog_product_index_eav_replica'
     'catalog_product_index_price_replica'
     'core_cache'
     'cron_schedule'
@@ -78,6 +83,9 @@ IGNORED_TABLES=(
     'session'
     'ui_bookmark'
     'amasty_fpc_activity'
+    'amasty_fpc_context_debug'
+    'amasty_fpc_flushes_log'
+    'amasty_fpc_job_queue'
     'amasty_fpc_log'
     'amasty_fpc_pages_to_flush'
     'amasty_fpc_queue_page'
@@ -229,9 +237,9 @@ if [ -z "$DUMP_FILENAME" ]; then
     DUMP_FILENAME="var/${WARDEN_ENV_NAME}_${ENV_SOURCE}-`date +%Y%m%dT%H%M%S`.sql.gz"
 fi
 
-if [[ "$EXCLUDE_SENSITIVE_DATA" -eq "1" ]]; then
+if [[ "$FULL_DUMP" -eq "0" && "$EXCLUDE_SENSITIVE_DATA" -eq "1" ]]; then
     IGNORED_TABLES+=(
-        'admin_user' 'admin_passwords' 'admin_user_expiration' 'admin_user_session' 'admin_system_messages' 'adminnotification_inbox'
+        'admin_user' 'admin_passwords'
         'sales_order' 'sales_order_address' 'sales_order_grid' 'sales_order_item' 'sales_order_payment' 'sales_order_status_history' 'sales_order_tax' 'sales_order_tax_item' 'magento_sales_order_grid_archive'
         'sales_invoice' 'sales_invoice_comment' 'sales_invoice_grid' 'sales_invoice_item' 'magento_sales_invoice_grid_archive'
         'sales_shipment' 'sales_shipment_comment' 'sales_shipment_grid' 'sales_shipment_item' 'sales_shipment_track' 'magento_sales_shipment_grid_archive'
