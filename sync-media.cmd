@@ -54,7 +54,7 @@ while (( "$#" )); do
     esac
 done
 
-EXCLUDE=('*.gz' '*.zip' '*.tar' '*.7z' '*.sql' 'tmp' 'itm' 'import' 'export' 'importexport' 'captcha' 'analytics' 'opti_image' 'webp_image' 'shoppingfeed' 'amasty/blog/cache' 'catalog/product.rm' 'catalog/product/cache' 'catalog/product/product')
+EXCLUDE=('*.gz' '*.zip' '*.tar' '*.7z' '*.sql' 'tmp' 'itm' 'import' 'export' 'importexport' 'captcha' 'analytics' 'catalog/product/cache' 'catalog/product.rm' 'catalog/product/product' 'opti_image' 'webp_image' 'webp_cache' 'shoppingfeed' 'amasty/blog/cache')
 exclude_opts=()
 
 if [[ "$DUMP_INCLUDE_PRODUCT" -eq "0" ]]; then
