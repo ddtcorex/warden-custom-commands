@@ -1,8 +1,8 @@
 diff --git a/commands/env.cmd b/commands/env.cmd
-index 7f464e1..7a1c5c7 100644
+index a5ab22b..7f3227a 100644
 --- a/commands/env.cmd
 +++ b/commands/env.cmd
-@@ -231,6 +231,23 @@ then
+@@ -258,6 +258,30 @@ then
    fi
  fi
  
@@ -20,6 +20,13 @@ index 7f464e1..7a1c5c7 100644
 +        $WARDEN_BIN env exec -u 0 php-debug "groupadd" "-g" "1000" "centos"
 +        $WARDEN_BIN env exec -u 0 php-debug "usermod" "-aG" "centos" "www-data"
 +        $WARDEN_BIN env restart php-debug
++    fi
++    if [[ $($WARDEN_BIN env ps -q php-spx) ]] && [ $($WARDEN_BIN env exec php-spx "id" "-u" "www-data") != ${HOST_UID} ]; then
++        $WARDEN_BIN env exec -u 0 php-spx "usermod" "-u" "${HOST_UID}" "www-data"
++        $WARDEN_BIN env exec -u 0 php-spx "groupmod" "-g" "${HOST_GID}" "www-data"
++        $WARDEN_BIN env exec -u 0 php-spx "groupadd" "-g" "1000" "centos"
++        $WARDEN_BIN env exec -u 0 php-spx "usermod" "-aG" "centos" "www-data"
++        $WARDEN_BIN env restart php-spx
 +    fi
 +fi
 +
