@@ -24,7 +24,8 @@ function dumpCloud () {
             --environment="$ENV_SOURCE_HOST" \
             --mount=pub/media/catalog/product/placeholder/ \
             --target=pub/media/catalog/product/placeholder/ \
-            -y
+            -y \
+            || true
     fi
 }
 
@@ -36,7 +37,8 @@ function dumpPremise () {
 
     if [[ "$DUMP_INCLUDE_PRODUCT" -eq "0" ]]; then
         warden env exec php-fpm rsync -azvP -e 'ssh -p '"$ENV_SOURCE_PORT" \
-            $ENV_SOURCE_USER@$ENV_SOURCE_HOST:$ENV_SOURCE_DIR/pub/media/catalog/product/placeholder/ pub/media/catalog/product/placeholder/
+            $ENV_SOURCE_USER@$ENV_SOURCE_HOST:$ENV_SOURCE_DIR/pub/media/catalog/product/placeholder/ pub/media/catalog/product/placeholder/ \
+            || true
     fi
 }
 
