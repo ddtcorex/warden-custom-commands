@@ -81,3 +81,9 @@ if [ -z ${WARDEN_DB_PREFIX+x} ]; then
 else
     DB_PREFIX="$WARDEN_DB_PREFIX"
 fi
+
+if [ -z ${REMOTE_DB_PREFIX+x} ]; then
+    REMOTE_DB_PREFIX=
+else
+    DB_PREFIX="$REMOTE_DB_PREFIX"
+fi
