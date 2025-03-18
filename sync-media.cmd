@@ -60,7 +60,7 @@ EXCLUDE=('*.gz' '*.zip' '*.tar' '*.7z' '*.sql' 'tmp' 'itm' 'import' 'export' 'im
 exclude_opts=()
 
 if [[ "$DUMP_INCLUDE_PRODUCT" -eq "0" ]]; then
-  EXCLUDE+=('catalog/product')
+    EXCLUDE+=('catalog/product')
 fi
 
 for item in "${EXCLUDE[@]}"; do

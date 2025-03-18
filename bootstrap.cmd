@@ -87,6 +87,21 @@ if [[ $ENV_REQUIRED ]] && [ -z ${!ENV_SOURCE_HOST_VAR+x} ]; then
     exit 2
 fi
 
+## create an auth.json file in case it is missing during a clean installation
+if [ ! -f "${WARDEN_ENV_PATH}/auth.json" ] && [ $CLEAN_INSTALL ]; then
+    echo "Creating auth.json since it’s missing..."
+    cat << EOT > "${WARDEN_ENV_PATH}/auth.json"
+{
+    "http-basic": {
+        "repo.magento.com": {
+            "username": "b5f6ec5124c74fac2776b140628592f4",
+            "password": "bbeaea9cdaecaa3f4805e2fc622d8058"
+        }
+    }
+}
+EOT
+fi
+
 ## download files from the remote
 if [[ $DOWNLOAD_SOURCE ]]; then
     warden download-source -e=${ENV_SOURCE}

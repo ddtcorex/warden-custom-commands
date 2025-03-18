@@ -103,16 +103,16 @@ function remote_admin() {
     local admin_path=$(ssh -p $ENV_SOURCE_PORT $ENV_SOURCE_USER@$ENV_SOURCE_HOST 'php -r "\$a=include \"'"$ENV_SOURCE_DIR"'/app/etc/env.php\"; echo \$a[\"backend\"][\"frontName\"];"')
     echo -e "\033[32m$ENV_SOURCE_VAR\033[0m admin at: \033[32m${ENV_SOURCE_URL}${admin_path}\033[0m"
     if [[ ! -z "$ENV_SOURCE_URL" ]]; then
-      open_link "${ENV_SOURCE_URL}${admin_path}"
+        open_link "${ENV_SOURCE_URL}${admin_path}"
     fi
 }
 
 function cloud_admin() {
-  local admin_path=$(magento-cloud variable:get -P value ADMIN_URL -e "$ENV_SOURCE_HOST" -p "$CLOUD_PROJECT")
-  echo -e "\033[32m$ENV_SOURCE_HOST\033[0m admin at: \033[32m${ENV_SOURCE_URL}${admin_path}\033[0m"
-  if [[ ! -z "$ENV_SOURCE_URL" ]]; then
-    open_link "${ENV_SOURCE_URL}${admin_path}"
-  fi
+    local admin_path=$(magento-cloud variable:get -P value ADMIN_URL -e "$ENV_SOURCE_HOST" -p "$CLOUD_PROJECT")
+    echo -e "\033[32m$ENV_SOURCE_HOST\033[0m admin at: \033[32m${ENV_SOURCE_URL}${admin_path}\033[0m"
+    if [[ ! -z "$ENV_SOURCE_URL" ]]; then
+        open_link "${ENV_SOURCE_URL}${admin_path}"
+    fi
 }
 
 function local_elasticsearch() {
