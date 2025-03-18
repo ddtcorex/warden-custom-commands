@@ -51,9 +51,9 @@ warden db connect -e 'drop database magento; create database magento character s
 
 echo -e "🔥 \033[1;32mImporting database ...\033[0m"
 if gzip -t "$DUMP_FILENAME"; then
-    $PV "$DUMP_FILENAME" | gunzip -c | warden db import
+    $PV "$DUMP_FILENAME" | gunzip -c | sed -e '/999999.*sandbox/d' -e 's/DEFINER=[^*]*\*/\*/g' -e 's/ROW_FORMAT=FIXED//g' | warden db import --force
 else
-    $PV "$DUMP_FILENAME" | warden db import
+    $PV "$DUMP_FILENAME" | sed -e '/999999.*sandbox/d' -e 's/DEFINER=[^*]*\*/\*/g' -e 's/ROW_FORMAT=FIXED//g' | warden db import --force
 fi
 
 [[ $launchedDatabaseContainer = 1 ]] && warden env stop db
