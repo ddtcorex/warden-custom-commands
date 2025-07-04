@@ -262,9 +262,15 @@ if [[ ${CLEAN_INSTALL} ]] && [[ ! -f "${WARDEN_WEB_ROOT}/composer.json" ]]; then
         --repository-url=https://repo.magento.com/ "${META_PACKAGE}" /tmp/create-project "${META_VERSION}"
     warden env exec php-fpm rsync -a /tmp/create-project/ /var/www/html/
 
+    ELASTICSEARCH_COMMAND="elasticsearch"
     ELASTICSEARCH_HOSTNAME="elasticsearch"
+    ELASTICSEARCH_ENGINE="elasticsearch7"
     if [[ "$WARDEN_OPENSEARCH" -eq "1" ]]; then
         ELASTICSEARCH_HOSTNAME="opensearch"
+        if test "$(version "${META_VERSION}")" -ge "$(version "2.4.6")"; then
+            ELASTICSEARCH_COMMAND="opensearch"
+            ELASTICSEARCH_ENGINE="opensearch"
+        fi
     fi
 
     warden env exec php-fpm bin/magento setup:install \
@@ -274,12 +280,12 @@ if [[ ${CLEAN_INSTALL} ]] && [[ ! -f "${WARDEN_WEB_ROOT}/composer.json" ]]; then
         --db-user=magento \
         --db-password=magento \
         --db-prefix=${DB_PREFIX} \
-        --search-engine=elasticsearch7 \
-        --elasticsearch-host=${ELASTICSEARCH_HOSTNAME} \
-        --elasticsearch-port=9200 \
-        --elasticsearch-index-prefix=magento2 \
-        --elasticsearch-enable-auth=0 \
-        --elasticsearch-timeout=15 || true
+        --search-engine=${ELASTICSEARCH_ENGINE} \
+        --${ELASTICSEARCH_COMMAND}-host=${ELASTICSEARCH_HOSTNAME} \
+        --${ELASTICSEARCH_COMMAND}-port=9200 \
+        --${ELASTICSEARCH_COMMAND}-index-prefix=magento2 \
+        --${ELASTICSEARCH_COMMAND}-enable-auth=0 \
+        --${ELASTICSEARCH_COMMAND}-timeout=15 || true
 fi
 
 warden set-config
