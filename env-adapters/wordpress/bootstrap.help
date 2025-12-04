@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+[[ ! ${WARDEN_DIR} ]] && >&2 echo -e "\033[31mThis script is not intended to be run directly!\033[0m" && exit 1
+
+WARDEN_USAGE=$(cat <<HELP
+## bootstrap
+
+Initializes a WordPress development environment.
+
+### Synopsis
+
+    warden bootstrap [options]
+
+### Options
+
+    --skip-composer-install   Skip running composer install
+
+### Description
+
+The bootstrap command sets up a complete WordPress development environment:
+- Starts Warden services
+- Generates SSL certificates if needed
+- Runs composer install (if composer.json exists)
+- Creates wp-config.php if missing
+- Configures database connection
+
+### Examples
+
+    # Full bootstrap
+    warden bootstrap
+
+    # Skip composer install
+    warden bootstrap --skip-composer-install
+HELP
+)

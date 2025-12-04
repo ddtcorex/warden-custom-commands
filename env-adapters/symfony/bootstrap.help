@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+[[ ! ${WARDEN_DIR} ]] && >&2 echo -e "\033[31mThis script is not intended to be run directly!\033[0m" && exit 1
+
+WARDEN_USAGE=$(cat <<HELP
+## bootstrap
+
+Initializes a Symfony development environment.
+
+### Synopsis
+
+    warden bootstrap [options]
+
+### Options
+
+    --clean-install          Create a new Symfony project from scratch
+    --skip-composer-install  Skip running composer install
+    --skip-migrate           Skip running database migrations
+
+### Description
+
+The bootstrap command sets up a complete Symfony development environment:
+- Starts Warden services
+- Generates SSL certificates if needed
+- Creates new Symfony project (with --clean-install) or runs composer install
+- Configures database connection (DATABASE_URL in .env)
+- Runs Doctrine migrations
+
+### Examples
+
+    # Full bootstrap
+    warden bootstrap
+
+    # Create new Symfony project
+    warden bootstrap --clean-install
+
+    # Skip composer install (dependencies already installed)
+    warden bootstrap --skip-composer-install
+
+    # Skip migrations
+    warden bootstrap --skip-migrate
+HELP
+)

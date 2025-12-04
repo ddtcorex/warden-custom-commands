@@ -110,8 +110,21 @@ commands/
     │   ├── set-config.cmd
     │   └── set-config.help
     │
-    ├── wordpress/         # Coming soon
-    └── symfony/           # Coming soon
+    ├── wordpress/
+    │   ├── bootstrap.cmd
+    │   ├── bootstrap.help
+    │   ├── db-import.cmd
+    │   ├── db-import.help
+    │   ├── set-config.cmd
+    │   └── set-config.help
+    │
+    └── symfony/
+        ├── bootstrap.cmd
+        ├── bootstrap.help
+        ├── db-import.cmd
+        ├── db-import.help
+        ├── set-config.cmd
+        └── set-config.help
 ```
 
 ### How It Works
@@ -304,6 +317,92 @@ Update Laravel `.env` configuration with Warden-specific settings.
 ```bash
 warden set-config
 ```
+
+### Symfony Commands
+
+#### `warden bootstrap`
+Initialize Symfony environment with dependencies and database.
+
+**Options:**
+- `-h, --help` - Display help menu
+- `--clean-install` - Create fresh Symfony project from scratch
+- `--skip-composer-install` - Skip composer install
+- `--skip-migrate` - Skip database migrations
+
+**Example:**
+```bash
+warden bootstrap
+warden bootstrap --clean-install
+warden bootstrap --skip-migrate
+```
+
+#### `warden db-import`
+Import database dump into Symfony project.
+
+**Options:**
+- `-h, --help` - Display help menu
+- `-f, --file=<file>` - Path to database dump file (can be gzipped)
+
+**Example:**
+```bash
+warden db-import --file=database.sql.gz
+warden db-import -f backup.sql
+```
+
+#### `warden set-config`
+Update Symfony configuration for Warden environment.
+
+**Example:**
+```bash
+warden set-config
+```
+
+### WordPress Commands
+
+#### `warden bootstrap`
+Initialize WordPress environment with complete installation.
+
+**Options:**
+- `-h, --help` - Display help menu
+- `--clean-install` - Download WordPress core and install
+- `--skip-composer-install` - Skip composer install
+- `--skip-wp-install` - Skip WordPress installation
+
+**Example:**
+```bash
+warden bootstrap
+warden bootstrap --clean-install
+```
+
+**Note:** With `--clean-install`, WordPress will be downloaded, wp-config.php created, and the site installed with admin credentials displayed.
+
+#### `warden db-import`
+Import database dump into WordPress.
+
+**Options:**
+- `-h, --help` - Display help menu
+- `-f, --file=<file>` - Path to database dump file (can be gzipped)
+
+**Example:**
+```bash
+warden db-import --file=production.sql.gz
+warden db-import -f backup.sql
+```
+
+**Note:** After import, use WP-CLI to search-replace URLs if needed:
+```bash
+warden env exec php-fpm wp search-replace 'old-domain.com' 'app.test.test'
+```
+
+#### `warden set-config`
+Update WordPress configuration for Warden environment.
+
+**Example:**
+```bash
+warden set-config
+```
+
+
 
 ### Global Commands
 
