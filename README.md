@@ -1,185 +1,413 @@
-Magento 2 & Warden Setup
-========================================================
-Useful URLs on DEV:
-
-* https://traefik.warden.test/
-* https://portainer.warden.test/
-* https://dnsmasq.warden.test/
-* https://mailhog.warden.test/
-
-## Developer Setup
-
-### Prerequisites:
-
-* [Docker Desktop](https://docs.docker.com/desktop/install/mac-install/) for Mac 2.2.0.0 or later
-  or [Docker for Linux](https://docs.docker.com/get-docker/)
-  or [Docker for Windows](https://docs.docker.com/desktop/install/windows-install/)
-* [Homebrew](https://brew.sh/) is installed.
-* [Warden](https://docs.warden.dev/) 1.0.0 or later is installed. See
-  the [Installing Warden](https://docs.warden.dev/installing.html) docs page for further info and procedures.
-
-1. Install Docker and Docker Compose
-    ```
-    sudo apt-get update
-    sudo apt-get install ca-certificates curl gnupg lsb-release
-    sudo mkdir -p /etc/apt/keyrings
-    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-    sudo apt-get update
-    sudo apt-get install docker-ce docker-ce-cli containerd.io docker-compose-plugin
-    sudo service docker start
-    ```
-2. Fix docker command permission
-    ```
-    sudo groupadd docker
-    sudo usermod -aG docker $USER
-    newgrp docker
-    mkdir /home/"$USER"/.docker
-    sudo chown "$USER":"$USER" /home/"$USER"/.docker -R
-    sudo chmod g+rwx "$HOME/.docker" -R
-    ```
-3. Start docker on boot
-    ```
-    sudo systemctl enable docker.service
-    sudo systemctl enable containerd.service
-    ```
-4. Install Homebrew
-    ```
-    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-    (echo; echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"') >> /home/$USER/.bashrc
-    eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-    ```
-5. Install Warden
-    ```
-    brew install gcc
-    sudo apt-get install build-essential procps curl file git
-    brew install wardenenv/warden/warden
-    warden svc up
-    ```
-6. Load the site in your browser using the links and credentials taken from the init script output.
-
-   **Note:** If you are using **Firefox** and it warns you the SSL certificate is invalid/untrusted, go to
-   Preferences -> Privacy & Security -> View Certificates (bottom of page) -> Authorities -> Import and
-   select `~/.warden/ssl/rootca/certs/ca.cert.pem` for import, then reload the page.
-
-   **Note:** If you are using **Chrome** on **Linux** and it warns you the SSL certificate is invalid/untrusted, go to
-   Chrome Settings -> Privacy And Security -> Manage Certificates (see more) -> Authorities -> Import and
-   select `~/.warden/ssl/rootca/certs/ca.cert.pem` for import, then reload the page.
-
-7. Auto DNS resolution for all *.test domains in local environment
-    ```
-    sudo mkdir -p /etc/systemd/resolved.conf.d
-    echo -e "[Resolve]\nDNS=127.0.0.1\nDomains=~test\n" | sudo tee /etc/systemd/resolved.conf.d/warden.conf > /dev/null
-    sudo systemctl restart systemd-resolved
-    ```
-
 # Warden Custom Commands
 
-Provides additional commands to simplify local installation.
+Custom commands that extend Warden's functionality for multiple framework types.
 
-### Installation
-Clone this [repository](https://github.com/KaiDo92/warden-custom-commands) in `~/.warden/commands` to install it globally (recommended), or locally per project in `[project directory]/.warden/commands`.
+## Installation
+
+### Prerequisites
+
+1. **Docker Desktop** or **Docker Engine**
+   - [Docker Desktop for Mac](https://hub.docker.com/editions/community/docker-ce-desktop-mac) 2.2.0.0 or later
+   - [Docker for Linux](https://docs.docker.com/install/) (tested on Fedora 29 and Ubuntu 18.10)
+   - [Docker for Windows](https://docs.docker.com/desktop/windows/install/)
+   
+   **Important:** Docker Desktop should have at least **6GB RAM** allocated (Preferences → Resources → Advanced → Memory)
+   
+2. **docker-compose** version 2 or later
+   ```bash
+   # Verify docker-compose is installed
+   docker-compose --version
+   ```
+
+3. **Mutagen** 0.11.4 or later (macOS only, for sync sessions)
+   ```bash
+   # Will be automatically installed via Homebrew if not present
+   ```
+
+### Install Warden
+
+**Option 1: Via Homebrew (Recommended)**
+```bash
+brew install wardenenv/warden/warden
+warden svc up
 ```
+
+**Option 2: Alternative Installation (Manual)**
+```bash
+sudo mkdir /opt/warden
+sudo chown $(whoami) /opt/warden
+git clone -b main https://github.com/wardenenv/warden.git /opt/warden
+echo 'export PATH="/opt/warden/bin:$PATH"' >> ~/.bashrc
+PATH="/opt/warden/bin:$PATH"
+warden svc up
+```
+
+**For zsh users:**
+```bash
+echo 'export PATH="/opt/warden/bin:$PATH"' >> ~/.zshrc
+source ~/.zshrc
+```
+
+### Install Custom Commands
+
+```bash
+# Clone this repository to ~/.warden/commands
 git clone https://github.com/KaiDo92/warden-custom-commands.git ~/.warden/commands
+
+# Make commands executable
+chmod +x ~/.warden/commands/*.cmd
+chmod +x ~/.warden/commands/env-adapters/*/*.cmd
 ```
 
-### Configuration
-In the project `.env` (after `warden env-init`), add and configure these values:
+Commands will be automatically available via `warden <command>`.
+
+## Architecture
+
+### Dispatcher Pattern
+
+Commands use a **dispatcher pattern** where root commands delegate to environment-specific implementations:
 
 ```
-REMOTE_PROD_HOST=project.com
-REMOTE_PROD_USER=user
-REMOTE_PROD_PORT=22
-REMOTE_PROD_PATH=/var/www/html
-
-REMOTE_STAGING_HOST=staging.project.com
-REMOTE_STAGING_USER=user
-REMOTE_STAGING_PORT=22
-REMOTE_STAGING_PATH=/var/www/html
-
-REMOTE_DEV_HOST=dev.project.com
-REMOTE_DEV_USER=user
-REMOTE_DEV_PORT=22
-REMOTE_DEV_PATH=/var/www/html
+commands/
+├── bootstrap.cmd          # Dispatcher → env-adapters/{type}/bootstrap.cmd
+├── db-dump.cmd            # Dispatcher → env-adapters/{type}/db-dump.cmd
+├── db-import.cmd          # Dispatcher → env-adapters/{type}/db-import.cmd
+├── deploy.cmd             # Dispatcher → env-adapters/{type}/deploy.cmd
+├── download-files.cmd     # Dispatcher → env-adapters/{type}/download-files.cmd
+├── open.cmd               # Dispatcher → env-adapters/{type}/open.cmd
+├── set-config.cmd         # Dispatcher → env-adapters/{type}/set-config.cmd
+├── sync-media.cmd         # Dispatcher → env-adapters/{type}/sync-media.cmd
+├── upload-files.cmd       # Dispatcher → env-adapters/{type}/upload-files.cmd
+│
+├── self-update.cmd        # Global command
+├── env-variables          # Global environment loader
+│
+└── env-adapters/          # Environment-specific implementations
+    ├── magento2/
+    │   ├── bootstrap.cmd
+    │   ├── bootstrap.help
+    │   ├── db-dump.cmd
+    │   ├── db-dump.help
+    │   ├── db-import.cmd
+    │   ├── db-import.help
+    │   ├── deploy.cmd
+    │   ├── deploy.help
+    │   ├── download-files.cmd
+    │   ├── download-files.help
+    │   ├── open.cmd
+    │   ├── open.help
+    │   ├── set-config.cmd
+    │   ├── sync-media.cmd
+    │   ├── sync-media.help
+    │   ├── upload-files.cmd
+    │   └── upload-files.help
+    │
+    ├── laravel/
+    │   ├── bootstrap.cmd
+    │   ├── bootstrap.help
+    │   ├── db-import.cmd
+    │   ├── db-import.help
+    │   ├── set-config.cmd
+    │   └── set-config.help
+    │
+    ├── wordpress/         # Coming soon
+    └── symfony/           # Coming soon
 ```
 
-#### Adobe Commerce Cloud
-The `REMOTE_[env]_HOST` variables must be set with the name of the environment. All other variables are not used and can be removed.
+### How It Works
 
-Additionally, you must have this variable:  
-`CLOUD_PROJECT=[projectId]`
+1. You run: `warden bootstrap`
+2. Warden calls: `~/.warden/commands/bootstrap.cmd` (dispatcher)
+3. Dispatcher reads `WARDEN_ENV_TYPE` from `.env`
+4. Dispatcher sources the appropriate implementation:
+   - `env-adapters/magento2/bootstrap.cmd` for Magento 2
+   - `env-adapters/laravel/bootstrap.cmd` for Laravel
+   - etc.
 
-### Usage
+## Commands Reference
 
-For all commands, execute `warden <command> -h` to see the details of all options.
+### Magento 2 Commands
 
-`warden self-update`
-* Pull the latest update
-* Apply fixes and improvements
+#### `warden bootstrap`
+Initialize a new Magento 2 environment with all dependencies and configuration.
 
-`warden bootstrap`
-* Create and configure Warden environment
-* Download and import database dump from selected remote
-* Download medias from selected remote
-* Install composer dependencies
-* Configure Redis, Varnish and ElasticSearch if applicable
-* Other Magento config like domain, switch some payment methods to sandbox
-* Create admin user
+**Options:**
+- `-h, --help` - Display help menu
+- `--skip-deploy` - Skip deployment after installation
 
-`warden db-dump`
-* Dump DB from selected remote
+**Example:**
+```bash
+warden bootstrap
+warden bootstrap --skip-deploy
+```
 
-`warden db-import`
-* Import DB. File **must** be specified with option `--file`
+#### `warden db-dump`
+Create a database backup with optional compression.
 
-`warden sync-media`
-* Download medias from selected remote
-* Product images are not downloaded by default (use `--include-product`)
+**Options:**
+- `-h, --help` - Display help menu
+- `-f, --file=<file>.sql.gz` - Output file
+- `-e, --environment=<dev|staging|production>` - Specific environment (default: staging)
+- `--full` - Export full database from selected environment
+- `--exclude-sensitive-data` - Exclude sensitive data
 
-`warden open`
-* Open DB tunnel to local or remote environments
-* SSH to local or remote environments
-* Show SFTP link you can use in your SFTP client
+**Example:**
+```bash
+warden db-dump
+warden db-dump --file=production-backup.sql.gz --environment=production
+warden db-dump --exclude-sensitive-data
+```
 
-`warden download-source`
-* Download all source code from selected remote
+#### `warden db-import`
+Import database from local or remote file.
 
-`warden download-files`
-* Download files from selected remote
+**Options:**
+- `-h, --help` - Display help menu
+- `-f, --file=<file>` - Path to existing database dump file (can be gzipped)
 
-`warden upload-files`
-* Upload files to selected remote
+**Example:**
+```bash
+warden db-import --file=backup.sql.gz
+warden db-import -f /path/to/database.sql
+```
 
-`warden set-config`
-* Update Magento configurations
+#### `warden deploy`
+Deploy Magento application (run setup:upgrade, compile, deploy).
 
-### Initializing Environment
+**Options:**
+- `-h, --help` - Display help menu
 
-In the below examples `~/Work/htdocs/magento` is used as the path. Simply replace this with whatever path you will be
-running this project from. It is recommended however to deploy the project locally to a case-sensitive volume.
+**Arguments:**
+- `full` - Full deployment (default)
+- `static` - Deploy static files only
 
-1. Clone the project codebase.
-    ```
-    git clone -b develop git@github.com:<GITHUB_ACCOUNT>/<REPOSITORY_NAME>.git ~/Work/htdocs/magento
-    ```
-2. Change into the project directory.
-    ```
-    cd ~/Work/htdocs/magento
-    ```
+**Example:**
+```bash
+warden deploy
+warden deploy full
+warden deploy static
+```
 
-3. Create a new .env file in the project's root directory and ensure that you update the necessary variables accordingly (please refer to the .env.example file in this repository for guidance).
+#### `warden download-files`
+Download files from a remote environment to the local file system.
 
-4. Run the init script to bootstrap the environment.
-    ```
-    warden bootstrap
-    ```
+**Options:**
+- `-h, --help` - Display help menu
+- `-e, --environment=<dev|staging|production>` - Environment to sync files from (default: staging)
+- `-p, --path=<dump_path>` - Specific path to download (default: ./)
 
-### Additional Configuration
+**Example:**
+```bash
+warden download-files
+warden download-files --environment=production
+warden download-files --path=pub/media/
+```
 
-Information on configuring and using tools such as Xdebug, LiveReload, MFTF, and multi-domain site setups may be found
-in the Warden docs page on [Configuration](https://docs.warden.dev/configuration.html).
+#### `warden download-source`
+Download source code files from a remote environment to the local file system (excludes generated, var, pub/media, pub/static, and archive files).
 
-### Destroying Environment
+**Options:**
+- `-h, --help` - Display help menu
+- `-e, --environment=<dev|staging|production>` - Environment to download from (default: staging)
 
-To completely destroy the local environment we just created, run `warden env down -v` to tear down the project’s Docker
-containers, volumes, and (where applicable) cleanup the Mutagen sync session.
+**Example:**
+```bash
+warden download-source
+warden download-source --environment=production
+```
+
+#### `warden upload-files`
+Upload files from the local file system to a remote environment.
+
+**Options:**
+- `-h, --help` - Display help menu
+- `-e, --environment=<dev|staging|production>` - Environment to upload files to (default: staging)
+- `-p, --path=<upload_path>` - Specific path to upload (default: ./)
+
+**Example:**
+```bash
+warden upload-files
+warden upload-files --environment=production --path=pub/media/
+```
+
+#### `warden open`
+Open Magento services in browser or establish tunnels.
+
+**Options:**
+- `-h, --help` - Display help menu
+- `-e, --environment=<local|dev|staging|production>` - Specific environment (default: local)
+
+**Arguments:**
+- `db` - Open database connection
+- `shell` - Open shell
+- `sftp` - Open SFTP connection
+- `admin` - Open admin panel
+- `elasticsearch` - Open Elasticsearch
+
+**Example:**
+```bash
+warden open
+warden open admin
+warden open --environment=staging
+```
+
+#### `warden set-config`
+Configure Magento settings (base URLs, cache, sessions, etc.).
+
+**Example:**
+```bash
+warden set-config
+```
+
+#### `warden sync-media`
+Download media files from a remote environment to the local file system.
+
+**Options:**
+- `-h, --help` - Display help menu
+- `-e, --environment=<dev|staging|production>` - Environment to sync media from (default: staging)
+
+**Example:**
+```bash
+warden sync-media
+warden sync-media --environment=production
+```
+
+
+### Laravel Commands
+
+#### `warden bootstrap`
+Initialize Laravel environment with dependencies and database.
+
+**Options:**
+- `--clean-install` - Create fresh Laravel project
+- `--skip-composer-install` - Skip composer install
+- `--skip-migrate` - Skip database migrations
+
+**Example:**
+```bash
+warden bootstrap
+warden bootstrap --clean-install
+```
+
+#### `warden db-import`
+Import database dump into Laravel project.
+
+**Example:**
+```bash
+warden db-import database.sql
+```
+
+#### `warden set-config`
+Update Laravel `.env` configuration with Warden-specific settings.
+
+**Example:**
+```bash
+warden set-config
+```
+
+### Global Commands
+
+#### `warden self-update`
+Update custom commands from git repository.
+
+**Example:**
+```bash
+warden self-update
+```
+
+## Adding New Environment Support
+
+To add support for a new framework (e.g., Symfony):
+
+1. **Create the directory:**
+   ```bash
+   mkdir -p ~/.warden/commands/env-adapters/symfony
+   ```
+
+2. **Create command files:**
+   ```bash
+   touch ~/.warden/commands/env-adapters/symfony/bootstrap.cmd
+   touch ~/.warden/commands/env-adapters/symfony/set-config.cmd
+   # ... other commands
+   ```
+
+3. **Implement the logic:**
+   ```bash
+   #!/usr/bin/env bash
+   # Don't include shebang - file will be sourced
+   
+   :: Installing Symfony
+   warden env exec php-fpm composer install
+   # ... Symfony-specific logic
+   ```
+
+4. **Create help files (optional):**
+   ```bash
+   touch ~/.warden/commands/env-adapters/symfony/bootstrap.help
+   ```
+
+5. **Make executable:**
+   ```bash
+   chmod +x ~/.warden/commands/env-adapters/symfony/*.cmd
+   ```
+
+The commands will automatically be available when `WARDEN_ENV_TYPE=symfony` is set in `.env`.
+
+## Configuration
+
+Custom commands read environment variables from the project's `.env` file:
+
+```bash
+# Required
+WARDEN_ENV_NAME=myproject
+WARDEN_ENV_TYPE=magento2   # or laravel, wordpress, symfony
+
+# Optional (framework-specific)
+TRAEFIK_DOMAIN=myproject.test
+TRAEFIK_SUBDOMAIN=app
+
+# Magento 2 specific
+PHP_VERSION=8.2
+COMPOSER_VERSION=2
+MYSQL_DISTRIBUTION=mysql
+MYSQL_DISTRIBUTION_VERSION=8.0
+
+# Laravel specific
+DB_CONNECTION=mysql
+DB_HOST=db
+DB_DATABASE=magento
+DB_USERNAME=magento
+DB_PASSWORD=magento
+```
+
+## Troubleshooting
+
+### Commands not found
+```bash
+# Ensure commands are executable
+chmod +x ~/.warden/commands/*.cmd
+chmod +x ~/.warden/commands/env-adapters/*/*.cmd
+```
+
+### Wrong environment commands loading
+```bash
+# Check .env file has correct WARDEN_ENV_TYPE
+cat .env | grep WARDEN_ENV_TYPE
+```
+
+### Permission issues
+```bash
+# Fix ownership
+chown -R $(whoami):$(whoami) ~/.warden/commands
+```
+
+## Contributing
+
+1. Create a feature branch
+2. Make your changes
+3. Test with different environment types
+4. Submit a pull request
+
+## License
+
+GNU General Public License v3.0

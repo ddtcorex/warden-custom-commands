@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# Source Warden utilities
+[[ -f "${WARDEN_DIR}/utils/env.sh" ]] && source "${WARDEN_DIR}/utils/env.sh"
 [[ ! ${WARDEN_DIR} ]] && >&2 echo -e "\033[31mThis script is not intended to be run directly!\033[0m" && exit 1
 
 set -euo pipefail
@@ -86,4 +88,9 @@ if [ -z ${REMOTE_DB_PREFIX+x} ]; then
     REMOTE_DB_PREFIX=
 else
     DB_PREFIX="$REMOTE_DB_PREFIX"
+fi
+
+# Load environment-specific commands via symlinks
+if [[ -f "${SUBCOMMAND_DIR}/.load-env-commands" ]]; then
+    source "${SUBCOMMAND_DIR}/.load-env-commands"
 fi

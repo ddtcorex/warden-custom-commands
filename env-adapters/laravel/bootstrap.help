@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+[[ ! ${WARDEN_DIR} ]] && >&2 echo -e "\033[31mThis script is not intended to be run directly!\033[0m" && exit 1
+
+WARDEN_USAGE=$(cat <<EOF
+## bootstrap
+
+Initializes a Laravel development environment.
+
+### Synopsis
+
+    warden bootstrap [options]
+
+### Options
+
+    --clean-install           Create a new Laravel project from scratch
+    --skip-composer-install   Skip running composer install
+    --skip-migrate           Skip running database migrations
+
+### Description
+
+The bootstrap command sets up a complete Laravel development environment:
+- Starts Warden services
+- Generates SSL certificates if needed
+- Runs composer install (or creates new project with --clean-install)
+- Creates .env file from .env.example
+- Generates application key
+- Runs database migrations
+- Configures environment settings
+
+### Examples
+
+    # Full bootstrap
+    warden bootstrap
+
+    # Create new Laravel project
+    warden bootstrap --clean-install
+
+    # Skip composer install (dependencies already installed)
+    warden bootstrap --skip-composer-install
+
+    # Skip migrations  
+    warden bootstrap --skip-migrate
+EOF
+)

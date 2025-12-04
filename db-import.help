@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 [[ ! ${WARDEN_DIR} ]] && >&2 echo -e "\033[31mThis script is not intended to be run directly!\033[0m" && exit 1
 
-WARDEN_USAGE=$(cat <<EOF
-\033[33mUsage:\033[0m
-  db-import [-h|--help] [-f|--file=<file>]
+SUBCOMMAND_DIR=$(dirname "${BASH_SOURCE[0]}")
+source "${SUBCOMMAND_DIR}"/env-variables
 
-\033[33mOptions:\033[0m
-  -h, --help                   Display this help menu.
-
-  -f, --file=<file>            Path to existing database dump file. Can be gzipped.
-EOF
-)
+# Source and output help from environment-specific implementation
+if [[ -f "${SUBCOMMAND_DIR}/env-adapters/${WARDEN_ENV_TYPE}/db-import.help" ]]; then
+    source "${SUBCOMMAND_DIR}/env-adapters/${WARDEN_ENV_TYPE}/db-import.help"
+    echo "${WARDEN_USAGE}"
+else
+    echo "No help available for 'db-import' command in environment type '${WARDEN_ENV_TYPE}'"
+fi

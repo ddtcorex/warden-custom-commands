@@ -1,19 +1,13 @@
 #!/usr/bin/env bash
 [[ ! ${WARDEN_DIR} ]] && >&2 echo -e "\033[31mThis script is not intended to be run directly!\033[0m" && exit 1
 
-WARDEN_USAGE=$(cat <<EOF
-Download files from a remote environment to the local file system.
-Extra options and arguments are passed through.
+SUBCOMMAND_DIR=$(dirname "${BASH_SOURCE[0]}")
+source "${SUBCOMMAND_DIR}"/env-variables
 
-\033[33mUsage:\033[0m
-  sync-media [-h|--help] [-e|--environment=<environment>] [-p|--path=<dump_path>]
-
-\033[33mOptions:\033[0m
-  -h, --help                                  Display this help menu
-
-\033[33mArguments:\033[0m
-  -e, --environment=<dev|production|staging>  Environment to sync files from. Default: staging
-
-  -p, --path=<dump_path>                      Specify dump path. Default: pub/media/
-
-EOF
+# Source and output help from environment-specific implementation
+if [[ -f "${SUBCOMMAND_DIR}/env-adapters/${WARDEN_ENV_TYPE}/download-files.help" ]]; then
+    source "${SUBCOMMAND_DIR}/env-adapters/${WARDEN_ENV_TYPE}/download-files.help"
+    echo "${WARDEN_USAGE}"
+else
+    echo "No help available for 'download-files' command in environment type '${WARDEN_ENV_TYPE}'"
+fi
