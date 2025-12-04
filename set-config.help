@@ -5,9 +5,9 @@ SUBCOMMAND_DIR=$(dirname "${BASH_SOURCE[0]}")
 source "${SUBCOMMAND_DIR}"/env-variables
 
 # Source and output help from environment-specific implementation
-if [[ -f "${SUBCOMMAND_DIR}/env-adapters/${WARDEN_ENV_TYPE}/sync-media.help" ]]; then
-    source "${SUBCOMMAND_DIR}/env-adapters/${WARDEN_ENV_TYPE}/sync-media.help"
+if [[ -f "${SUBCOMMAND_DIR}/env-adapters/${WARDEN_ENV_TYPE}/set-config.help" ]]; then
+    source "${SUBCOMMAND_DIR}/env-adapters/${WARDEN_ENV_TYPE}/set-config.help"
     echo "${WARDEN_USAGE}"
 else
-    echo "No help available for 'sync-media' command in environment type '${WARDEN_ENV_TYPE}'"
+    echo "No help available for 'set-config' command in environment type '${WARDEN_ENV_TYPE}'"
 fi

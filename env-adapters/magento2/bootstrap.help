@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+[[ ! ${WARDEN_DIR} ]] && >&2 echo -e "\033[31mThis script is not intended to be run directly!\033[0m" && exit 1
+
+WARDEN_USAGE=$(cat <<EOF
+\033[33mUsage:\033[0m
+  bootstrap [-e <dev|production|staging>] [--no-pull] [--skip-db-import] [--skip-media-sync] [--skip-composer-install] [--skip-admin-create] [--db-dump <file>.sql.gz]
+
+\033[33mOptions:\033[0m
+  -h, --help              Display this help menu
+
+  --clean-install         Perform clean installation
+
+  --meta-package          Magento meta package (magento/project-community-edition, magento/project-enterprise-edition)
+
+  --meta-version          Magento version
+
+  --include-sample        Include sample data into the installation
+
+  --skip-db-import        Skips over db import (assume db has already been imported).
+
+  --skip-media-sync       Skips over media sync.
+
+  --skip-composer-install Skips over composer install.
+
+  --skip-admin-create     Skips over admin user create.
+
+\033[33mArguments:\033[0m
+  -e, --environment=<dev|staging|production>  Environment to sync media from. Default: staging
+
+  --db-dump=<file>.sql.gz                     Expects path to .sql.gz file for import during init
+
+EOF
+)

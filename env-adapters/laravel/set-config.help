@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+[[ ! ${WARDEN_DIR} ]] && >&2 echo -e "\033[31mThis script is not intended to be run directly!\033[0m" && exit 1
+
+WARDEN_USAGE=$(cat <<EOF
+## set-config
+
+Updates Laravel configuration settings.
+
+### Synopsis
+
+    warden set-config
+
+### Description
+
+The set-config command updates configuration for the development environment:
+- Updates APP_URL in .env to match Traefik domain
+- Configures Redis if WARDEN_REDIS=1
+- Clears all Laravel caches
+
+### Examples
+
+    # Update configuration
+    warden set-config
+EOF
+)
