@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+[[ ! ${WARDEN_DIR} ]] && >&2 echo -e "\033[31mThis script is not intended to be run directly!\033[0m" && exit 1
+
+WARDEN_USAGE=$(cat <<HELP
+## db-import
+
+Import a database dump into the Symfony database.
+
+### Synopsis
+
+    warden db-import [--file=<filename>]
+
+### Options
+
+    -f, --file=<filename>    Path to database dump file (.sql or .sql.gz)
+
+### Description
+
+Imports a database dump file into the Symfony database. Handles both compressed (.sql.gz) 
+and uncompressed (.sql) files.
+
+### Examples
+
+    # Import compressed dump
+    warden db-import --file=database.sql.gz
+
+    # Import uncompressed dump
+    warden db-import -f backup.sql
+HELP
+)

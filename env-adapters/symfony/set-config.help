@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+[[ ! ${WARDEN_DIR} ]] && >&2 echo -e "\033[31mThis script is not intended to be run directly!\033[0m" && exit 1
+
+WARDEN_USAGE=$(cat <<HELP
+## set-config
+
+Update Symfony configuration for Warden environment.
+
+### Synopsis
+
+    warden set-config
+
+### Description
+
+Updates Symfony configuration including:
+- Database connection settings
+- Redis configuration (if enabled)
+- Clears application cache
+
+### Examples
+
+    warden set-config
+HELP
+)
