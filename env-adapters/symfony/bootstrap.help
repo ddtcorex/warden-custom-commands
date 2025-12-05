@@ -13,6 +13,7 @@ Initializes a Symfony development environment.
 ### Options
 
     --clean-install          Create a new Symfony project from scratch
+    --fix-deps               Auto-detect Symfony version and set correct PHP/MySQL/Redis versions
     --skip-composer-install  Skip running composer install
     --skip-migrate           Skip running database migrations
 

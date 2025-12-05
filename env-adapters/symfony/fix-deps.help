@@ -1,0 +1,47 @@
+WARDEN_USAGE=$(cat <<EOF_USAGE
+Fix Symfony dependency versions in .env file
+
+Usage:
+  warden fix-deps [options]
+
+Description:
+  Automatically updates .env file with correct dependency versions based on 
+  your Symfony version. Uses official Symfony server requirements.
+
+Options:
+  -h, --help              Show this help message
+  --dry-run               Preview changes without modifying .env
+  --version=VERSION       Specify Symfony version manually (e.g., 6.4)
+
+Features:
+  • Auto-detects Symfony version from composer.json or bin/console
+  • Updates PHP, MySQL/MariaDB, Redis versions
+  • Configures Composer version
+  • Dry-run mode to preview changes safely
+
+Examples:
+  # Auto-detect version and show what would change
+  warden fix-deps --dry-run
+
+  # Auto-detect and apply changes
+  warden fix-deps
+
+  # Fix dependencies for specific Symfony version
+  warden fix-deps --version=6.4
+
+Dependencies Updated:
+  • PHP_VERSION
+  • MYSQL_DISTRIBUTION & MYSQL_DISTRIBUTION_VERSION
+  • REDIS_VERSION
+  • COMPOSER_VERSION
+
+Supported Versions:
+  Symfony 5.2 through 7.2
+  
+Note:
+  Always run with --dry-run first to review changes before applying.
+  After updating versions, run 'warden env down' and 'warden env up' to 
+  rebuild containers with new versions.
+
+EOF_USAGE
+)

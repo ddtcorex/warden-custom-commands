@@ -13,6 +13,7 @@ Initializes a Laravel development environment.
 ### Options
 
     --clean-install           Create a new Laravel project from scratch
+    --fix-deps                Auto-detect Laravel version and set correct PHP/MySQL/Redis versions
     --skip-composer-install   Skip running composer install
     --skip-migrate           Skip running database migrations
 
