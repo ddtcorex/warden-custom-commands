@@ -19,8 +19,7 @@ function dumpPremise () {
         $UPLOAD_PATH $ENV_SOURCE_USER@$ENV_SOURCE_HOST:$ENV_SOURCE_DIR/$UPLOAD_PATH
 }
 
-SUBCOMMAND_DIR=$(dirname "${BASH_SOURCE[0]}")
-source "${SUBCOMMAND_DIR}"/env-variables
+source "${WARDEN_HOME_DIR:-~/.warden}/commands/env-variables"
 
 if [ -z ${!ENV_SOURCE_HOST_VAR+x} ]; then
     echo "Invalid environment '${ENV_SOURCE}'"
