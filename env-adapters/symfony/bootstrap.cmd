@@ -1,14 +1,23 @@
+#!/usr/bin/env bash
+[[ ! ${WARDEN_DIR} ]] && >&2 echo -e "\033[31mThis script is not intended to be run directly!\033[0m" && exit 1
 
 START_TIME=$(date +%s)
+
+source "${WARDEN_HOME_DIR:-~/.warden}/commands/env-variables"
 
 CLEAN_INSTALL=
 COMPOSER_INSTALL=1
 SKIP_MIGRATE=
+FIX_DEPS=
 
 while (( "$#" )); do
     case "$1" in
         --clean-install)
             CLEAN_INSTALL=1
+            shift
+            ;;
+        --fix-deps)
+            FIX_DEPS=1
             shift
             ;;
         --skip-composer-install)
@@ -24,6 +33,53 @@ while (( "$#" )); do
             ;;
     esac
 done
+
+## Run fix-deps if flag is set
+if [[ -n "${FIX_DEPS}" ]]; then
+    :: Running fix-deps to set correct dependency versions
+    
+    SCRIPT_DIR=$(dirname "${BASH_SOURCE[0]}")
+    if [[ -f "${SCRIPT_DIR}/fix-deps.cmd" ]]; then
+        # Try to detect version first
+        DETECTED_VERSION=""
+        if [[ -f "composer.json" ]] && command -v jq &> /dev/null; then
+            DETECTED_VERSION=$(jq -r '.require["symfony/framework-bundle"] // .require["symfony/symfony"] // "unknown"' composer.json 2>/dev/null | sed 's/[\^~]//g' | grep -oP '^\d+\.\d+' || echo "")
+        fi
+        
+        if [[ -n "${DETECTED_VERSION}" ]] && [[ "${DETECTED_VERSION}" != "unknown" ]]; then
+            echo "Detected Symfony version: ${DETECTED_VERSION}"
+            source "${SCRIPT_DIR}/fix-deps.cmd" --version="${DETECTED_VERSION}" 2>&1 | grep -v "\[DRY RUN\]\|Run without"
+        else
+            # Prompt user for version
+            echo ""
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "Symfony version not detected"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo ""
+            echo "Available versions: 5.2, 5.3, 5.4, 6.0, 6.1, 6.2, 6.3, 6.4, 7.0, 7.1, 7.2"
+            read -p "Please specify the Symfony version: " USER_VERSION
+            
+            if [[ -n "${USER_VERSION}" ]]; then
+                # Save to .env for future reference
+                if ! grep -q "^SYMFONY_VERSION=" .env 2>/dev/null; then
+                    echo "SYMFONY_VERSION=${USER_VERSION}" >> .env
+                else
+                    sed -i "s/^SYMFONY_VERSION=.*/SYMFONY_VERSION=${USER_VERSION}/" .env
+                fi
+                
+                source "${SCRIPT_DIR}/fix-deps.cmd" --version="${USER_VERSION}" 2>&1 | grep -v "\[DRY RUN\]\|Run without"
+            else
+                echo "⚠ No version specified. Using default (latest) dependency versions."
+                source "${SCRIPT_DIR}/fix-deps.cmd" 2>&1 | grep -v "\[DRY RUN\]\|Run without"
+            fi
+        fi
+        
+        # Reload env-variables to pick up changes made by fix-deps
+        source "${WARDEN_HOME_DIR:-~/.warden}/commands/env-variables"
+    else
+        echo "⚠ fix-deps command not found, skipping dependency version correction"
+    fi
+fi
 
 :: Starting Warden
 warden svc up
