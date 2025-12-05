@@ -34,26 +34,44 @@ else
 fi
 
 if [[ "$WARDEN_ELASTICSEARCH" -eq "1" ]] || [[ "$WARDEN_OPENSEARCH" -eq "1" ]]; then
-    if [[ "$WARDEN_OPENSEARCH" -eq "1" ]]; then
+    MAGENTO_VERSION=$(warden env exec php-fpm bin/magento --version 2>/dev/null | awk '{print $3}')
+    
+    # Magento version-specific search engine configuration
+    # - 2.4.8+ or unknown version: Uses opensearch engine with opensearch_* config keys (assume latest)
+    # - 2.4.6-2.4.7: Uses opensearch engine but with elasticsearch7_* config keys
+    # - Pre-2.4.6: Uses elasticsearch7
+    if [[ -z "${MAGENTO_VERSION}" ]] || { [[ -n "${MAGENTO_VERSION}" ]] && test "$(version "${MAGENTO_VERSION}")" -ge "$(version "2.4.8")"; }; then
+        # Magento 2.4.8+ OR unknown version (assume latest): opensearch engine with opensearch_* config keys
         :: Configuring OpenSearch
-        ELASTICSEARCH_HOSTNAME="opensearch"
-        ELASTICSEARCH_ENGINE="opensearch"
-        MAGENTO_VERSION=$(warden env exec php-fpm bin/magento --version | awk '{print $3}')
-        if ! test "$(version "${MAGENTO_VERSION}")" -ge "$(version "2.4.6")"; then
-           ELASTICSEARCH_ENGINE="elasticsearch7"
-        fi
+        SEARCH_HOST="opensearch"
+        SEARCH_ENGINE="opensearch"
+        CONFIG_PREFIX="opensearch"
+    elif [[ -n "${MAGENTO_VERSION}" ]] && test "$(version "${MAGENTO_VERSION}")" -ge "$(version "2.4.6")"; then
+        # Magento 2.4.6-2.4.7: opensearch engine with elasticsearch7_* config keys
+        :: Configuring OpenSearch
+        SEARCH_HOST="opensearch"
+        SEARCH_ENGINE="opensearch"
+        CONFIG_PREFIX="elasticsearch7"
+    elif [[ "$WARDEN_OPENSEARCH" -eq "1" ]]; then
+        # Pre-2.4.6 with OpenSearch enabled
+        :: Configuring OpenSearch
+        SEARCH_HOST="opensearch"
+        SEARCH_ENGINE="elasticsearch7"
+        CONFIG_PREFIX="elasticsearch7"
     else
-        :: Configuring ElasticSearch
-        ELASTICSEARCH_HOSTNAME="elasticsearch"
-        ELASTICSEARCH_ENGINE="elasticsearch7"
+        # Pre-2.4.6 with Elasticsearch
+        :: Configuring Elasticsearch
+        SEARCH_HOST="elasticsearch"
+        SEARCH_ENGINE="elasticsearch7"
+        CONFIG_PREFIX="elasticsearch7"
     fi
 
-    warden env exec php-fpm bin/magento config:set catalog/search/engine $ELASTICSEARCH_ENGINE || true
-    warden env exec php-fpm bin/magento config:set catalog/search/${ELASTICSEARCH_ENGINE}_server_hostname $ELASTICSEARCH_HOSTNAME || true
-    warden env exec php-fpm bin/magento config:set catalog/search/${ELASTICSEARCH_ENGINE}_server_port 9200 || true
-    warden env exec php-fpm bin/magento config:set catalog/search/${ELASTICSEARCH_ENGINE}_index_prefix magento2 || true
-    warden env exec php-fpm bin/magento config:set catalog/search/${ELASTICSEARCH_ENGINE}_enable_auth 0 || true
-    warden env exec php-fpm bin/magento config:set catalog/search/${ELASTICSEARCH_ENGINE}_server_timeout 15 || true
+    warden env exec php-fpm bin/magento config:set catalog/search/engine $SEARCH_ENGINE || true
+    warden env exec php-fpm bin/magento config:set catalog/search/${CONFIG_PREFIX}_server_hostname $SEARCH_HOST || true
+    warden env exec php-fpm bin/magento config:set catalog/search/${CONFIG_PREFIX}_server_port 9200 || true
+    warden env exec php-fpm bin/magento config:set catalog/search/${CONFIG_PREFIX}_index_prefix magento2 || true
+    warden env exec php-fpm bin/magento config:set catalog/search/${CONFIG_PREFIX}_enable_auth 0 || true
+    warden env exec php-fpm bin/magento config:set catalog/search/${CONFIG_PREFIX}_server_timeout 15 || true
 fi
 
 if [[ "$WARDEN_REDIS" -eq "1" ]]; then
