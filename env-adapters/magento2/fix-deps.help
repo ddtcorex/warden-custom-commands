@@ -1,0 +1,55 @@
+WARDEN_USAGE=$(cat <<EOF_USAGE
+Fix Magento dependency versions in .env file
+
+Usage:
+  warden fix-deps [options]
+
+Description:
+  Automatically updates .env file with correct dependency versions based on 
+  your Magento version. Uses official Adobe Commerce system requirements.
+
+Options:
+  -h, --help              Show this help message
+  --dry-run               Preview changes without modifying .env
+  --version=VERSION       Specify Magento version manually (e.g., 2.4.6)
+
+Features:
+  • Auto-detects Magento version from META_VERSION, composer.json, or installation
+  • Updates PHP, MySQL/MariaDB, OpenSearch/Elasticsearch, Redis versions
+  • Configures Composer, RabbitMQ, and Varnish versions
+  • Dry-run mode to preview changes safely
+  • Based on official Adobe Commerce system requirements
+
+Examples:
+  # Auto-detect version and show what would change
+  warden fix-deps --dry-run
+
+  # Auto-detect and apply changes
+  warden fix-deps
+
+  # Fix dependencies for specific Magento version
+  warden fix-deps --version=2.4.6
+
+  # Apply fixes for Magento 2.4.8
+  warden fix-deps --version=2.4.8
+
+Dependencies Updated:
+  • PHP_VERSION
+  • MYSQL_DISTRIBUTION & MYSQL_DISTRIBUTION_VERSION
+  • WARDEN_OPENSEARCH or WARDEN_ELASTICSEARCH
+  • OPENSEARCH_VERSION or ELASTICSEARCH_VERSION
+  • REDIS_VERSION
+  • COMPOSER_VERSION
+  • RABBITMQ_VERSION
+  • VARNISH_VERSION
+
+Supported Versions:
+  Magento 2.4.0 through 2.4.8
+  
+Note:
+  Always run with --dry-run first to review changes before applying.
+  After updating versions, run 'warden env down' and 'warden env up' to 
+  rebuild containers with new versions.
+
+EOF_USAGE
+)

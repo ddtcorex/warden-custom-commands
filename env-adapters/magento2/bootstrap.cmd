@@ -2,6 +2,23 @@
 [[ ! ${WARDEN_DIR} ]] && >&2 echo -e "\033[31mThis script is not intended to be run directly!\033[0m" && exit 1
 
 START_TIME=$(date +%s)
+
+# Ensure .env exists before sourcing env-variables
+if [[ ! -f "$(pwd)/.env" ]]; then
+    echo "No .env file found. Creating minimal configuration..."
+    ENV_NAME=$(basename "$(pwd)")
+    cat > "$(pwd)/.env" <<ENVEOF
+WARDEN_ENV_NAME=${ENV_NAME}
+WARDEN_ENV_TYPE=magento2
+WARDEN_WEB_ROOT=/
+
+TRAEFIK_DOMAIN=${ENV_NAME}.test
+TRAEFIK_SUBDOMAIN=app
+ENVEOF
+    sed -i "s/\${ENV_NAME}/${ENV_NAME}/g" .env
+    echo "Created .env for ${ENV_NAME}"
+fi
+
 source "${WARDEN_HOME_DIR:-~/.warden}/commands/env-variables"
 
 ## configure command defaults
@@ -17,9 +34,9 @@ MEDIA_SYNC=1
 COMPOSER_INSTALL=1
 ADMIN_CREATE=1
 ENV_REQUIRED=
+FIX_DEPS=
 
 ## argument parsing
-## parse arguments
 while (( "$#" )); do
     case "$1" in
         --clean-install)
@@ -27,6 +44,10 @@ while (( "$#" )); do
             COMPOSER_INSTALL=
             DB_IMPORT=
             MEDIA_SYNC=
+            shift
+            ;;
+        --fix-deps)
+            FIX_DEPS=1
             shift
             ;;
         --meta-package=*)
@@ -79,6 +100,50 @@ while (( "$#" )); do
             ;;
     esac
 done
+
+## Run fix-deps if flag is set (when .env was just created)
+if [[ -n "${FIX_DEPS}" ]]; then
+    :: Running fix-deps to set correct dependency versions
+    
+    SCRIPT_DIR=$(dirname "${BASH_SOURCE[0]}")
+    if [[ -f "${SCRIPT_DIR}/fix-deps.cmd" ]]; then
+        # Run fix-deps (it will auto-detect version or use META_VERSION)
+        if [[ -n "${META_VERSION:-}" ]]; then
+            source "${SCRIPT_DIR}/fix-deps.cmd" --version="${META_VERSION}" 2>&1 | grep -v "\[DRY RUN\]\|Run without"
+        else
+            # Prompt user for version if not set
+            echo ""
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "Magento version not specified"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo ""
+            echo "Please specify the Magento version (e.g., 2.4.8, 2.4.6-p1):"
+            read -p "Version: " USER_VERSION
+            
+            if [[ -n "${USER_VERSION}" ]]; then
+                # Save to .env
+                if ! grep -q "^META_VERSION=" .env 2>/dev/null; then
+                    echo "META_VERSION=${USER_VERSION}" >> .env
+                else
+                    sed -i "s/^META_VERSION=.*/META_VERSION=${USER_VERSION}/" .env
+                fi
+                # Also update META_VERSION variable for later use in this script
+                META_VERSION="${USER_VERSION}"
+                
+                # Run fix-deps with specified version
+                source "${SCRIPT_DIR}/fix-deps.cmd" --version="${USER_VERSION}" 2>&1 | grep -v "\[DRY RUN\]\|Run without"
+            else
+                echo "⚠ No version specified. Using default dependency versions."
+                source "${SCRIPT_DIR}/fix-deps.cmd" 2>&1 | grep -v "\[DRY RUN\]\|Run without"
+            fi
+        fi
+        
+        # Reload env-variables to pick up changes made by fix-deps
+        source "${WARDEN_HOME_DIR:-~/.warden}/commands/env-variables"
+    else
+        echo "⚠ fix-deps command not found, skipping dependency version correction"
+    fi
+fi
 
 ## validate the selected environment
 if [[ $ENV_REQUIRED ]] && [ -z ${!ENV_SOURCE_HOST_VAR+x} ]; then
