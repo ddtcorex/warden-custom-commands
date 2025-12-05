@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 [[ ! ${WARDEN_DIR} ]] && >&2 echo -e "\033[31mThis script is not intended to be run directly!\033[0m" && exit 1
 
-SUBCOMMAND_DIR=$(dirname "${BASH_SOURCE[0]}")
-source "${SUBCOMMAND_DIR}"/env-variables
+source "${WARDEN_HOME_DIR:-~/.warden}/commands/env-variables"
 
 if [ -z ${!ENV_SOURCE_HOST_VAR+x} ]; then
     echo "Invalid environment '${ENV_SOURCE}'"
