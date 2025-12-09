@@ -1,0 +1,47 @@
+WARDEN_USAGE=$(cat <<EOF_USAGE
+Fix Laravel dependency versions in .env file
+
+Usage:
+  warden fix-deps [options]
+
+Description:
+  Automatically updates .env file with correct dependency versions based on 
+  your Laravel version. Uses official Laravel server requirements.
+
+Options:
+  -h, --help              Show this help message
+  --dry-run               Preview changes without modifying .env
+  --version=VERSION       Specify Laravel version manually (e.g., 10)
+
+Features:
+  • Auto-detects Laravel version from composer.json or artisan
+  • Updates PHP, MySQL/MariaDB, Redis versions
+  • Configures Composer version
+  • Dry-run mode to preview changes safely
+
+Examples:
+  # Auto-detect version and show what would change
+  warden fix-deps --dry-run
+
+  # Auto-detect and apply changes
+  warden fix-deps
+
+  # Fix dependencies for specific Laravel version
+  warden fix-deps --version=10
+
+Dependencies Updated:
+  • PHP_VERSION
+  • MYSQL_DISTRIBUTION & MYSQL_DISTRIBUTION_VERSION
+  • REDIS_VERSION
+  • COMPOSER_VERSION
+
+Supported Versions:
+  Laravel 6 through 11
+  
+Note:
+  Always run with --dry-run first to review changes before applying.
+  After updating versions, run 'warden env down' and 'warden env up' to 
+  rebuild containers with new versions.
+
+EOF_USAGE
+)

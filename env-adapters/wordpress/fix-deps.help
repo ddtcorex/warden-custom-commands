@@ -1,0 +1,44 @@
+WARDEN_USAGE=$(cat <<EOF_USAGE
+Fix WordPress dependency versions in .env file
+
+Usage:
+  warden fix-deps [options]
+
+Description:
+  Automatically updates .env file with correct dependency versions based on 
+  your WordPress version. Uses official WordPress server requirements.
+
+Options:
+  -h, --help              Show this help message
+  --dry-run               Preview changes without modifying .env
+  --version=VERSION       Specify WordPress version manually (e.g., 6.5)
+
+Features:
+  • Auto-detects WordPress version from version.php or WP-CLI
+  • Updates PHP, MySQL/MariaDB versions
+  • Dry-run mode to preview changes safely
+
+Examples:
+  # Auto-detect version and show what would change
+  warden fix-deps --dry-run
+
+  # Auto-detect and apply changes
+  warden fix-deps
+
+  # Fix dependencies for specific WordPress version
+  warden fix-deps --version=6.5
+
+Dependencies Updated:
+  • PHP_VERSION
+  • MYSQL_DISTRIBUTION & MYSQL_DISTRIBUTION_VERSION
+
+Supported Versions:
+  WordPress 5.7 through 6.7
+  
+Note:
+  Always run with --dry-run first to review changes before applying.
+  After updating versions, run 'warden env down' and 'warden env up' to 
+  rebuild containers with new versions.
+
+EOF_USAGE
+)

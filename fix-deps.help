@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+[[ ! ${WARDEN_DIR} ]] && WARDEN_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+SUBCOMMAND_DIR=$(dirname "${BASH_SOURCE[0]}")
+source "${SUBCOMMAND_DIR}"/env-variables
+
+if [[ -f "${SUBCOMMAND_DIR}/env-adapters/${WARDEN_ENV_TYPE}/fix-deps.help" ]]; then
+    source "${SUBCOMMAND_DIR}/env-adapters/${WARDEN_ENV_TYPE}/fix-deps.help"
+    echo "${WARDEN_USAGE}"
+else
+    echo "No help available for 'fix-deps' command in environment type '${WARDEN_ENV_TYPE}'"
+fi
