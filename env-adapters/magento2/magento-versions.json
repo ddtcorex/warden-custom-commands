@@ -53,7 +53,7 @@
     "opensearch": "2.5",
     "elasticsearch": "8",
     "redis": "7.0",
-    "composer": "2",
+    "composer": "2.2",
     "rabbitmq": "3.11",
     "varnish": "7.3"
   },
@@ -72,7 +72,7 @@
     "opensearch": "2.19",
     "elasticsearch": "7.17",
     "redis": "6.2",
-    "composer": "2",
+    "composer": "2.2",
     "rabbitmq": "3.11",
     "varnish": "7.1"
   },
@@ -90,7 +90,7 @@
     "opensearch": "2.19",
     "elasticsearch": "7.17",
     "redis": "6.2",
-    "composer": "2",
+    "composer": "2.2",
     "rabbitmq": "3.9",
     "varnish": "7.0"
   },
@@ -108,7 +108,7 @@
     "opensearch": null,
     "elasticsearch": "7.10",
     "redis": "6.0",
-    "composer": "2",
+    "composer": "2.2",
     "rabbitmq": "3.8",
     "varnish": "6.5"
   },
@@ -126,7 +126,7 @@
     "opensearch": null,
     "elasticsearch": "7.9",
     "redis": "6.0",
-    "composer": "2",
+    "composer": "2.2",
     "rabbitmq": "3.8",
     "varnish": "6.5"
   },
@@ -143,7 +143,7 @@
     "opensearch": null,
     "elasticsearch": "7.9",
     "redis": "6.0",
-    "composer": "2",
+    "composer": "2.2",
     "rabbitmq": "3.8",
     "varnish": "6.4"
   },
@@ -161,7 +161,7 @@
     "opensearch": null,
     "elasticsearch": "7.6",
     "redis": "5.0",
-    "composer": "2",
+    "composer": "2.2",
     "rabbitmq": "3.8",
     "varnish": "6.4"
   },
@@ -181,7 +181,7 @@
     "opensearch": null,
     "elasticsearch": "7.9",
     "redis": "5.0",
-    "composer": "2",
+    "composer": "2.2",
     "rabbitmq": "3.8",
     "varnish": "6.0"
   },
@@ -201,7 +201,7 @@
     "opensearch": null,
     "elasticsearch": "7.6",
     "redis": "5.0",
-    "composer": "2",
+    "composer": "1",
     "rabbitmq": "3.8",
     "varnish": "6.0"
   },
@@ -222,7 +222,7 @@
     "opensearch": null,
     "elasticsearch": "7.6",
     "redis": "5.0",
-    "composer": "2",
+    "composer": "1",
     "rabbitmq": "3.8",
     "varnish": "6.0"
   },
