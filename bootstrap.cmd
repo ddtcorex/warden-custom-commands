@@ -3,16 +3,48 @@
 
 SUBCOMMAND_DIR=$(dirname "${BASH_SOURCE[0]}")
 
+# Parse arguments for bootstrap wrapper
+INIT_ENV_NAME=""
+INIT_ENV_TYPE=""
+declare -a ARGS_REST
+
+while (( "$#" )); do
+    case "$1" in
+        --env-name=*)
+            INIT_ENV_NAME="${1#*=}"
+            shift
+            ;;
+        --env-type=*)
+            INIT_ENV_TYPE="${1#*=}"
+            shift
+            ;;
+        *)
+            ARGS_REST+=("$1")
+            shift
+            ;;
+    esac
+done
+
+# Reset positional parameters to the filtered list for downstream scripts
+set -- "${ARGS_REST[@]}"
+
 # Track if we created .env (to trigger fix-deps)
 FIX_DEPS_FLAG=""
 
 # For bootstrap, if .env doesn't exist, run env-init first
 if [[ ! -f .env ]]; then
     echo "No .env found. Running env-init..."
-    ENV_NAME=$(basename "$(pwd)")
     
     # Run env-init
-    "${WARDEN_DIR}/bin/warden" env-init
+    HOST_ARGS=()
+    if [[ -n "${INIT_ENV_NAME}" ]]; then
+        HOST_ARGS+=("${INIT_ENV_NAME}")
+        if [[ -n "${INIT_ENV_TYPE}" ]]; then
+            HOST_ARGS+=("${INIT_ENV_TYPE}")
+        fi
+    fi
+    
+    warden env-init "${HOST_ARGS[@]}"
     
     if [[ ! -f .env ]]; then
         fatal "Failed to initialize environment"
