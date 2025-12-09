@@ -169,11 +169,15 @@ fi
 ## download files from the remote
 if [[ $DOWNLOAD_SOURCE ]]; then
     warden download-source -e=${ENV_SOURCE}
-    warden env exec php-fpm sh -c "rm -rf /var/www/html/app/etc/env.php" || true
-    warden env exec php-fpm sh -c "mkdir /var/www/html/generated" || true
-    warden env exec php-fpm sh -c "mkdir /var/www/html/pub/media" || true
-    warden env exec php-fpm sh -c "mkdir /var/www/html/pub/static" || true
-    warden env exec php-fpm sh -c "mkdir /var/www/html/var" || true
+    
+    # Combined file operations to reduce container exec overhead
+    warden env exec php-fpm sh -c "
+        rm -rf /var/www/html/app/etc/env.php && \
+        mkdir -p /var/www/html/generated \
+                 /var/www/html/pub/media \
+                 /var/www/html/pub/static \
+                 /var/www/html/var
+    " || true
 fi
 
 ## include check for DB_DUMP file only when database import is expected
@@ -320,36 +324,45 @@ fi
 
 if [[ ${CLEAN_INSTALL} ]] && [[ ! -f "${WARDEN_WEB_ROOT}/composer.json" ]]; then
     :: Installing Magento website
-    warden env exec php-fpm rsync -a auth.json /home/www-data/.composer/
-    warden env exec php-fpm sh -c "rm -rf /tmp/create-project"
-    warden env exec php-fpm composer create-project -q -n \
-        --repository-url=https://repo.magento.com/ "${META_PACKAGE}" /tmp/create-project "${META_VERSION}"
-    warden env exec php-fpm rsync -a /tmp/create-project/ /var/www/html/
+    
+    # Clean up and prepare directory in one go
+    warden env exec php-fpm sh -c "
+        rsync -a auth.json /home/www-data/.composer/ && \
+        rm -rf /tmp/create-project && \
+        composer create-project -q -n --repository-url=https://repo.magento.com/ \"${META_PACKAGE}\" /tmp/create-project \"${META_VERSION}\" && \
+        rsync -a /tmp/create-project/ /var/www/html/ && \
+        rm -rf /tmp/create-project
+    "
 
     # Magento version-specific search engine configuration
-    # - 2.4.8+ or unknown version: Uses --opensearch-* parameters (assume latest)
-    # - 2.4.6-2.4.7: Uses opensearch engine but with --elasticsearch-* parameters
-    # - Pre-2.4.6: Uses Elasticsearch
-    if [[ -z "${META_VERSION}" ]] || { [[ -n "${META_VERSION}" ]] && test "$(version "${META_VERSION}")" -ge "$(version "2.4.8")"; }; then
-        # Magento 2.4.8+ OR unknown version (assume latest): uses --opensearch-* parameters
-        SEARCH_ENGINE="opensearch"
-        SEARCH_HOST="opensearch"
-        SEARCH_COMMAND="opensearch"
-    elif [[ -n "${META_VERSION}" ]] && test "$(version "${META_VERSION}")" -ge "$(version "2.4.6")"; then
-        # Magento 2.4.6-2.4.7: opensearch engine but uses --elasticsearch-* parameters
-        SEARCH_ENGINE="opensearch"
-        SEARCH_HOST="opensearch"
-        SEARCH_COMMAND="elasticsearch"
-    elif [[ "$WARDEN_OPENSEARCH" -eq "1" ]]; then
-        # Pre-2.4.6 with OpenSearch enabled
-        SEARCH_ENGINE="elasticsearch7"
-        SEARCH_HOST="opensearch"
-        SEARCH_COMMAND="elasticsearch"
+    # Default to OpenSearch (Magento 2.4.8+ or unknown)
+    SEARCH_ENGINE="opensearch"
+    SEARCH_HOST="opensearch"
+    SEARCH_COMMAND="opensearch"
+    
+    # Determine version-specific overrides
+    if [[ -n "${META_VERSION}" ]]; then
+        if test "$(version "${META_VERSION}")" -ge "$(version "2.4.6")" && test "$(version "${META_VERSION}")" -lt "$(version "2.4.8")"; then
+            # Magento 2.4.6-2.4.7: opensearch engine but uses --elasticsearch-* parameters
+            SEARCH_COMMAND="elasticsearch"
+        elif test "$(version "${META_VERSION}")" -lt "$(version "2.4.6")"; then
+             # Pre-2.4.6: Uses Elasticsearch
+            SEARCH_ENGINE="elasticsearch7"
+            SEARCH_HOST="elasticsearch"
+            SEARCH_COMMAND="elasticsearch"
+        fi
+    elif [[ "${WARDEN_OPENSEARCH:-0}" -eq "1" ]]; then
+         # Pre-2.4.6 fallback with explicit OpenSearch enabled
+         SEARCH_ENGINE="elasticsearch7"
+         SEARCH_COMMAND="elasticsearch"
+    elif [[ -z "${META_VERSION}" ]]; then 
+         # Unknown version assumed latest (OpenSearch), already set by defaults
+         :
     else
-        # Pre-2.4.6 with Elasticsearch
-        SEARCH_ENGINE="elasticsearch7"
-        SEARCH_HOST="elasticsearch"
-        SEARCH_COMMAND="elasticsearch"
+         # Fallback for very old versions or other cases
+         SEARCH_ENGINE="elasticsearch7"
+         SEARCH_HOST="elasticsearch"
+         SEARCH_COMMAND="elasticsearch"
     fi
 
     warden env exec php-fpm bin/magento setup:install \
@@ -371,10 +384,13 @@ warden set-config
 
 if [[ ${CLEAN_INSTALL} ]] && [[ $INCLUDE_SAMPLE ]]; then
     :: Installing sample data
-    warden env exec php-fpm bin/magento sample:deploy
-    warden env exec php-fpm bin/magento setup:upgrade
-    warden env exec php-fpm bin/magento indexer:reindex
-    warden env exec php-fpm bin/magento cache:flush
+    # Chained execution for performance
+    warden env exec php-fpm sh -c "
+        bin/magento sample:deploy && \
+        bin/magento setup:upgrade && \
+        bin/magento indexer:reindex && \
+        bin/magento cache:flush
+    "
 fi
 
 if [[ $MEDIA_SYNC ]]; then
