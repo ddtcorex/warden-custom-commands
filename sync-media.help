@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+[[ ! ${WARDEN_DIR} ]] && >&2 echo -e "\033[31mThis script is not intended to be run directly!\033[0m" && exit 1
+
+WARDEN_USAGE=$(cat <<EOF
+Download media files from a remote environment to the local file system.
+Extra options and arguments are passed through.
+
+\033[33mUsage:\033[0m
+  sync-media [-h|--help] [-e|--environment=<environment>]
+
+\033[33mOptions:\033[0m
+  -h, --help                                  Display this help menu
+
+\033[33mArguments:\033[0m
+  -e, --environment=<dev|staging|production>  Environment to sync media from. Default: staging
+
+EOF
+)
