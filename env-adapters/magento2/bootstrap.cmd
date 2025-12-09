@@ -342,26 +342,19 @@ if [[ ${CLEAN_INSTALL} ]] && [[ ! -f "${WARDEN_WEB_ROOT}/composer.json" ]]; then
     
     # Determine version-specific overrides
     if [[ -n "${META_VERSION}" ]]; then
-        if test "$(version "${META_VERSION}")" -ge "$(version "2.4.6")" && test "$(version "${META_VERSION}")" -lt "$(version "2.4.8")"; then
-            # Magento 2.4.6-2.4.7: opensearch engine but uses --elasticsearch-* parameters
-            SEARCH_COMMAND="elasticsearch"
-        elif test "$(version "${META_VERSION}")" -lt "$(version "2.4.6")"; then
-             # Pre-2.4.6: Uses Elasticsearch
+        if test "$(version "${META_VERSION}")" -lt "$(version "2.4.8")"; then
+            # Pre-2.4.8: Uses "elasticsearch7" engine name (even for OpenSearch connection in 2.4.6/7)
             SEARCH_ENGINE="elasticsearch7"
-            SEARCH_HOST="elasticsearch"
             SEARCH_COMMAND="elasticsearch"
+            
+            # Use Elasticsearch host if OpenSearch is not enabled
+            if [[ "${WARDEN_OPENSEARCH:-0}" -ne "1" ]]; then
+                SEARCH_HOST="elasticsearch"
+            fi
         fi
     elif [[ "${WARDEN_OPENSEARCH:-0}" -eq "1" ]]; then
-         # Pre-2.4.6 fallback with explicit OpenSearch enabled
+         # Pre-2.4.8 fallback with explicit OpenSearch enabled
          SEARCH_ENGINE="elasticsearch7"
-         SEARCH_COMMAND="elasticsearch"
-    elif [[ -z "${META_VERSION}" ]]; then 
-         # Unknown version assumed latest (OpenSearch), already set by defaults
-         :
-    else
-         # Fallback for very old versions or other cases
-         SEARCH_ENGINE="elasticsearch7"
-         SEARCH_HOST="elasticsearch"
          SEARCH_COMMAND="elasticsearch"
     fi
 
