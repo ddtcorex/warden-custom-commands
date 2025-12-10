@@ -323,6 +323,24 @@ warden sync-media
 warden sync-media --environment=production
 ```
 
+#### `warden upgrade`
+
+Upgrade Magento to a specified version.
+
+**Options:**
+
+- `--version=<version>` - Target version to upgrade to (required)
+- `--dry-run` - Show what would be done without making changes
+- `--skip-db-upgrade` - Skip database upgrade step
+
+**Example:**
+
+```bash
+warden upgrade --version=2.4.8
+warden upgrade --version=2.4.8 --dry-run
+warden upgrade --version=2.4.8-p3 --skip-db-upgrade
+```
+
 ### Laravel Commands
 
 #### `warden bootstrap`
@@ -362,6 +380,22 @@ Update Laravel `.env` configuration with Warden-specific settings.
 
 ```bash
 warden set-config
+```
+
+#### `warden upgrade`
+
+Upgrade Laravel framework to a specified version.
+
+**Options:**
+
+- `--version=<version>` - Target version to upgrade to (required)
+- `--dry-run` - Show what would be done without making changes
+
+**Example:**
+
+```bash
+warden upgrade --version=11.0
+warden upgrade --version=10.x --dry-run
 ```
 
 ### Symfony Commands
@@ -411,6 +445,22 @@ Update Symfony configuration for Warden environment.
 
 ```bash
 warden set-config
+```
+
+#### `warden upgrade`
+
+Upgrade Symfony framework to a specified version.
+
+**Options:**
+
+- `--version=<version>` - Target version to upgrade to (required)
+- `--dry-run` - Show what would be done without making changes
+
+**Example:**
+
+```bash
+warden upgrade --version=7.0
+warden upgrade --version=6.4 --dry-run
 ```
 
 ### WordPress Commands
@@ -467,6 +517,22 @@ Update WordPress configuration for Warden environment.
 
 ```bash
 warden set-config
+```
+
+#### `warden upgrade`
+
+Upgrade WordPress core to a specified version.
+
+**Options:**
+
+- `--version=<version>` - Target version to upgrade to (required)
+- `--dry-run` - Show what would be done without making changes
+
+**Example:**
+
+```bash
+warden upgrade --version=6.5
+warden upgrade --version=6.4.3 --dry-run
 ```
 
 ### Global Commands
