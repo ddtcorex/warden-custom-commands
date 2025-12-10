@@ -57,27 +57,52 @@ fi
 # Store original version for display
 ORIGINAL_VERSION="${MAGENTO_VERSION}"
 
-# Extract major.minor.patch version (e.g., 2.4.8-p3 -> 2.4.8)
-# Patch versions use the same dependencies as the base version
-if [[ -n "${MAGENTO_VERSION}" ]]; then
-    MAGENTO_VERSION=$(echo "${MAGENTO_VERSION}" | grep -oP '^\d+\.\d+\.\d+')
-    if [[ "${ORIGINAL_VERSION}" != "${MAGENTO_VERSION}" ]]; then
-        echo "Normalized patch version ${ORIGINAL_VERSION} → ${MAGENTO_VERSION}"
-    fi
-fi
-
 if [[ -z "${MAGENTO_VERSION}" ]]; then
     echo "Warning: Could not detect Magento version. Using default (latest) configuration."
     VERSION_KEY="default"
 else
-# Read version requirements
-    echo "Using Magento version: ${MAGENTO_VERSION}"
-    # Check if version exists in JSON
+    # Read version requirements - Check if version exists in JSON
     if jq -e ".\"${MAGENTO_VERSION}\"" "${JSON_FILE}" > /dev/null 2>&1; then
         VERSION_KEY="${MAGENTO_VERSION}"
+        echo "Using Magento version: ${MAGENTO_VERSION}"
     else
-        echo "Warning: Version ${MAGENTO_VERSION} not found in mapping. Using default configuration."
-        VERSION_KEY="default"
+        # Fallback logic: Find latest available patch for this main version
+        # 1. Extract valid base version (X.Y.Z)
+        BASE_VERSION=$(echo "${MAGENTO_VERSION}" | grep -oP '^\d+\.\d+\.\d+')
+        
+        if [[ -n "${BASE_VERSION}" ]]; then
+            # Escape dots for regex
+            ESCAPED_BASE="${BASE_VERSION//./\\.}"
+            
+            # Find the first key in the file that matches this base version.
+            # Since the file is sorted descending, the first match (e.g. 2.4.8-p3) is the latest known patch.
+            # Regex matches "2.4.8" followed by " or -...
+            FALLBACK_VERSION=$(grep -P -m 1 "^\s*\"${ESCAPED_BASE}(?:-[^\"]+)?\"\s*:" "${JSON_FILE}" | grep -oP "\"\K[^\"]+(?=\")")
+            
+            if [[ -n "${FALLBACK_VERSION}" ]]; then
+                echo "⚠ Version '${MAGENTO_VERSION}' not found."
+                echo "⚠ Enforcing latest available version '${FALLBACK_VERSION}'."
+                
+                VERSION_KEY="${FALLBACK_VERSION}"
+                MAGENTO_VERSION="${FALLBACK_VERSION}"
+                
+                # Update .env to enforce this version for bootstrap
+                if [[ -z "${DRY_RUN}" ]]; then
+                    if grep -q "^META_VERSION=" .env 2>/dev/null; then
+                        sed -i "s/^META_VERSION=.*/META_VERSION=${FALLBACK_VERSION}/" .env
+                    else
+                        echo "META_VERSION=${FALLBACK_VERSION}" >> .env
+                    fi
+                    echo "Updated META_VERSION in .env to ${FALLBACK_VERSION}"
+                fi
+            else
+                 echo "Warning: No configuration found for ${BASE_VERSION}.*. Using default."
+                 VERSION_KEY="default"
+            fi
+        else
+            echo "Warning: Could not parse version ${MAGENTO_VERSION}. Using default."
+            VERSION_KEY="default"
+        fi
     fi
 fi
 
