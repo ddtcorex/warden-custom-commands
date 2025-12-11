@@ -4,13 +4,18 @@ PV=`which pv || which cat`
 
 while (( "$#" )); do
     case "$1" in
-        --file=*|-f=*|--f=*)
+        -f|--file)
+            if [ -n "$2" ] && [ ${2:0:1} != "-" ]; then
+                DUMP_FILENAME="$2"
+                shift 2
+            else
+                echo "Error: Argument for $1 is missing" >&2
+                exit 1
+            fi
+            ;;
+        --file=*|-f=*)
             DUMP_FILENAME="${1#*=}"
             shift
-            ;;
-        -f)
-            DUMP_FILENAME="${2}"
-            shift 2
             ;;
         *)
             shift

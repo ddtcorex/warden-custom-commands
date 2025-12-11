@@ -94,9 +94,15 @@ function local_elasticsearch() {
 # Remote stubs
 function remote_db() {
     # Symfony uses .env for DB config (usually DATABASE_URL). We fetch it via SSH.
-    local db_url=$(ssh -p $ENV_SOURCE_PORT $ENV_SOURCE_USER@$ENV_SOURCE_HOST "grep -E '^DATABASE_URL=' $ENV_SOURCE_DIR/.env")
+    # Check .env.local first (overrides), then .env
+    local db_url=$(ssh -p $ENV_SOURCE_PORT $ENV_SOURCE_USER@$ENV_SOURCE_HOST "grep -h -E '^DATABASE_URL=' $ENV_SOURCE_DIR/.env.local $ENV_SOURCE_DIR/.env 2>/dev/null | head -n 1")
     
     # Parse standard URL format: db_type://db_user:db_pass@db_host:db_port/db_name...
+    # Strip prefix
+    db_url=${db_url#*=}
+    # Strip quotes if present (both single and double)
+    db_url=$(echo "$db_url" | tr -d '"'"'")
+    
     # Remove prefix
     db_url=${db_url#*://}
     

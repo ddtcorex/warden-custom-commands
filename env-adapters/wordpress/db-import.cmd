@@ -4,10 +4,15 @@ DB_DUMP=""
 while (( "$#" )); do
     case "$1" in
         -f|--file)
-            DB_DUMP="$2"
-            shift 2
+            if [ -n "$2" ] && [ ${2:0:1} != "-" ]; then
+                DB_DUMP="$2"
+                shift 2
+            else
+                echo "Error: Argument for $1 is missing" >&2
+                exit 1
+            fi
             ;;
-        --file=*)
+        --file=*|-f=*)
             DB_DUMP="${1#*=}"
             shift
             ;;

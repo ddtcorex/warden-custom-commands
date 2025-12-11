@@ -99,11 +99,11 @@ function remote_db() {
     local db_info=$(ssh -p $ENV_SOURCE_PORT $ENV_SOURCE_USER@$ENV_SOURCE_HOST "grep -E '^DB_(HOST|PORT|DATABASE|USERNAME|PASSWORD)=' $ENV_SOURCE_DIR/.env")
 
     # Parse variables from the grep output
-    local db_host=$(echo "$db_info" | grep DB_HOST | cut -d= -f2)
-    local db_port=$(echo "$db_info" | grep DB_PORT | cut -d= -f2)
-    local db_name=$(echo "$db_info" | grep DB_DATABASE | cut -d= -f2)
-    local db_user=$(echo "$db_info" | grep DB_USERNAME | cut -d= -f2)
-    local db_pass=$(echo "$db_info" | grep DB_PASSWORD | cut -d= -f2)
+    local db_host=$(echo "$db_info" | grep DB_HOST | cut -d= -f2 | tr -d '"'"'")
+    local db_port=$(echo "$db_info" | grep DB_PORT | cut -d= -f2 | tr -d '"'"'")
+    local db_name=$(echo "$db_info" | grep DB_DATABASE | cut -d= -f2 | tr -d '"'"'")
+    local db_user=$(echo "$db_info" | grep DB_USERNAME | cut -d= -f2 | tr -d '"'"'")
+    local db_pass=$(echo "$db_info" | grep DB_PASSWORD | cut -d= -f2 | tr -d '"'"'")
 
     # Defaults if not found
     db_host=${db_host:-127.0.0.1}
