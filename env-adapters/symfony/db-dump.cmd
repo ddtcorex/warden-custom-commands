@@ -8,8 +8,6 @@ if [ -z ${!ENV_SOURCE_HOST_VAR+x} ]; then
     exit 2
 fi
 
-
-
 function dumpPremise () {
     # Fetch DB creds via SSH using logic from symfony/open.cmd
     # Check .env.local first, then .env
@@ -50,7 +48,6 @@ function dumpPremise () {
 }
 
 DUMP_FILENAME=
-
 
 while (( "$#" )); do
     case "$1" in

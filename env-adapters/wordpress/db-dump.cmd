@@ -8,8 +8,6 @@ if [ -z ${!ENV_SOURCE_HOST_VAR+x} ]; then
     exit 2
 fi
 
-
-
 function dumpPremise () {
     # Fetch DB creds via SSH using grep/sed logic from wordpress/open.cmd
     local db_config=$(ssh -p $ENV_SOURCE_PORT $ENV_SOURCE_USER@$ENV_SOURCE_HOST "grep -E \"define\s*\(.*DB_(NAME|USER|PASSWORD|HOST)\" $ENV_SOURCE_DIR/wp-config.php")
@@ -37,7 +35,6 @@ function dumpPremise () {
 }
 
 DUMP_FILENAME=
-
 
 while (( "$#" )); do
     case "$1" in
