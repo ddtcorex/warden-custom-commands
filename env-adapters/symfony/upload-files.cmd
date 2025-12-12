@@ -1,24 +1,6 @@
 #!/usr/bin/env bash
 [[ ! ${WARDEN_DIR} ]] && >&2 echo -e "\033[31mThis script is not intended to be run directly!\033[0m" && exit 1
 
-function dumpCloud () {
-    echo -e "\033[1;32mUploading files to \033[33mAdobe Commerce Cloud \033[1;36m${ENV_SOURCE}\033[0m ..."
-    magento-cloud mount:upload -p "$CLOUD_PROJECT" \
-        --environment="$ENV_SOURCE_HOST" \
-        "${exclude_opts[@]}" \
-        --mount=$UPLOAD_PATH \
-        --target=$UPLOAD_PATH \
-        -y \
-        || true
-}
-
-function dumpPremise () {
-    echo -e "⌛ \033[1;32mUploading files to $ENV_SOURCE_HOST\033[0m ..."
-    warden env exec php-fpm rsync -azvP -e 'ssh -p '"$ENV_SOURCE_PORT" \
-        "${exclude_opts[@]}" \
-        $UPLOAD_PATH $ENV_SOURCE_USER@$ENV_SOURCE_HOST:$ENV_SOURCE_DIR/$UPLOAD_PATH
-}
-
 source "${WARDEN_HOME_DIR:-~/.warden}/commands/env-variables"
 
 if [ -z ${!ENV_SOURCE_HOST_VAR+x} ]; then
@@ -49,8 +31,8 @@ while (( "$#" )); do
     esac
 done
 
-if [ -z ${CLOUD_PROJECT+x} ]; then
-    dumpPremise
-else
-    dumpCloud
-fi
+echo -e "⌛ \033[1;32mUploading files to $ENV_SOURCE_HOST\033[0m ..."
+warden env exec php-fpm rsync -azvP -e 'ssh -p '"$ENV_SOURCE_PORT" \
+    $UPLOAD_PATH $ENV_SOURCE_USER@$ENV_SOURCE_HOST:$ENV_SOURCE_DIR/$UPLOAD_PATH
+
+echo -e "✅ \033[32mUpload complete!\033[0m"

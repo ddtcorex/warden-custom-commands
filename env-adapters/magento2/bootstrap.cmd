@@ -54,13 +54,13 @@ while (( "$#" )); do
             META_PACKAGE="${1#*=}"
             shift
             ;;
-        --meta-version=*)
+        --meta-version=*|--version=*)
             META_VERSION="${1#*=}"
             if
-                ! test $(version "${META_VERSION}") -ge "$(version 2.3.4)" \
-                && [[ ! "${META_VERSION}" =~ ^2\.[3-9]\.x$ ]]
+                ! test $(version "${META_VERSION}") -ge "$(version 2.0.0)" \
+                && [[ ! "${META_VERSION}" =~ ^2\.[0-9]+\.x$ ]]
             then
-                fatal "Invalid --meta-version=${META_VERSION} specified (valid values are 2.3.4 or later and 2.[3-9].x)"
+                fatal "Invalid version ${META_VERSION} specified (valid values are 2.0.0 or later)"
             fi
             shift
             ;;

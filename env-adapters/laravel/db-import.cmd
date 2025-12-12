@@ -4,13 +4,18 @@ PV=`which pv || which cat`
 
 while (( "$#" )); do
     case "$1" in
-        --file=*|-f=*|--f=*)
+        -f|--file)
+            if [ -n "$2" ] && [ ${2:0:1} != "-" ]; then
+                DUMP_FILENAME="$2"
+                shift 2
+            else
+                echo "Error: Argument for $1 is missing" >&2
+                exit 1
+            fi
+            ;;
+        --file=*|-f=*)
             DUMP_FILENAME="${1#*=}"
             shift
-            ;;
-        -f)
-            DUMP_FILENAME="${2}"
-            shift 2
             ;;
         *)
             shift
@@ -41,8 +46,15 @@ if [[ -z "$DB_CONTAINER_ID" ]]; then
 fi
 
 echo -e "⌛ \033[1;32mDropping and initializing database...\033[0m"
-DB_NAME=${MYSQL_DATABASE:-laravel}
-warden db connect -e "drop database if exists ${DB_NAME}; create database ${DB_NAME} character set = \"utf8mb4\" collate = \"utf8mb4_unicode_ci\";"
+DB_USER=$(warden env exec db printenv MYSQL_USER)
+DB_PASS=$(warden env exec db printenv MYSQL_PASSWORD)
+DB_NAME=$(warden env exec db printenv MYSQL_DATABASE)
+
+DB_USER=${DB_USER:-laravel}
+DB_PASS=${DB_PASS:-laravel}
+DB_NAME=${DB_NAME:-laravel}
+
+warden env exec db mysql -u "$DB_USER" -p"$DB_PASS" -e "drop database if exists ${DB_NAME}; create database ${DB_NAME} character set = \"utf8mb4\" collate = \"utf8mb4_unicode_ci\";"
 
 echo -e "🔥 \033[1;32mImporting database...\033[0m"
 if gzip -t "$DUMP_FILENAME" 2>/dev/null; then

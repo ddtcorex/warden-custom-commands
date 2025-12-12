@@ -1,0 +1,19 @@
+Upgrade project to a new version
+
+Usage: warden upgrade [options]
+
+Options:
+  --version=<version>     Target version to upgrade to (required)
+  --dry-run               Show what would be done without making changes
+  --skip-db-upgrade       Skip database upgrade (Magento only)
+  --help                  Show this help message
+
+Examples:
+  warden upgrade --version=2.4.8
+  warden upgrade --version=10.x --dry-run
+
+Supported environment types:
+  - magento2: Upgrades Magento via Composer
+  - laravel: Upgrades Laravel framework via Composer
+  - symfony: Upgrades Symfony framework via Composer
+  - wordpress: Upgrades WordPress core via WP-CLI

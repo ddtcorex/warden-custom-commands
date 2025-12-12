@@ -206,13 +206,18 @@ EXCLUDE_SENSITIVE_DATA=0
 
 while (( "$#" )); do
     case "$1" in
+        -f|--file)
+            if [ -n "$2" ] && [ ${2:0:1} != "-" ]; then
+                DUMP_FILENAME="$2"
+                shift 2
+            else
+                echo "Error: Argument for $1 is missing" >&2
+                exit 1
+            fi
+            ;;
         --file=*|-f=*)
             DUMP_FILENAME="${1#*=}"
             shift
-            ;;
-        -f)
-            DUMP_FILENAME="${2}"
-            shift 2
             ;;
         --full)
             FULL_DUMP=1

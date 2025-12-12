@@ -24,13 +24,18 @@ DUMP_PATH=./
 
 while (( "$#" )); do
     case "$1" in
-        --path=*|-p=*|--p=*)
+        -p|--path)
+            if [ -n "$2" ] && [ ${2:0:1} != "-" ]; then
+                DUMP_PATH="$2"
+                shift 2
+            else
+                echo "Error: Argument for $1 is missing" >&2
+                exit 1
+            fi
+            ;;
+        --path=*|-p=*)
             DUMP_PATH="${1#*=}"
             shift
-            ;;
-        -p)
-            DUMP_PATH="${2}"
-            shift 2
             ;;
         *)
             shift

@@ -109,27 +109,33 @@ commands/
     │
     ├── laravel/
     │   ├── bootstrap.cmd
-    │   ├── bootstrap.help
+    │   ├── db-dump.cmd
     │   ├── db-import.cmd
-    │   ├── db-import.help
+    │   ├── download-files.cmd
+    │   ├── open.cmd
     │   ├── set-config.cmd
-    │   └── set-config.help
+    │   ├── upgrade.cmd
+    │   └── upload-files.cmd
     │
-    ├── wordpress/
+    ├── symfony/
     │   ├── bootstrap.cmd
-    │   ├── bootstrap.help
+    │   ├── db-dump.cmd
     │   ├── db-import.cmd
-    │   ├── db-import.help
+    │   ├── download-files.cmd
+    │   ├── open.cmd
     │   ├── set-config.cmd
-    │   └── set-config.help
+    │   ├── upgrade.cmd
+    │   └── upload-files.cmd
     │
-    └── symfony/
+    └── wordpress/
         ├── bootstrap.cmd
-        ├── bootstrap.help
+        ├── db-dump.cmd
         ├── db-import.cmd
-        ├── db-import.help
+        ├── download-files.cmd
+        ├── open.cmd
         ├── set-config.cmd
-        └── set-config.help
+        ├── upgrade.cmd
+        └── upload-files.cmd
 ```
 
 ### How It Works
@@ -323,6 +329,24 @@ warden sync-media
 warden sync-media --environment=production
 ```
 
+#### `warden upgrade`
+
+Upgrade Magento to a specified version.
+
+**Options:**
+
+- `--version=<version>` - Target version to upgrade to (required)
+- `--dry-run` - Show what would be done without making changes
+- `--skip-db-upgrade` - Skip database upgrade step
+
+**Example:**
+
+```bash
+warden upgrade --version=2.4.8
+warden upgrade --version=2.4.8 --dry-run
+warden upgrade --version=2.4.8-p3 --skip-db-upgrade
+```
+
 ### Laravel Commands
 
 #### `warden bootstrap`
@@ -344,14 +368,69 @@ warden bootstrap
 warden bootstrap --clean-install
 ```
 
-#### `warden db-import`
+#### `warden db-dump`
 
-Import database dump into Laravel project.
+Dump database from a remote Laravel environment.
+
+**Options:**
+
+- `-e, --environment=<dev|staging|production>` - Environment to dump from (default: staging)
+- `-f, --file=<file>` - Output filename (default: auto-generated)
 
 **Example:**
 
 ```bash
-warden db-import database.sql
+warden db-dump -e dev
+warden db-dump --file=production-backup.sql.gz -e production
+```
+
+#### `warden db-import`
+
+Import database dump into Laravel project.
+
+**Options:**
+
+- `-f, --file=<file>` - Path to database dump file (can be gzipped)
+
+**Example:**
+
+```bash
+warden db-import -f database.sql.gz
+warden db-import --file=backup.sql
+```
+
+#### `warden open`
+
+Open Laravel services (local or remote).
+
+**Options:**
+
+- `-e, --environment=<local|dev|staging|production>` - Environment (default: local)
+- `-a` - Auto-open in browser/client
+
+**Arguments:** `db`, `shell`, `sftp`, `admin`, `elasticsearch`
+
+**Example:**
+
+```bash
+warden open db
+warden open -e staging shell
+```
+
+#### `warden download-files` / `warden upload-files`
+
+Sync files between local and remote environments.
+
+**Options:**
+
+- `-e, --environment=<dev|staging|production>` - Environment
+- `-p, --path=<path>` - Path to sync (default: ./)
+
+**Example:**
+
+```bash
+warden download-files -e dev -p storage/app/
+warden upload-files -e staging --path=public/uploads/
 ```
 
 #### `warden set-config`
@@ -362,6 +441,22 @@ Update Laravel `.env` configuration with Warden-specific settings.
 
 ```bash
 warden set-config
+```
+
+#### `warden upgrade`
+
+Upgrade Laravel framework to a specified version.
+
+**Options:**
+
+- `--version=<version>` - Target version to upgrade to (required)
+- `--dry-run` - Show what would be done without making changes
+
+**Example:**
+
+```bash
+warden upgrade --version=11.0
+warden upgrade --version=10.x --dry-run
 ```
 
 ### Symfony Commands
@@ -387,13 +482,28 @@ warden bootstrap --clean-install
 warden bootstrap --skip-migrate
 ```
 
+#### `warden db-dump`
+
+Dump database from a remote Symfony environment.
+
+**Options:**
+
+- `-e, --environment=<dev|staging|production>` - Environment to dump from (default: staging)
+- `-f, --file=<file>` - Output filename (default: auto-generated)
+
+**Example:**
+
+```bash
+warden db-dump -e dev
+warden db-dump --file=production-backup.sql.gz -e production
+```
+
 #### `warden db-import`
 
 Import database dump into Symfony project.
 
 **Options:**
 
-- `-h, --help` - Display help menu
 - `-f, --file=<file>` - Path to database dump file (can be gzipped)
 
 **Example:**
@@ -401,6 +511,40 @@ Import database dump into Symfony project.
 ```bash
 warden db-import --file=database.sql.gz
 warden db-import -f backup.sql
+```
+
+#### `warden open`
+
+Open Symfony services (local or remote).
+
+**Options:**
+
+- `-e, --environment=<local|dev|staging|production>` - Environment (default: local)
+- `-a` - Auto-open in browser/client
+
+**Arguments:** `db`, `shell`, `sftp`, `admin`, `elasticsearch`
+
+**Example:**
+
+```bash
+warden open db
+warden open -e staging shell
+```
+
+#### `warden download-files` / `warden upload-files`
+
+Sync files between local and remote environments.
+
+**Options:**
+
+- `-e, --environment=<dev|staging|production>` - Environment
+- `-p, --path=<path>` - Path to sync (default: ./)
+
+**Example:**
+
+```bash
+warden download-files -e dev -p var/uploads/
+warden upload-files -e staging --path=public/assets/
 ```
 
 #### `warden set-config`
@@ -411,6 +555,22 @@ Update Symfony configuration for Warden environment.
 
 ```bash
 warden set-config
+```
+
+#### `warden upgrade`
+
+Upgrade Symfony framework to a specified version.
+
+**Options:**
+
+- `--version=<version>` - Target version to upgrade to (required)
+- `--dry-run` - Show what would be done without making changes
+
+**Example:**
+
+```bash
+warden upgrade --version=7.0
+warden upgrade --version=6.4 --dry-run
 ```
 
 ### WordPress Commands
@@ -437,13 +597,28 @@ warden bootstrap --clean-install
 
 **Note:** With `--clean-install`, WordPress will be downloaded, wp-config.php created, and the site installed with admin credentials displayed.
 
+#### `warden db-dump`
+
+Dump database from a remote WordPress environment.
+
+**Options:**
+
+- `-e, --environment=<dev|staging|production>` - Environment to dump from (default: staging)
+- `-f, --file=<file>` - Output filename (default: auto-generated)
+
+**Example:**
+
+```bash
+warden db-dump -e dev
+warden db-dump --file=production-backup.sql.gz -e production
+```
+
 #### `warden db-import`
 
 Import database dump into WordPress.
 
 **Options:**
 
-- `-h, --help` - Display help menu
 - `-f, --file=<file>` - Path to database dump file (can be gzipped)
 
 **Example:**
@@ -459,6 +634,40 @@ warden db-import -f backup.sql
 warden env exec php-fpm wp search-replace 'old-domain.com' 'app.test.test'
 ```
 
+#### `warden open`
+
+Open WordPress services (local or remote).
+
+**Options:**
+
+- `-e, --environment=<local|dev|staging|production>` - Environment (default: local)
+- `-a` - Auto-open in browser/client
+
+**Arguments:** `db`, `shell`, `sftp`, `admin`, `elasticsearch`
+
+**Example:**
+
+```bash
+warden open db
+warden open -e staging admin
+```
+
+#### `warden download-files` / `warden upload-files`
+
+Sync files between local and remote environments.
+
+**Options:**
+
+- `-e, --environment=<dev|staging|production>` - Environment
+- `-p, --path=<path>` - Path to sync (default: ./)
+
+**Example:**
+
+```bash
+warden download-files -e dev -p wp-content/uploads/
+warden upload-files -e staging --path=wp-content/themes/
+```
+
 #### `warden set-config`
 
 Update WordPress configuration for Warden environment.
@@ -467,6 +676,22 @@ Update WordPress configuration for Warden environment.
 
 ```bash
 warden set-config
+```
+
+#### `warden upgrade`
+
+Upgrade WordPress core to a specified version.
+
+**Options:**
+
+- `--version=<version>` - Target version to upgrade to (required)
+- `--dry-run` - Show what would be done without making changes
+
+**Example:**
+
+```bash
+warden upgrade --version=6.5
+warden upgrade --version=6.4.3 --dry-run
 ```
 
 ### Global Commands

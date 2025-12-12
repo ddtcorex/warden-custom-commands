@@ -1,109 +1,802 @@
 {
+  "2.4.9": {
+    "php": ["8.4", "8.3"],
+    "php_default": "8.4",
+    "mysql": "8.4",
+    "mariadb": ["11.4"],
+    "mariadb_default": "11.4",
+    "opensearch": "3.0",
+    "elasticsearch": null,
+    "redis": "7.2",
+    "composer": "2.8",
+    "rabbitmq": "4.1",
+    "varnish": "7.7"
+  },
+  "2.4.8-p3": {
+    "php": ["8.4", "8.3"],
+    "php_default": "8.4",
+    "mysql": "8.4",
+    "mariadb": ["11.4"],
+    "mariadb_default": "11.4",
+    "opensearch": "3.0",
+    "elasticsearch": null,
+    "redis": "7.2",
+    "composer": "2.8",
+    "rabbitmq": "4.1",
+    "varnish": "7.7"
+  },
+  "2.4.8-p2": {
+    "php": ["8.4", "8.3"],
+    "php_default": "8.4",
+    "mysql": "8.4",
+    "mariadb": ["11.4"],
+    "mariadb_default": "11.4",
+    "opensearch": "3.0",
+    "elasticsearch": null,
+    "redis": "7.2",
+    "composer": "2.8",
+    "rabbitmq": "4.1",
+    "varnish": "7.7"
+  },
+  "2.4.8-p1": {
+    "php": ["8.4", "8.3"],
+    "php_default": "8.4",
+    "mysql": "8.4",
+    "mariadb": ["11.4"],
+    "mariadb_default": "11.4",
+    "opensearch": "2.19",
+    "elasticsearch": null,
+    "redis": "7.2",
+    "composer": "2.8",
+    "rabbitmq": "4.1",
+    "varnish": "7.7"
+  },
   "2.4.8": {
-    "php": [
-      "8.2",
-      "8.3"
-    ],
+    "php": ["8.4", "8.3"],
+    "php_default": "8.4",
+    "mysql": "8.4",
+    "mariadb": ["11.4"],
+    "mariadb_default": "11.4",
+    "opensearch": "2.19",
+    "elasticsearch": null,
+    "redis": "7.2",
+    "composer": "2.8",
+    "rabbitmq": "4.1",
+    "varnish": "7.6"
+  },
+  "2.4.7-p8": {
+    "php": ["8.3", "8.2"],
     "php_default": "8.3",
     "mysql": "8.0",
-    "mariadb": [
-      "10.4",
-      "10.6"
-    ],
+    "mariadb": ["10.11"],
+    "mariadb_default": "10.11",
+    "opensearch": "2.19",
+    "elasticsearch": "7.17",
+    "redis": "7.2",
+    "composer": "2.8",
+    "rabbitmq": "4.1",
+    "varnish": "7.7"
+  },
+  "2.4.7-p7": {
+    "php": ["8.3", "8.2"],
+    "php_default": "8.3",
+    "mysql": "8.0",
+    "mariadb": ["10.11"],
+    "mariadb_default": "10.11",
+    "opensearch": "2.19",
+    "elasticsearch": "7.17",
+    "redis": "7.2",
+    "composer": "2.8",
+    "rabbitmq": "4.1",
+    "varnish": "7.7"
+  },
+  "2.4.7-p6": {
+    "php": ["8.3", "8.2"],
+    "php_default": "8.3",
+    "mysql": "8.0",
+    "mariadb": ["10.11"],
+    "mariadb_default": "10.11",
+    "opensearch": "2.19",
+    "elasticsearch": "7.17",
+    "redis": "7.2",
+    "composer": "2.8",
+    "rabbitmq": "3.13",
+    "varnish": "7.7"
+  },
+  "2.4.7-p5": {
+    "php": ["8.3", "8.2"],
+    "php_default": "8.3",
+    "mysql": "8.0",
+    "mariadb": ["10.6"],
+    "mariadb_default": "10.6",
+    "opensearch": "2.19",
+    "elasticsearch": "7.17",
+    "redis": "7.2",
+    "composer": "2.8",
+    "rabbitmq": "3.13",
+    "varnish": "7.6"
+  },
+  "2.4.7-p4": {
+    "php": ["8.3", "8.2"],
+    "php_default": "8.3",
+    "mysql": "8.0",
+    "mariadb": ["10.6"],
     "mariadb_default": "10.6",
     "opensearch": "2.12",
-    "elasticsearch": null,
-    "redis": "7.0",
-    "composer": "2",
+    "elasticsearch": "8.16",
+    "redis": "7.2",
+    "composer": "2.8",
     "rabbitmq": "3.13",
-    "varnish": "7.4"
+    "varnish": "7.6"
+  },
+  "2.4.7-p3": {
+    "php": ["8.3", "8.2"],
+    "php_default": "8.3",
+    "mysql": "8.0",
+    "mariadb": ["10.6"],
+    "mariadb_default": "10.6",
+    "opensearch": "2.12",
+    "elasticsearch": "8.11",
+    "redis": "7.2",
+    "composer": "2.7",
+    "rabbitmq": "3.13",
+    "varnish": "7.5"
+  },
+  "2.4.7-p2": {
+    "php": ["8.3", "8.2"],
+    "php_default": "8.3",
+    "mysql": "8.0",
+    "mariadb": ["10.6"],
+    "mariadb_default": "10.6",
+    "opensearch": "2.12",
+    "elasticsearch": "8.11",
+    "redis": "7.2",
+    "composer": "2.7",
+    "rabbitmq": "3.13",
+    "varnish": "7.5"
+  },
+  "2.4.7-p1": {
+    "php": ["8.3", "8.2"],
+    "php_default": "8.3",
+    "mysql": "8.0",
+    "mariadb": ["10.6"],
+    "mariadb_default": "10.6",
+    "opensearch": "2.12",
+    "elasticsearch": "8.11",
+    "redis": "7.2",
+    "composer": "2.7",
+    "rabbitmq": "3.13",
+    "varnish": "7.5"
   },
   "2.4.7": {
-    "php": [
-      "8.1",
-      "8.2",
-      "8.3"
-    ],
-    "php_default": "8.2",
+    "php": ["8.3", "8.2"],
+    "php_default": "8.3",
     "mysql": "8.0",
-    "mariadb": [
-      "10.4",
-      "10.6"
-    ],
+    "mariadb": ["10.6"],
     "mariadb_default": "10.6",
     "opensearch": "2.12",
-    "elasticsearch": "8",
-    "redis": "7.0",
-    "composer": "2",
+    "elasticsearch": "8.11",
+    "redis": "7.2",
+    "composer": "2.7",
     "rabbitmq": "3.13",
+    "varnish": "7.5"
+  },
+  "2.4.6-p13": {
+    "php": ["8.2", "8.1"],
+    "php_default": "8.2",
+    "mysql": "8.0",
+    "mariadb": ["10.11"],
+    "mariadb_default": "10.11",
+    "opensearch": "2.19",
+    "elasticsearch": "7.17",
+    "redis": "7.2",
+    "composer": "2.2",
+    "rabbitmq": "4.1",
+    "varnish": "7.7"
+  },
+  "2.4.6-p12": {
+    "php": ["8.2", "8.1"],
+    "php_default": "8.2",
+    "mysql": "8.0",
+    "mariadb": ["10.11"],
+    "mariadb_default": "10.11",
+    "opensearch": "2.19",
+    "elasticsearch": "7.17",
+    "redis": "7.2",
+    "composer": "2.2",
+    "rabbitmq": "4.1",
+    "varnish": "7.7"
+  },
+  "2.4.6-p11": {
+    "php": ["8.2", "8.1"],
+    "php_default": "8.2",
+    "mysql": "8.0",
+    "mariadb": ["10.11"],
+    "mariadb_default": "10.11",
+    "opensearch": "2.19",
+    "elasticsearch": "7.17",
+    "redis": "7.2",
+    "composer": "2.2",
+    "rabbitmq": "3.13",
+    "varnish": "7.7"
+  },
+  "2.4.6-p10": {
+    "php": ["8.2", "8.1"],
+    "php_default": "8.2",
+    "mysql": "8.0",
+    "mariadb": ["10.6"],
+    "mariadb_default": "10.6",
+    "opensearch": "2.19",
+    "elasticsearch": "7.17",
+    "redis": "7.2",
+    "composer": "2.2",
+    "rabbitmq": "3.13",
+    "varnish": "7.6"
+  },
+  "2.4.6-p9": {
+    "php": ["8.2", "8.1"],
+    "php_default": "8.2",
+    "mysql": "8.0",
+    "mariadb": ["10.6"],
+    "mariadb_default": "10.6",
+    "opensearch": "2.12",
+    "elasticsearch": "7.17",
+    "redis": "7.2",
+    "composer": "2.2",
+    "rabbitmq": "3.13",
+    "varnish": "7.6"
+  },
+  "2.4.6-p8": {
+    "php": ["8.2", "8.1"],
+    "php_default": "8.2",
+    "mysql": "8.0",
+    "mariadb": ["10.6"],
+    "mariadb_default": "10.6",
+    "opensearch": "2.12",
+    "elasticsearch": "7.17",
+    "redis": "7.2",
+    "composer": "2.2",
+    "rabbitmq": "3.13",
+    "varnish": "7.5"
+  },
+  "2.4.6-p7": {
+    "php": ["8.2", "8.1"],
+    "php_default": "8.2",
+    "mysql": "8.0",
+    "mariadb": ["10.6"],
+    "mariadb_default": "10.6",
+    "opensearch": "2.12",
+    "elasticsearch": "7.17",
+    "redis": "7.0",
+    "composer": "2.2",
+    "rabbitmq": "3.13",
+    "varnish": "7.5"
+  },
+  "2.4.6-p6": {
+    "php": ["8.2", "8.1"],
+    "php_default": "8.2",
+    "mysql": "8.0",
+    "mariadb": ["10.6"],
+    "mariadb_default": "10.6",
+    "opensearch": "2.12",
+    "elasticsearch": "7.17",
+    "redis": "7.0",
+    "composer": "2.2",
+    "rabbitmq": "3.12",
+    "varnish": "7.5"
+  },
+  "2.4.6-p5": {
+    "php": ["8.2", "8.1"],
+    "php_default": "8.2",
+    "mysql": "8.0",
+    "mariadb": ["10.6"],
+    "mariadb_default": "10.6",
+    "opensearch": "2.12",
+    "elasticsearch": "7.17",
+    "redis": "7.0",
+    "composer": "2.2",
+    "rabbitmq": "3.9",
+    "varnish": "7.5"
+  },
+  "2.4.6-p4": {
+    "php": ["8.2", "8.1"],
+    "php_default": "8.2",
+    "mysql": "8.0",
+    "mariadb": ["10.6"],
+    "mariadb_default": "10.6",
+    "opensearch": "2.5",
+    "elasticsearch": "7.17",
+    "redis": "7.0",
+    "composer": "2.2",
+    "rabbitmq": "3.9",
+    "varnish": "7.3"
+  },
+  "2.4.6-p3": {
+    "php": ["8.2", "8.1"],
+    "php_default": "8.2",
+    "mysql": "8.0",
+    "mariadb": ["10.6"],
+    "mariadb_default": "10.6",
+    "opensearch": "2.5",
+    "elasticsearch": "7.17",
+    "redis": "7.0",
+    "composer": "2.2",
+    "rabbitmq": "3.9",
+    "varnish": "7.3"
+  },
+  "2.4.6-p2": {
+    "php": ["8.2", "8.1"],
+    "php_default": "8.2",
+    "mysql": "8.0",
+    "mariadb": ["10.6"],
+    "mariadb_default": "10.6",
+    "opensearch": "2.5",
+    "elasticsearch": "7.17",
+    "redis": "7.0",
+    "composer": "2.2",
+    "rabbitmq": "3.9",
+    "varnish": "7.3"
+  },
+  "2.4.6-p1": {
+    "php": ["8.2", "8.1"],
+    "php_default": "8.2",
+    "mysql": "8.0",
+    "mariadb": ["10.6"],
+    "mariadb_default": "10.6",
+    "opensearch": "2.5",
+    "elasticsearch": "7.17",
+    "redis": "7.0",
+    "composer": "2.2",
+    "rabbitmq": "3.9",
     "varnish": "7.3"
   },
   "2.4.6": {
-    "php": [
-      "8.1",
-      "8.2"
-    ],
+    "php": ["8.2", "8.1"],
     "php_default": "8.2",
     "mysql": "8.0",
-    "mariadb": [
-      "10.4",
-      "10.6"
-    ],
+    "mariadb": ["10.6"],
     "mariadb_default": "10.6",
     "opensearch": "2.5",
-    "elasticsearch": "8",
+    "elasticsearch": "7.17",
+    "redis": "7.0",
+    "composer": "2.2",
+    "rabbitmq": "3.9",
+    "varnish": "7.1"
+  },
+  "2.4.5-p15": {
+    "php": ["8.1"],
+    "php_default": "8.1",
+    "mysql": "8.0",
+    "mariadb": ["10.6"],
+    "mariadb_default": "10.6",
+    "opensearch": "2.19",
+    "elasticsearch": "7.17",
+    "redis": "7.2",
+    "composer": "2.2",
+    "rabbitmq": "4.1",
+    "varnish": "7.7"
+  },
+  "2.4.5-p14": {
+    "php": ["8.1"],
+    "php_default": "8.1",
+    "mysql": "8.0",
+    "mariadb": ["10.6"],
+    "mariadb_default": "10.6",
+    "opensearch": "2.19",
+    "elasticsearch": "7.17",
+    "redis": "7.2",
+    "composer": "2.2",
+    "rabbitmq": "4.1",
+    "varnish": "7.7"
+  },
+  "2.4.5-p13": {
+    "php": ["8.1"],
+    "php_default": "8.1",
+    "mysql": "8.0",
+    "mariadb": ["10.6"],
+    "mariadb_default": "10.6",
+    "opensearch": "2.19",
+    "elasticsearch": "7.17",
+    "redis": "7.2",
+    "composer": "2.2",
+    "rabbitmq": "3.13",
+    "varnish": "7.7"
+  },
+  "2.4.5-p12": {
+    "php": ["8.1"],
+    "php_default": "8.1",
+    "mysql": "8.0",
+    "mariadb": ["10.6"],
+    "mariadb_default": "10.6",
+    "opensearch": "2.19",
+    "elasticsearch": "7.17",
+    "redis": "7.2",
+    "composer": "2.2",
+    "rabbitmq": "3.13",
+    "varnish": "7.6"
+  },
+  "2.4.5-p11": {
+    "php": ["8.1"],
+    "php_default": "8.1",
+    "mysql": "8.0",
+    "mariadb": ["10.6", "10.5"],
+    "mariadb_default": "10.6",
+    "opensearch": "1.3.20",
+    "elasticsearch": "7.17",
+    "redis": "7.2",
+    "composer": "2.2",
+    "rabbitmq": "3.13",
+    "varnish": "7.6"
+  },
+  "2.4.5-p10": {
+    "php": ["8.1"],
+    "php_default": "8.1",
+    "mysql": "8.0",
+    "mariadb": ["10.5", "10.4"],
+    "mariadb_default": "10.5",
+    "opensearch": "1.3",
+    "elasticsearch": "7.17",
+    "redis": "7.2",
+    "composer": "2.2",
+    "rabbitmq": "3.13",
+    "varnish": "7.5"
+  },
+  "2.4.5-p9": {
+    "php": ["8.1"],
+    "php_default": "8.1",
+    "mysql": "8.0",
+    "mariadb": ["10.5", "10.4"],
+    "mariadb_default": "10.5",
+    "opensearch": "1.3",
+    "elasticsearch": "7.17",
+    "redis": "7.0",
+    "composer": "2.2",
+    "rabbitmq": "3.13",
+    "varnish": "7.5"
+  },
+  "2.4.5-p8": {
+    "php": ["8.1"],
+    "php_default": "8.1",
+    "mysql": "8.0",
+    "mariadb": ["10.5", "10.4"],
+    "mariadb_default": "10.5",
+    "opensearch": "1.3",
+    "elasticsearch": "7.17",
     "redis": "7.0",
     "composer": "2.2",
     "rabbitmq": "3.11",
-    "varnish": "7.3"
+    "varnish": "7.5"
   },
-  "2.4.5": {
-    "php": [
-      "7.4",
-      "8.1"
-    ],
+  "2.4.5-p7": {
+    "php": ["8.1"],
     "php_default": "8.1",
     "mysql": "8.0",
-    "mariadb": [
-      "10.4",
-      "10.6"
-    ],
+    "mariadb": ["10.4"],
     "mariadb_default": "10.4",
-    "opensearch": "2.19",
+    "opensearch": "1.3",
+    "elasticsearch": "7.17",
+    "redis": "7.0",
+    "composer": "2.2",
+    "rabbitmq": "3.9",
+    "varnish": "7.5"
+  },
+  "2.4.5-p6": {
+    "php": ["8.1"],
+    "php_default": "8.1",
+    "mysql": "8.0",
+    "mariadb": ["10.4"],
+    "mariadb_default": "10.4",
+    "opensearch": "1.2",
     "elasticsearch": "7.17",
     "redis": "6.2",
     "composer": "2.2",
-    "rabbitmq": "3.11",
-    "varnish": "7.1"
+    "rabbitmq": "3.9",
+    "varnish": "7.3"
   },
-  "2.4.4": {
-    "php": [
-      "7.4",
-      "8.1"
-    ],
+  "2.4.5-p5": {
+    "php": ["8.1"],
     "php_default": "8.1",
     "mysql": "8.0",
-    "mariadb": [
-      "10.4"
-    ],
+    "mariadb": ["10.4"],
     "mariadb_default": "10.4",
-    "opensearch": "2.19",
+    "opensearch": "1.2",
+    "elasticsearch": "7.17",
+    "redis": "6.2",
+    "composer": "2.2",
+    "rabbitmq": "3.9",
+    "varnish": "7.3"
+  },
+  "2.4.5-p4": {
+    "php": ["8.1"],
+    "php_default": "8.1",
+    "mysql": "8.0",
+    "mariadb": ["10.4"],
+    "mariadb_default": "10.4",
+    "opensearch": "1.2",
+    "elasticsearch": "7.17",
+    "redis": "6.2",
+    "composer": "2.2",
+    "rabbitmq": "3.9",
+    "varnish": "7.3"
+  },
+  "2.4.5-p3": {
+    "php": ["8.1"],
+    "php_default": "8.1",
+    "mysql": "8.0",
+    "mariadb": ["10.4"],
+    "mariadb_default": "10.4",
+    "opensearch": "1.2",
+    "elasticsearch": "7.17",
+    "redis": "6.2",
+    "composer": "2.2",
+    "rabbitmq": "3.9",
+    "varnish": "7.3"
+  },
+  "2.4.5-p2": {
+    "php": ["8.1"],
+    "php_default": "8.1",
+    "mysql": "8.0",
+    "mariadb": ["10.4"],
+    "mariadb_default": "10.4",
+    "opensearch": "1.2",
+    "elasticsearch": "7.17",
+    "redis": "6.2",
+    "composer": "2.2",
+    "rabbitmq": "3.9",
+    "varnish": "7.1"
+  },
+  "2.4.5-p1": {
+    "php": ["8.1"],
+    "php_default": "8.1",
+    "mysql": "8.0",
+    "mariadb": ["10.4"],
+    "mariadb_default": "10.4",
+    "opensearch": "1.2",
     "elasticsearch": "7.17",
     "redis": "6.2",
     "composer": "2.2",
     "rabbitmq": "3.9",
     "varnish": "7.0"
   },
+  "2.4.5": {
+    "php": ["8.1"],
+    "php_default": "8.1",
+    "mysql": "8.0",
+    "mariadb": ["10.4"],
+    "mariadb_default": "10.4",
+    "opensearch": "1.2",
+    "elasticsearch": "7.17",
+    "redis": "6.2",
+    "composer": "2.2",
+    "rabbitmq": "3.9",
+    "varnish": "7.0"
+  },
+  "2.4.4-p16": {
+    "php": ["8.1"],
+    "php_default": "8.1",
+    "mysql": "8.0",
+    "mariadb": ["10.6"],
+    "mariadb_default": "10.6",
+    "opensearch": "2.19",
+    "elasticsearch": "7.17",
+    "redis": "7.2",
+    "composer": "2.2",
+    "rabbitmq": "3.9",
+    "varnish": "7.7"
+  },
+  "2.4.4-p15": {
+    "php": ["8.1"],
+    "php_default": "8.1",
+    "mysql": "8.0",
+    "mariadb": ["10.6"],
+    "mariadb_default": "10.6",
+    "opensearch": "2.19",
+    "elasticsearch": "7.17",
+    "redis": "7.2",
+    "composer": "2.2",
+    "rabbitmq": "3.9",
+    "varnish": "7.7"
+  },
+  "2.4.4-p14": {
+    "php": ["8.1"],
+    "php_default": "8.1",
+    "mysql": "8.0",
+    "mariadb": ["10.6"],
+    "mariadb_default": "10.6",
+    "opensearch": "2.19",
+    "elasticsearch": "7.17",
+    "redis": "7.2",
+    "composer": "2.2",
+    "rabbitmq": "3.9",
+    "varnish": "7.7"
+  },
+  "2.4.4-p13": {
+    "php": ["8.1"],
+    "php_default": "8.1",
+    "mysql": "8.0",
+    "mariadb": ["10.6"],
+    "mariadb_default": "10.6",
+    "opensearch": "2.19",
+    "elasticsearch": "7.17",
+    "redis": "7.2",
+    "composer": "2.2",
+    "rabbitmq": "3.9",
+    "varnish": "7.6"
+  },
+  "2.4.4-p12": {
+    "php": ["8.1"],
+    "php_default": "8.1",
+    "mysql": "8.0",
+    "mariadb": ["10.6", "10.5"],
+    "mariadb_default": "10.6",
+    "opensearch": "1.3.20",
+    "elasticsearch": "7.17",
+    "redis": "7.2",
+    "composer": "2.2",
+    "rabbitmq": "3.9",
+    "varnish": "7.6"
+  },
+  "2.4.4-p11": {
+    "php": ["8.1"],
+    "php_default": "8.1",
+    "mysql": "8.0",
+    "mariadb": ["10.5", "10.4"],
+    "mariadb_default": "10.5",
+    "opensearch": "1.3",
+    "elasticsearch": "7.17",
+    "redis": "7.2",
+    "composer": "2.2",
+    "rabbitmq": "3.9",
+    "varnish": "7.5"
+  },
+  "2.4.4-p10": {
+    "php": ["8.1"],
+    "php_default": "8.1",
+    "mysql": "8.0",
+    "mariadb": ["10.5", "10.4"],
+    "mariadb_default": "10.5",
+    "opensearch": "1.3",
+    "elasticsearch": "7.17",
+    "redis": "7.0",
+    "composer": "2.2",
+    "rabbitmq": "3.9",
+    "varnish": "7.5"
+  },
+  "2.4.4-p9": {
+    "php": ["8.1"],
+    "php_default": "8.1",
+    "mysql": "8.0",
+    "mariadb": ["10.5", "10.4"],
+    "mariadb_default": "10.5",
+    "opensearch": "1.3",
+    "elasticsearch": "7.17",
+    "redis": "7.0",
+    "composer": "2.2",
+    "rabbitmq": "3.9",
+    "varnish": "7.5"
+  },
+  "2.4.4-p8": {
+    "php": ["8.1"],
+    "php_default": "8.1",
+    "mysql": "8.0",
+    "mariadb": ["10.4"],
+    "mariadb_default": "10.4",
+    "opensearch": "1.3",
+    "elasticsearch": "7.17",
+    "redis": "7.0",
+    "composer": "2.2",
+    "rabbitmq": "3.9",
+    "varnish": "7.5"
+  },
+  "2.4.4-p7": {
+    "php": ["8.1"],
+    "php_default": "8.1",
+    "mysql": "8.0",
+    "mariadb": ["10.4"],
+    "mariadb_default": "10.4",
+    "opensearch": "1.2",
+    "elasticsearch": "7.17",
+    "redis": "6.2",
+    "composer": "2.2",
+    "rabbitmq": "3.9",
+    "varnish": "7.3"
+  },
+  "2.4.4-p6": {
+    "php": ["8.1"],
+    "php_default": "8.1",
+    "mysql": "8.0",
+    "mariadb": ["10.4"],
+    "mariadb_default": "10.4",
+    "opensearch": "1.2",
+    "elasticsearch": "7.17",
+    "redis": "6.2",
+    "composer": "2.2",
+    "rabbitmq": "3.9",
+    "varnish": "7.3"
+  },
+  "2.4.4-p5": {
+    "php": ["8.1"],
+    "php_default": "8.1",
+    "mysql": "8.0",
+    "mariadb": ["10.4"],
+    "mariadb_default": "10.4",
+    "opensearch": "1.2",
+    "elasticsearch": "7.17",
+    "redis": "6.2",
+    "composer": "2.2",
+    "rabbitmq": "3.9",
+    "varnish": "7.3"
+  },
+  "2.4.4-p4": {
+    "php": ["8.1"],
+    "php_default": "8.1",
+    "mysql": "8.0",
+    "mariadb": ["10.4"],
+    "mariadb_default": "10.4",
+    "opensearch": "1.2",
+    "elasticsearch": "7.17",
+    "redis": "6.2",
+    "composer": "2.2",
+    "rabbitmq": "3.9",
+    "varnish": "7.3"
+  },
+  "2.4.4-p3": {
+    "php": ["8.1"],
+    "php_default": "8.1",
+    "mysql": "8.0",
+    "mariadb": ["10.4"],
+    "mariadb_default": "10.4",
+    "opensearch": "1.2",
+    "elasticsearch": "7.17",
+    "redis": "6.2",
+    "composer": "2.2",
+    "rabbitmq": "3.9",
+    "varnish": "7.1"
+  },
+  "2.4.4-p2": {
+    "php": ["8.1"],
+    "php_default": "8.1",
+    "mysql": "8.0",
+    "mariadb": ["10.4"],
+    "mariadb_default": "10.4",
+    "opensearch": "1.2",
+    "elasticsearch": "7.16",
+    "redis": "6.2",
+    "composer": "2.1",
+    "rabbitmq": "3.9",
+    "varnish": "7.0"
+  },
+  "2.4.4-p1": {
+    "php": ["8.1"],
+    "php_default": "8.1",
+    "mysql": "8.0",
+    "mariadb": ["10.4"],
+    "mariadb_default": "10.4",
+    "opensearch": "1.2",
+    "elasticsearch": "7.16",
+    "redis": "6.2",
+    "composer": "2.1",
+    "rabbitmq": "3.9",
+    "varnish": "7.0"
+  },
+  "2.4.4": {
+    "php": ["8.1"],
+    "php_default": "8.1",
+    "mysql": "8.0",
+    "mariadb": ["10.4"],
+    "mariadb_default": "10.4",
+    "opensearch": "1.2",
+    "elasticsearch": "7.16",
+    "redis": "6.2",
+    "composer": "2.1",
+    "rabbitmq": "3.9",
+    "varnish": "7.0"
+  },
   "2.4.3": {
-    "php": [
-      "7.3",
-      "7.4"
-    ],
+    "php": ["7.3", "7.4"],
     "php_default": "7.4",
     "mysql": "8.0",
-    "mariadb": [
-      "10.4"
-    ],
+    "mariadb": ["10.4"],
     "mariadb_default": "10.4",
     "opensearch": null,
     "elasticsearch": "7.10",
@@ -113,15 +806,10 @@
     "varnish": "6.5"
   },
   "2.4.2": {
-    "php": [
-      "7.3",
-      "7.4"
-    ],
+    "php": ["7.3", "7.4"],
     "php_default": "7.4",
     "mysql": "8.0",
-    "mariadb": [
-      "10.4"
-    ],
+    "mariadb": ["10.4"],
     "mariadb_default": "10.4",
     "opensearch": null,
     "elasticsearch": "7.9",
@@ -131,14 +819,10 @@
     "varnish": "6.5"
   },
   "2.4.1": {
-    "php": [
-      "7.4"
-    ],
+    "php": ["7.4"],
     "php_default": "7.4",
     "mysql": "8.0",
-    "mariadb": [
-      "10.4"
-    ],
+    "mariadb": ["10.4"],
     "mariadb_default": "10.4",
     "opensearch": null,
     "elasticsearch": "7.9",
@@ -148,15 +832,10 @@
     "varnish": "6.4"
   },
   "2.4.0": {
-    "php": [
-      "7.3",
-      "7.4"
-    ],
+    "php": ["7.3", "7.4"],
     "php_default": "7.4",
     "mysql": "8.0",
-    "mariadb": [
-      "10.4"
-    ],
+    "mariadb": ["10.4"],
     "mariadb_default": "10.4",
     "opensearch": null,
     "elasticsearch": "7.6",
@@ -166,17 +845,10 @@
     "varnish": "6.4"
   },
   "2.3.7": {
-    "php": [
-      "7.3",
-      "7.4"
-    ],
+    "php": ["7.3", "7.4"],
     "php_default": "7.4",
     "mysql": "5.7",
-    "mariadb": [
-      "10.2",
-      "10.3",
-      "10.4"
-    ],
+    "mariadb": ["10.2", "10.3", "10.4"],
     "mariadb_default": "10.4",
     "opensearch": null,
     "elasticsearch": "7.9",
@@ -186,17 +858,10 @@
     "varnish": "6.0"
   },
   "2.3.6": {
-    "php": [
-      "7.3",
-      "7.4"
-    ],
+    "php": ["7.3", "7.4"],
     "php_default": "7.3",
     "mysql": "5.7",
-    "mariadb": [
-      "10.2",
-      "10.3",
-      "10.4"
-    ],
+    "mariadb": ["10.2", "10.3", "10.4"],
     "mariadb_default": "10.4",
     "opensearch": null,
     "elasticsearch": "7.6",
@@ -206,18 +871,10 @@
     "varnish": "6.0"
   },
   "2.3.5": {
-    "php": [
-      "7.1",
-      "7.2",
-      "7.3"
-    ],
+    "php": ["7.1", "7.2", "7.3"],
     "php_default": "7.3",
     "mysql": "5.7",
-    "mariadb": [
-      "10.2",
-      "10.3",
-      "10.4"
-    ],
+    "mariadb": ["10.2", "10.3", "10.4"],
     "mariadb_default": "10.4",
     "opensearch": null,
     "elasticsearch": "7.6",
@@ -227,18 +884,10 @@
     "varnish": "6.0"
   },
   "2.3.4": {
-    "php": [
-      "7.1",
-      "7.2",
-      "7.3"
-    ],
+    "php": ["7.1", "7.2", "7.3"],
     "php_default": "7.2",
     "mysql": "5.7",
-    "mariadb": [
-      "10.2",
-      "10.3",
-      "10.4"
-    ],
+    "mariadb": ["10.2", "10.3", "10.4"],
     "mariadb_default": "10.2",
     "opensearch": null,
     "elasticsearch": "6.8",
@@ -248,17 +897,10 @@
     "varnish": "6.0"
   },
   "2.3.3": {
-    "php": [
-      "7.1",
-      "7.2",
-      "7.3"
-    ],
+    "php": ["7.1", "7.2", "7.3"],
     "php_default": "7.2",
     "mysql": "5.7",
-    "mariadb": [
-      "10.2",
-      "10.3"
-    ],
+    "mariadb": ["10.2", "10.3"],
     "mariadb_default": "10.2",
     "opensearch": null,
     "elasticsearch": "6.5",
@@ -268,16 +910,10 @@
     "varnish": "6.0"
   },
   "2.3.2": {
-    "php": [
-      "7.1",
-      "7.2"
-    ],
+    "php": ["7.1", "7.2"],
     "php_default": "7.2",
     "mysql": "5.7",
-    "mariadb": [
-      "10.2",
-      "10.3"
-    ],
+    "mariadb": ["10.2", "10.3"],
     "mariadb_default": "10.2",
     "opensearch": null,
     "elasticsearch": "6.0",
@@ -287,17 +923,10 @@
     "varnish": "6.0"
   },
   "2.3.1": {
-    "php": [
-      "7.1",
-      "7.2"
-    ],
+    "php": ["7.1", "7.2"],
     "php_default": "7.2",
     "mysql": "5.7",
-    "mariadb": [
-      "10.0",
-      "10.1",
-      "10.2"
-    ],
+    "mariadb": ["10.0", "10.1", "10.2"],
     "mariadb_default": "10.2",
     "opensearch": null,
     "elasticsearch": "6.0",
@@ -307,17 +936,10 @@
     "varnish": "6.0"
   },
   "2.3.0": {
-    "php": [
-      "7.1",
-      "7.2"
-    ],
+    "php": ["7.1", "7.2"],
     "php_default": "7.1",
     "mysql": "5.7",
-    "mariadb": [
-      "10.0",
-      "10.1",
-      "10.2"
-    ],
+    "mariadb": ["10.0", "10.1", "10.2"],
     "mariadb_default": "10.1",
     "opensearch": null,
     "elasticsearch": "5.2",
@@ -327,17 +949,10 @@
     "varnish": "6.0"
   },
   "2.2.11": {
-    "php": [
-      "7.0",
-      "7.1"
-    ],
+    "php": ["7.0", "7.1"],
     "php_default": "7.1",
     "mysql": "5.7",
-    "mariadb": [
-      "10.0",
-      "10.1",
-      "10.2"
-    ],
+    "mariadb": ["10.0", "10.1", "10.2"],
     "mariadb_default": "10.1",
     "opensearch": null,
     "elasticsearch": "2.4",
@@ -347,17 +962,10 @@
     "varnish": "4.1"
   },
   "2.2.10": {
-    "php": [
-      "7.0",
-      "7.1"
-    ],
+    "php": ["7.0", "7.1"],
     "php_default": "7.1",
     "mysql": "5.7",
-    "mariadb": [
-      "10.0",
-      "10.1",
-      "10.2"
-    ],
+    "mariadb": ["10.0", "10.1", "10.2"],
     "mariadb_default": "10.1",
     "opensearch": null,
     "elasticsearch": "2.4",
@@ -367,17 +975,10 @@
     "varnish": "4.1"
   },
   "2.2.9": {
-    "php": [
-      "7.0",
-      "7.1"
-    ],
+    "php": ["7.0", "7.1"],
     "php_default": "7.1",
     "mysql": "5.7",
-    "mariadb": [
-      "10.0",
-      "10.1",
-      "10.2"
-    ],
+    "mariadb": ["10.0", "10.1", "10.2"],
     "mariadb_default": "10.1",
     "opensearch": null,
     "elasticsearch": "2.4",
@@ -387,17 +988,10 @@
     "varnish": "4.1"
   },
   "2.2.8": {
-    "php": [
-      "7.0",
-      "7.1"
-    ],
+    "php": ["7.0", "7.1"],
     "php_default": "7.1",
     "mysql": "5.7",
-    "mariadb": [
-      "10.0",
-      "10.1",
-      "10.2"
-    ],
+    "mariadb": ["10.0", "10.1", "10.2"],
     "mariadb_default": "10.1",
     "opensearch": null,
     "elasticsearch": "2.4",
@@ -407,17 +1001,10 @@
     "varnish": "4.1"
   },
   "2.2.7": {
-    "php": [
-      "7.0",
-      "7.1"
-    ],
+    "php": ["7.0", "7.1"],
     "php_default": "7.1",
     "mysql": "5.7",
-    "mariadb": [
-      "10.0",
-      "10.1",
-      "10.2"
-    ],
+    "mariadb": ["10.0", "10.1", "10.2"],
     "mariadb_default": "10.1",
     "opensearch": null,
     "elasticsearch": "2.4",
@@ -427,17 +1014,10 @@
     "varnish": "4.1"
   },
   "2.2.6": {
-    "php": [
-      "7.0",
-      "7.1"
-    ],
+    "php": ["7.0", "7.1"],
     "php_default": "7.1",
     "mysql": "5.7",
-    "mariadb": [
-      "10.0",
-      "10.1",
-      "10.2"
-    ],
+    "mariadb": ["10.0", "10.1", "10.2"],
     "mariadb_default": "10.1",
     "opensearch": null,
     "elasticsearch": "2.4",
@@ -447,17 +1027,10 @@
     "varnish": "4.1"
   },
   "2.2.5": {
-    "php": [
-      "7.0",
-      "7.1"
-    ],
+    "php": ["7.0", "7.1"],
     "php_default": "7.1",
     "mysql": "5.7",
-    "mariadb": [
-      "10.0",
-      "10.1",
-      "10.2"
-    ],
+    "mariadb": ["10.0", "10.1", "10.2"],
     "mariadb_default": "10.1",
     "opensearch": null,
     "elasticsearch": "2.4",
@@ -467,17 +1040,10 @@
     "varnish": "4.1"
   },
   "2.2.4": {
-    "php": [
-      "7.0",
-      "7.1"
-    ],
+    "php": ["7.0", "7.1"],
     "php_default": "7.1",
     "mysql": "5.7",
-    "mariadb": [
-      "10.0",
-      "10.1",
-      "10.2"
-    ],
+    "mariadb": ["10.0", "10.1", "10.2"],
     "mariadb_default": "10.1",
     "opensearch": null,
     "elasticsearch": "2.4",
@@ -487,17 +1053,10 @@
     "varnish": "4.1"
   },
   "2.2.3": {
-    "php": [
-      "7.0",
-      "7.1"
-    ],
+    "php": ["7.0", "7.1"],
     "php_default": "7.1",
     "mysql": "5.7",
-    "mariadb": [
-      "10.0",
-      "10.1",
-      "10.2"
-    ],
+    "mariadb": ["10.0", "10.1", "10.2"],
     "mariadb_default": "10.1",
     "opensearch": null,
     "elasticsearch": "2.4",
@@ -507,17 +1066,10 @@
     "varnish": "4.1"
   },
   "2.2.2": {
-    "php": [
-      "7.0",
-      "7.1"
-    ],
+    "php": ["7.0", "7.1"],
     "php_default": "7.1",
     "mysql": "5.7",
-    "mariadb": [
-      "10.0",
-      "10.1",
-      "10.2"
-    ],
+    "mariadb": ["10.0", "10.1", "10.2"],
     "mariadb_default": "10.1",
     "opensearch": null,
     "elasticsearch": "2.4",
@@ -527,17 +1079,10 @@
     "varnish": "4.1"
   },
   "2.2.1": {
-    "php": [
-      "7.0",
-      "7.1"
-    ],
+    "php": ["7.0", "7.1"],
     "php_default": "7.1",
     "mysql": "5.7",
-    "mariadb": [
-      "10.0",
-      "10.1",
-      "10.2"
-    ],
+    "mariadb": ["10.0", "10.1", "10.2"],
     "mariadb_default": "10.1",
     "opensearch": null,
     "elasticsearch": "2.4",
@@ -547,17 +1092,10 @@
     "varnish": "4.1"
   },
   "2.2.0": {
-    "php": [
-      "7.0",
-      "7.1"
-    ],
+    "php": ["7.0", "7.1"],
     "php_default": "7.1",
     "mysql": "5.7",
-    "mariadb": [
-      "10.0",
-      "10.1",
-      "10.2"
-    ],
+    "mariadb": ["10.0", "10.1", "10.2"],
     "mariadb_default": "10.0",
     "opensearch": null,
     "elasticsearch": "2.4",
@@ -567,15 +1105,10 @@
     "varnish": "4.1"
   },
   "2.1.18": {
-    "php": [
-      "5.6",
-      "7.0"
-    ],
+    "php": ["5.6", "7.0"],
     "php_default": "7.0",
     "mysql": "5.6",
-    "mariadb": [
-      "10.0"
-    ],
+    "mariadb": ["10.0"],
     "mariadb_default": "10.0",
     "opensearch": null,
     "elasticsearch": "1.7",
@@ -585,15 +1118,10 @@
     "varnish": "3.0"
   },
   "2.1.17": {
-    "php": [
-      "5.6",
-      "7.0"
-    ],
+    "php": ["5.6", "7.0"],
     "php_default": "7.0",
     "mysql": "5.6",
-    "mariadb": [
-      "10.0"
-    ],
+    "mariadb": ["10.0"],
     "mariadb_default": "10.0",
     "opensearch": null,
     "elasticsearch": "1.7",
@@ -603,15 +1131,10 @@
     "varnish": "3.0"
   },
   "2.1.16": {
-    "php": [
-      "5.6",
-      "7.0"
-    ],
+    "php": ["5.6", "7.0"],
     "php_default": "7.0",
     "mysql": "5.6",
-    "mariadb": [
-      "10.0"
-    ],
+    "mariadb": ["10.0"],
     "mariadb_default": "10.0",
     "opensearch": null,
     "elasticsearch": "1.7",
@@ -621,15 +1144,10 @@
     "varnish": "3.0"
   },
   "2.1.15": {
-    "php": [
-      "5.6",
-      "7.0"
-    ],
+    "php": ["5.6", "7.0"],
     "php_default": "7.0",
     "mysql": "5.6",
-    "mariadb": [
-      "10.0"
-    ],
+    "mariadb": ["10.0"],
     "mariadb_default": "10.0",
     "opensearch": null,
     "elasticsearch": "1.7",
@@ -639,15 +1157,10 @@
     "varnish": "3.0"
   },
   "2.1.14": {
-    "php": [
-      "5.6",
-      "7.0"
-    ],
+    "php": ["5.6", "7.0"],
     "php_default": "7.0",
     "mysql": "5.6",
-    "mariadb": [
-      "10.0"
-    ],
+    "mariadb": ["10.0"],
     "mariadb_default": "10.0",
     "opensearch": null,
     "elasticsearch": "1.7",
@@ -657,15 +1170,10 @@
     "varnish": "3.0"
   },
   "2.1.13": {
-    "php": [
-      "5.6",
-      "7.0"
-    ],
+    "php": ["5.6", "7.0"],
     "php_default": "7.0",
     "mysql": "5.6",
-    "mariadb": [
-      "10.0"
-    ],
+    "mariadb": ["10.0"],
     "mariadb_default": "10.0",
     "opensearch": null,
     "elasticsearch": "1.7",
@@ -675,15 +1183,10 @@
     "varnish": "3.0"
   },
   "2.1.12": {
-    "php": [
-      "5.6",
-      "7.0"
-    ],
+    "php": ["5.6", "7.0"],
     "php_default": "7.0",
     "mysql": "5.6",
-    "mariadb": [
-      "10.0"
-    ],
+    "mariadb": ["10.0"],
     "mariadb_default": "10.0",
     "opensearch": null,
     "elasticsearch": "1.7",
@@ -693,15 +1196,10 @@
     "varnish": "3.0"
   },
   "2.1.11": {
-    "php": [
-      "5.6",
-      "7.0"
-    ],
+    "php": ["5.6", "7.0"],
     "php_default": "7.0",
     "mysql": "5.6",
-    "mariadb": [
-      "10.0"
-    ],
+    "mariadb": ["10.0"],
     "mariadb_default": "10.0",
     "opensearch": null,
     "elasticsearch": "1.7",
@@ -711,15 +1209,10 @@
     "varnish": "3.0"
   },
   "2.1.10": {
-    "php": [
-      "5.6",
-      "7.0"
-    ],
+    "php": ["5.6", "7.0"],
     "php_default": "7.0",
     "mysql": "5.6",
-    "mariadb": [
-      "10.0"
-    ],
+    "mariadb": ["10.0"],
     "mariadb_default": "10.0",
     "opensearch": null,
     "elasticsearch": "1.7",
@@ -729,15 +1222,10 @@
     "varnish": "3.0"
   },
   "2.1.9": {
-    "php": [
-      "5.6",
-      "7.0"
-    ],
+    "php": ["5.6", "7.0"],
     "php_default": "7.0",
     "mysql": "5.6",
-    "mariadb": [
-      "10.0"
-    ],
+    "mariadb": ["10.0"],
     "mariadb_default": "10.0",
     "opensearch": null,
     "elasticsearch": "1.7",
@@ -747,15 +1235,10 @@
     "varnish": "3.0"
   },
   "2.1.8": {
-    "php": [
-      "5.6",
-      "7.0"
-    ],
+    "php": ["5.6", "7.0"],
     "php_default": "7.0",
     "mysql": "5.6",
-    "mariadb": [
-      "10.0"
-    ],
+    "mariadb": ["10.0"],
     "mariadb_default": "10.0",
     "opensearch": null,
     "elasticsearch": "1.7",
@@ -765,15 +1248,10 @@
     "varnish": "3.0"
   },
   "2.1.7": {
-    "php": [
-      "5.6",
-      "7.0"
-    ],
+    "php": ["5.6", "7.0"],
     "php_default": "7.0",
     "mysql": "5.6",
-    "mariadb": [
-      "10.0"
-    ],
+    "mariadb": ["10.0"],
     "mariadb_default": "10.0",
     "opensearch": null,
     "elasticsearch": "1.7",
@@ -783,15 +1261,10 @@
     "varnish": "3.0"
   },
   "2.1.6": {
-    "php": [
-      "5.6",
-      "7.0"
-    ],
+    "php": ["5.6", "7.0"],
     "php_default": "7.0",
     "mysql": "5.6",
-    "mariadb": [
-      "10.0"
-    ],
+    "mariadb": ["10.0"],
     "mariadb_default": "10.0",
     "opensearch": null,
     "elasticsearch": "1.7",
@@ -801,15 +1274,10 @@
     "varnish": "3.0"
   },
   "2.1.5": {
-    "php": [
-      "5.6",
-      "7.0"
-    ],
+    "php": ["5.6", "7.0"],
     "php_default": "7.0",
     "mysql": "5.6",
-    "mariadb": [
-      "10.0"
-    ],
+    "mariadb": ["10.0"],
     "mariadb_default": "10.0",
     "opensearch": null,
     "elasticsearch": "1.7",
@@ -819,15 +1287,10 @@
     "varnish": "3.0"
   },
   "2.1.4": {
-    "php": [
-      "5.6",
-      "7.0"
-    ],
+    "php": ["5.6", "7.0"],
     "php_default": "7.0",
     "mysql": "5.6",
-    "mariadb": [
-      "10.0"
-    ],
+    "mariadb": ["10.0"],
     "mariadb_default": "10.0",
     "opensearch": null,
     "elasticsearch": "1.7",
@@ -837,15 +1300,10 @@
     "varnish": "3.0"
   },
   "2.1.3": {
-    "php": [
-      "5.6",
-      "7.0"
-    ],
+    "php": ["5.6", "7.0"],
     "php_default": "7.0",
     "mysql": "5.6",
-    "mariadb": [
-      "10.0"
-    ],
+    "mariadb": ["10.0"],
     "mariadb_default": "10.0",
     "opensearch": null,
     "elasticsearch": "1.7",
@@ -855,15 +1313,10 @@
     "varnish": "3.0"
   },
   "2.1.2": {
-    "php": [
-      "5.6",
-      "7.0"
-    ],
+    "php": ["5.6", "7.0"],
     "php_default": "7.0",
     "mysql": "5.6",
-    "mariadb": [
-      "10.0"
-    ],
+    "mariadb": ["10.0"],
     "mariadb_default": "10.0",
     "opensearch": null,
     "elasticsearch": "1.7",
@@ -873,15 +1326,10 @@
     "varnish": "3.0"
   },
   "2.1.1": {
-    "php": [
-      "5.6",
-      "7.0"
-    ],
+    "php": ["5.6", "7.0"],
     "php_default": "7.0",
     "mysql": "5.6",
-    "mariadb": [
-      "10.0"
-    ],
+    "mariadb": ["10.0"],
     "mariadb_default": "10.0",
     "opensearch": null,
     "elasticsearch": "1.7",
@@ -891,15 +1339,10 @@
     "varnish": "3.0"
   },
   "2.1.0": {
-    "php": [
-      "5.6",
-      "7.0"
-    ],
+    "php": ["5.6", "7.0"],
     "php_default": "7.0",
     "mysql": "5.6",
-    "mariadb": [
-      "10.0"
-    ],
+    "mariadb": ["10.0"],
     "mariadb_default": "10.0",
     "opensearch": null,
     "elasticsearch": "1.7",
@@ -909,16 +1352,10 @@
     "varnish": "3.0"
   },
   "2.0.18": {
-    "php": [
-      "5.5",
-      "5.6",
-      "7.0"
-    ],
+    "php": ["5.5", "5.6", "7.0"],
     "php_default": "7.0",
     "mysql": "5.6",
-    "mariadb": [
-      "10.0"
-    ],
+    "mariadb": ["10.0"],
     "mariadb_default": "10.0",
     "opensearch": null,
     "elasticsearch": "1.7",
@@ -928,16 +1365,10 @@
     "varnish": "3.0"
   },
   "2.0.17": {
-    "php": [
-      "5.5",
-      "5.6",
-      "7.0"
-    ],
+    "php": ["5.5", "5.6", "7.0"],
     "php_default": "7.0",
     "mysql": "5.6",
-    "mariadb": [
-      "10.0"
-    ],
+    "mariadb": ["10.0"],
     "mariadb_default": "10.0",
     "opensearch": null,
     "elasticsearch": "1.7",
@@ -947,16 +1378,10 @@
     "varnish": "3.0"
   },
   "2.0.16": {
-    "php": [
-      "5.5",
-      "5.6",
-      "7.0"
-    ],
+    "php": ["5.5", "5.6", "7.0"],
     "php_default": "7.0",
     "mysql": "5.6",
-    "mariadb": [
-      "10.0"
-    ],
+    "mariadb": ["10.0"],
     "mariadb_default": "10.0",
     "opensearch": null,
     "elasticsearch": "1.7",
@@ -966,16 +1391,10 @@
     "varnish": "3.0"
   },
   "2.0.15": {
-    "php": [
-      "5.5",
-      "5.6",
-      "7.0"
-    ],
+    "php": ["5.5", "5.6", "7.0"],
     "php_default": "7.0",
     "mysql": "5.6",
-    "mariadb": [
-      "10.0"
-    ],
+    "mariadb": ["10.0"],
     "mariadb_default": "10.0",
     "opensearch": null,
     "elasticsearch": "1.7",
@@ -985,16 +1404,10 @@
     "varnish": "3.0"
   },
   "2.0.14": {
-    "php": [
-      "5.5",
-      "5.6",
-      "7.0"
-    ],
+    "php": ["5.5", "5.6", "7.0"],
     "php_default": "7.0",
     "mysql": "5.6",
-    "mariadb": [
-      "10.0"
-    ],
+    "mariadb": ["10.0"],
     "mariadb_default": "10.0",
     "opensearch": null,
     "elasticsearch": "1.7",
@@ -1004,16 +1417,10 @@
     "varnish": "3.0"
   },
   "2.0.13": {
-    "php": [
-      "5.5",
-      "5.6",
-      "7.0"
-    ],
+    "php": ["5.5", "5.6", "7.0"],
     "php_default": "7.0",
     "mysql": "5.6",
-    "mariadb": [
-      "10.0"
-    ],
+    "mariadb": ["10.0"],
     "mariadb_default": "10.0",
     "opensearch": null,
     "elasticsearch": "1.7",
@@ -1023,16 +1430,10 @@
     "varnish": "3.0"
   },
   "2.0.12": {
-    "php": [
-      "5.5",
-      "5.6",
-      "7.0"
-    ],
+    "php": ["5.5", "5.6", "7.0"],
     "php_default": "7.0",
     "mysql": "5.6",
-    "mariadb": [
-      "10.0"
-    ],
+    "mariadb": ["10.0"],
     "mariadb_default": "10.0",
     "opensearch": null,
     "elasticsearch": "1.7",
@@ -1042,16 +1443,10 @@
     "varnish": "3.0"
   },
   "2.0.11": {
-    "php": [
-      "5.5",
-      "5.6",
-      "7.0"
-    ],
+    "php": ["5.5", "5.6", "7.0"],
     "php_default": "7.0",
     "mysql": "5.6",
-    "mariadb": [
-      "10.0"
-    ],
+    "mariadb": ["10.0"],
     "mariadb_default": "10.0",
     "opensearch": null,
     "elasticsearch": "1.7",
@@ -1061,16 +1456,10 @@
     "varnish": "3.0"
   },
   "2.0.10": {
-    "php": [
-      "5.5",
-      "5.6",
-      "7.0"
-    ],
+    "php": ["5.5", "5.6", "7.0"],
     "php_default": "7.0",
     "mysql": "5.6",
-    "mariadb": [
-      "10.0"
-    ],
+    "mariadb": ["10.0"],
     "mariadb_default": "10.0",
     "opensearch": null,
     "elasticsearch": "1.7",
@@ -1080,16 +1469,10 @@
     "varnish": "3.0"
   },
   "2.0.9": {
-    "php": [
-      "5.5",
-      "5.6",
-      "7.0"
-    ],
+    "php": ["5.5", "5.6", "7.0"],
     "php_default": "7.0",
     "mysql": "5.6",
-    "mariadb": [
-      "10.0"
-    ],
+    "mariadb": ["10.0"],
     "mariadb_default": "10.0",
     "opensearch": null,
     "elasticsearch": "1.7",
@@ -1099,16 +1482,10 @@
     "varnish": "3.0"
   },
   "2.0.8": {
-    "php": [
-      "5.5",
-      "5.6",
-      "7.0"
-    ],
+    "php": ["5.5", "5.6", "7.0"],
     "php_default": "7.0",
     "mysql": "5.6",
-    "mariadb": [
-      "10.0"
-    ],
+    "mariadb": ["10.0"],
     "mariadb_default": "10.0",
     "opensearch": null,
     "elasticsearch": "1.7",
@@ -1118,16 +1495,10 @@
     "varnish": "3.0"
   },
   "2.0.7": {
-    "php": [
-      "5.5",
-      "5.6",
-      "7.0"
-    ],
+    "php": ["5.5", "5.6", "7.0"],
     "php_default": "7.0",
     "mysql": "5.6",
-    "mariadb": [
-      "10.0"
-    ],
+    "mariadb": ["10.0"],
     "mariadb_default": "10.0",
     "opensearch": null,
     "elasticsearch": "1.7",
@@ -1137,16 +1508,10 @@
     "varnish": "3.0"
   },
   "2.0.6": {
-    "php": [
-      "5.5",
-      "5.6",
-      "7.0"
-    ],
+    "php": ["5.5", "5.6", "7.0"],
     "php_default": "7.0",
     "mysql": "5.6",
-    "mariadb": [
-      "10.0"
-    ],
+    "mariadb": ["10.0"],
     "mariadb_default": "10.0",
     "opensearch": null,
     "elasticsearch": "1.7",
@@ -1156,16 +1521,10 @@
     "varnish": "3.0"
   },
   "2.0.5": {
-    "php": [
-      "5.5",
-      "5.6",
-      "7.0"
-    ],
+    "php": ["5.5", "5.6", "7.0"],
     "php_default": "7.0",
     "mysql": "5.6",
-    "mariadb": [
-      "10.0"
-    ],
+    "mariadb": ["10.0"],
     "mariadb_default": "10.0",
     "opensearch": null,
     "elasticsearch": "1.7",
@@ -1175,16 +1534,10 @@
     "varnish": "3.0"
   },
   "2.0.4": {
-    "php": [
-      "5.5",
-      "5.6",
-      "7.0"
-    ],
+    "php": ["5.5", "5.6", "7.0"],
     "php_default": "7.0",
     "mysql": "5.6",
-    "mariadb": [
-      "10.0"
-    ],
+    "mariadb": ["10.0"],
     "mariadb_default": "10.0",
     "opensearch": null,
     "elasticsearch": "1.7",
@@ -1194,16 +1547,10 @@
     "varnish": "3.0"
   },
   "2.0.3": {
-    "php": [
-      "5.5",
-      "5.6",
-      "7.0"
-    ],
+    "php": ["5.5", "5.6", "7.0"],
     "php_default": "7.0",
     "mysql": "5.6",
-    "mariadb": [
-      "10.0"
-    ],
+    "mariadb": ["10.0"],
     "mariadb_default": "10.0",
     "opensearch": null,
     "elasticsearch": "1.7",
@@ -1213,16 +1560,10 @@
     "varnish": "3.0"
   },
   "2.0.2": {
-    "php": [
-      "5.5",
-      "5.6",
-      "7.0"
-    ],
+    "php": ["5.5", "5.6", "7.0"],
     "php_default": "7.0",
     "mysql": "5.6",
-    "mariadb": [
-      "10.0"
-    ],
+    "mariadb": ["10.0"],
     "mariadb_default": "10.0",
     "opensearch": null,
     "elasticsearch": "1.7",
@@ -1232,16 +1573,10 @@
     "varnish": "3.0"
   },
   "2.0.1": {
-    "php": [
-      "5.5",
-      "5.6",
-      "7.0"
-    ],
+    "php": ["5.5", "5.6", "7.0"],
     "php_default": "7.0",
     "mysql": "5.6",
-    "mariadb": [
-      "10.0"
-    ],
+    "mariadb": ["10.0"],
     "mariadb_default": "10.0",
     "opensearch": null,
     "elasticsearch": "1.7",
@@ -1251,16 +1586,10 @@
     "varnish": "3.0"
   },
   "2.0.0": {
-    "php": [
-      "5.5",
-      "5.6",
-      "7.0"
-    ],
+    "php": ["5.5", "5.6", "7.0"],
     "php_default": "7.0",
     "mysql": "5.6",
-    "mariadb": [
-      "10.0"
-    ],
+    "mariadb": ["10.0"],
     "mariadb_default": "10.0",
     "opensearch": null,
     "elasticsearch": "1.7",
@@ -1271,22 +1600,16 @@
   },
   "default": {
     "comment": "Default configuration for unknown versions (assumes latest)",
-    "php": [
-      "8.2",
-      "8.3"
-    ],
-    "php_default": "8.3",
-    "mysql": "8.0",
-    "mariadb": [
-      "10.4",
-      "10.6"
-    ],
-    "mariadb_default": "10.6",
-    "opensearch": "2.12",
+    "php": ["8.4", "8.3"],
+    "php_default": "8.4",
+    "mysql": "8.4",
+    "mariadb": ["11.4"],
+    "mariadb_default": "11.4",
+    "opensearch": "3.0",
     "elasticsearch": null,
-    "redis": "7.0",
-    "composer": "2",
-    "rabbitmq": "3.13",
-    "varnish": "7.4"
+    "redis": "7.2",
+    "composer": "2.8",
+    "rabbitmq": "4.1",
+    "varnish": "7.7"
   }
 }
