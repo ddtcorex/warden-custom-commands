@@ -1,19 +1,13 @@
-Upgrade project to a new version
+#!/usr/bin/env bash
+[[ ! ${WARDEN_DIR} ]] && >&2 echo -e "\033[31mThis script is not intended to be run directly!\033[0m" && exit 1
 
-Usage: warden upgrade [options]
+SUBCOMMAND_DIR=$(dirname "${BASH_SOURCE[0]}")
+source "${SUBCOMMAND_DIR}"/env-variables
 
-Options:
-  --version=<version>     Target version to upgrade to (required)
-  --dry-run               Show what would be done without making changes
-  --skip-db-upgrade       Skip database upgrade (Magento only)
-  --help                  Show this help message
-
-Examples:
-  warden upgrade --version=2.4.8
-  warden upgrade --version=10.x --dry-run
-
-Supported environment types:
-  - magento2: Upgrades Magento via Composer
-  - laravel: Upgrades Laravel framework via Composer
-  - symfony: Upgrades Symfony framework via Composer
-  - wordpress: Upgrades WordPress core via WP-CLI
+# Source and output help from environment-specific implementation
+if [[ -f "${SUBCOMMAND_DIR}/env-adapters/${WARDEN_ENV_TYPE}/upgrade.help" ]]; then
+    source "${SUBCOMMAND_DIR}/env-adapters/${WARDEN_ENV_TYPE}/upgrade.help"
+    echo "${WARDEN_USAGE}"
+else
+    echo "No help available for 'upgrade' command in environment type '${WARDEN_ENV_TYPE}'"
+fi

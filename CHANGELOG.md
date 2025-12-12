@@ -5,6 +5,72 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2025-12-12
+
+**v1.3.0: Remote Cloning & Dynamic Configuration**
+
+This release adds powerful remote environment cloning capabilities to bootstrap commands and improves reliability with dynamic database credential configuration.
+
+### Added
+
+- **Remote Cloning in Bootstrap (Laravel, Symfony, WordPress):**
+
+  - New `--download-source` flag to clone source code from remote environments.
+  - New `--db-dump=<file>` option to use a specific database dump file.
+  - New `--skip-db-import` flag to skip database import during bootstrap.
+  - Automatic database fetch from remote environment when no dump file specified.
+
+- **Comprehensive Help Documentation:**
+  - Added environment-specific `.help` files for all commands across all adapters.
+  - Commands: `db-dump`, `db-import`, `download-files`, `upload-files`, `open`, `upgrade`, `fix-deps`.
+  - Consistent dispatcher pattern for root-level help files.
+
+### Changed
+
+- **Dynamic Database Credentials:**
+
+  - Bootstrap commands now fetch actual credentials from the running db container.
+  - Uses `warden env exec -T db printenv MYSQL_USER|PASSWORD|DATABASE`.
+  - Falls back to framework defaults if not available.
+  - Applied to Laravel, Symfony, and WordPress bootstrap commands.
+
+- **Magento 2 Deploy Enhancements:**
+
+  - Added `--jobs` (`-j`) flag for parallel static content deployment (default: 4).
+  - Added `--static-only` (`-s`) flag for static content deployment only.
+  - Magento 2.2+ version check for parallel job support.
+  - Improved asset clearing with direct `rm -rf` instead of magerun.
+  - Conditional ece-patches application based on ece-tools availability.
+
+- **Symfony Bootstrap Improvements:**
+
+  - Uses `composer install --no-scripts` to avoid cache:clear before DB is configured.
+  - Runs `composer run-script auto-scripts` after database configuration.
+  - Supports `.env.local` for local database/Redis configuration (Symfony convention).
+
+- **Open Command Defaults to LOCAL:**
+  - `warden open` now defaults to local environment when no `-e` flag specified.
+  - Explicit `-e local` also works correctly.
+
+### Fixed
+
+- **URL Encoding for Database Credentials:**
+
+  - Database connection URLs in `open db` now URL-encode username and password.
+  - Fixes compatibility with tools like Beekeeper Studio when credentials contain special characters.
+  - Applied to all environments (Laravel, Magento2, Symfony, WordPress).
+
+- **Removed Duplicate env-variables Sourcing:**
+
+  - Fixed double-sourcing of `env-variables` in environment-specific commands.
+  - Root dispatcher now sources once; env-specific files skip duplicate sourcing.
+  - Intentional reloads (after fix-deps) are preserved.
+
+- **Help File Corrections:**
+  - Fixed `magento2/deploy.help` to document new `--jobs` and `--static-only` flags.
+  - Fixed `magento2/download-files.help` and `upload-files.help` command names and default paths.
+  - Added shebangs to all `.help` files for proper shell recognition.
+
 ## [1.2.0] - 2025-12-12
 
 **v1.2.0: Full Multi-Framework Support & Remote Operations**

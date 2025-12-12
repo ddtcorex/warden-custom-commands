@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 [[ ! ${WARDEN_DIR} ]] && >&2 echo -e "\033[31mThis script is not intended to be run directly!\033[0m" && exit 1
 
-source "${WARDEN_HOME_DIR:-~/.warden}/commands/env-variables"
+# env-variables is already sourced by the root dispatcher
 
 function open_link() {
     if [[ "$OPEN_CL" -eq "1" ]]; then
@@ -18,6 +18,24 @@ function findLocalPort() {
     while [[ $(lsof -Pi :$LOCAL_PORT -sTCP:LISTEN -t) ]]; do
         LOCAL_PORT=$((LOCAL_PORT+1))
     done
+}
+
+# URL encode special characters for database connection strings
+function urlencode() {
+    local string="$1"
+    local strlen=${#string}
+    local encoded=""
+    local pos c o
+
+    for (( pos=0 ; pos<strlen ; pos++ )); do
+        c=${string:$pos:1}
+        case "$c" in
+            [-_.~a-zA-Z0-9] ) o="$c" ;;
+            * ) printf -v o '%%%02X' "'$c" ;;
+        esac
+        encoded+="$o"
+    done
+    echo "$encoded"
 }
 
 function get_db_info() {
@@ -37,15 +55,19 @@ function local_db() {
     DB_PASS=${DB_PASS:-symfony}
     DB_NAME=${DB_NAME:-symfony}
 
+    # URL encode credentials for special characters
+    local encoded_user=$(urlencode "$DB_USER")
+    local encoded_pass=$(urlencode "$DB_PASS")
+
     DB_ENV_NAME="$WARDEN_ENV_NAME"-db-1
-    DB="mysql://${DB_USER}:${DB_PASS}@127.0.0.1:$LOCAL_PORT/${DB_NAME}"
+    DB="mysql://${encoded_user}:${encoded_pass}@127.0.0.1:$LOCAL_PORT/${DB_NAME}"
 
     echo -e "SSH tunnel opened to \033[32m$DB_ENV_NAME\033[0m at: \033[32m$DB\033[0m"
     echo
     echo "Quitting this command (with Ctrl+C or equivalent) will close the tunnel."
     echo
 
-    open_link $DB
+    open_link "$DB"
 
     ssh -L "$LOCAL_PORT":"$DB_ENV_NAME":"$REMOTE_PORT" -N -p 2222 -i ~/.warden/tunnel/ssh_key user@tunnel.warden.test || true
 }
@@ -131,14 +153,18 @@ function remote_db() {
 
     findLocalPort $db_port
 
-    DB="mysql://$db_user:$db_pass@127.0.0.1:$LOCAL_PORT/$db_name"
+    # URL encode credentials for special characters
+    local encoded_user=$(urlencode "$db_user")
+    local encoded_pass=$(urlencode "$db_pass")
+
+    DB="mysql://${encoded_user}:${encoded_pass}@127.0.0.1:$LOCAL_PORT/$db_name"
 
     echo -e "SSH tunnel opened to \033[32m$db_name\033[0m at: \033[32m$DB\033[0m"
     echo
     echo "Quitting this command (with Ctrl+C or equivalent) will close the tunnel."
     echo
 
-    open_link $DB
+    open_link "$DB"
 
     ssh -L $LOCAL_PORT:"$db_host":"$db_port" -N -p $ENV_SOURCE_PORT $ENV_SOURCE_USER@$ENV_SOURCE_HOST || true
 }
@@ -162,13 +188,12 @@ function remote_admin() {
     fi
 }
 
-if [[ "$ENV_SOURCE_DEFAULT" -eq "1" ]]; then
+# Default to LOCAL if no -e specified or -e local
+if [[ "$ENV_SOURCE_DEFAULT" -eq "1" ]] || [[ "$ENV_SOURCE" == "local" ]]; then
     ENV_SOURCE_VAR="LOCAL"
-else
-    if [ -z ${ENV_SOURCE_HOST+x} ]; then
-        echo "Invalid environment '${ENV_SOURCE}' or missing configuration."
-        exit 2
-    fi
+elif [ -z ${ENV_SOURCE_HOST+x} ]; then
+    echo "Invalid environment '${ENV_SOURCE}' or missing configuration."
+    exit 2
 fi
 
 OPEN_CL=0

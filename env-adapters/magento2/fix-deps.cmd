@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 [[ ! ${WARDEN_DIR} ]] && >&2 echo -e "\033[31mThis script is not intended to be run directly!\033[0m" && exit 1
 
-source "${WARDEN_HOME_DIR:-~/.warden}/commands/env-variables"
+# env-variables is already sourced by the root dispatcher
 
 ## Parse options
 DRY_RUN=
@@ -33,11 +33,7 @@ fi
 
 # Detect Magento version if not specified
 if [[ -z "${MAGENTO_VERSION}" ]]; then
-    # Try META_VERSION from .env first
-    if [[ -n "${META_VERSION:-}" ]]; then
-        MAGENTO_VERSION="${META_VERSION}"
-        echo "Detected Magento version from META_VERSION: ${MAGENTO_VERSION}"
-    elif [[ -f "composer.json" ]] && command -v jq &> /dev/null; then
+    if [[ -f "composer.json" ]] && command -v jq &> /dev/null; then
         # Try to get version from composer.json
         MAGENTO_VERSION=$(jq -r '.require["magento/product-community-edition"] // .require["magento/product-enterprise-edition"] // "unknown"' composer.json | sed 's/[\^~]//g')
         if [[ "${MAGENTO_VERSION}" != "unknown" ]]; then

@@ -2,18 +2,18 @@
 [[ ! ${WARDEN_DIR} ]] && >&2 echo -e "\033[31mThis script is not intended to be run directly!\033[0m" && exit 1
 
 WARDEN_USAGE=$(cat <<EOF
-Upload files from the local file system to a remote environment.
+Dump remote database and download it locally.
 
 \033[33mUsage:\033[0m
-  upload-files [-h|--help] [-e|--environment=<environment>] [-p|--path=<path>]
+  db-dump [-h|--help] [-e|--environment <environment>] [-f|--file <file>.sql.gz]
 
 \033[33mOptions:\033[0m
   -h, --help                                    Display this help menu
 
 \033[33mArguments:\033[0m
-  -e, --environment=<dev|staging|production>    Environment to upload to. Default: staging
+  -f, --file=<file>.sql.gz                      Output file
 
-  -p, --path=<path>                             Path to upload. Default: ./
+  -e, --environment=<dev|staging|production>    Environment to dump from. Default: staging
 
 EOF
 )
