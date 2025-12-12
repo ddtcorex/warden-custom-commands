@@ -13,7 +13,7 @@ function dumpPremise () {
         $ENV_SOURCE_USER@$ENV_SOURCE_HOST:$ENV_SOURCE_DIR/$DUMP_PATH $DUMP_PATH
 }
 
-source "${WARDEN_HOME_DIR:-~/.warden}/commands/env-variables"
+# env-variables is already sourced by the root dispatcher
 
 if [ -z ${!ENV_SOURCE_HOST_VAR+x} ]; then
     echo "Invalid environment '${ENV_SOURCE}'"

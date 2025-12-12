@@ -3,7 +3,7 @@
 
 START_TIME=$(date +%s)
 
-source "${WARDEN_HOME_DIR:-~/.warden}/commands/env-variables"
+# env-variables is already sourced by the root dispatcher
 
 CLEAN_INSTALL=
 COMPOSER_INSTALL=1

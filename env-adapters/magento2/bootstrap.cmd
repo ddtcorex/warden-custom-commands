@@ -3,23 +3,7 @@
 
 START_TIME=$(date +%s)
 
-# Ensure .env exists before sourcing env-variables
-if [[ ! -f "$(pwd)/.env" ]]; then
-    echo "No .env file found. Creating minimal configuration..."
-    ENV_NAME=$(basename "$(pwd)")
-    cat > "$(pwd)/.env" <<ENVEOF
-WARDEN_ENV_NAME=${ENV_NAME}
-WARDEN_ENV_TYPE=magento2
-WARDEN_WEB_ROOT=/
-
-TRAEFIK_DOMAIN=${ENV_NAME}.test
-TRAEFIK_SUBDOMAIN=app
-ENVEOF
-    sed -i "s/\${ENV_NAME}/${ENV_NAME}/g" .env
-    echo "Created .env for ${ENV_NAME}"
-fi
-
-source "${WARDEN_HOME_DIR:-~/.warden}/commands/env-variables"
+# env-variables is already sourced by the root dispatcher
 
 ## configure command defaults
 REQUIRED_FILES=("${WARDEN_ENV_PATH}/auth.json")
