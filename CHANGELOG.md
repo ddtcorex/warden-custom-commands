@@ -5,6 +5,68 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2025-12-12
+
+**v1.3.0: Full Multi-Framework Support & Remote Operations**
+
+This release completes multi-framework support with comprehensive remote operations for Laravel, Symfony, and WordPress environments.
+
+### Added
+
+- **`warden upgrade` Command:**
+
+  - New command to upgrade framework versions with intelligent dependency management.
+  - Magento 2: Fetch-merge-relax strategy for `composer.json`, automatic PHP/Redis/Varnish version updates.
+  - Laravel/Symfony/WordPress: Composer-based upgrade workflows.
+
+- **`warden open` Command (Laravel, Symfony, WordPress):**
+
+  - Access local and remote services: `db`, `shell`, `sftp`, `admin`, `elasticsearch`.
+  - Remote database access via SSH tunnel with automatic credential parsing.
+  - Supports `.env` (Laravel), `.env.local`/`.env` (Symfony), and `wp-config.php` (WordPress).
+
+- **`warden db-dump` Command (Laravel, Symfony, WordPress):**
+
+  - Remote database dumping via SSH with automatic gzip compression.
+  - Parses credentials from remote configuration files.
+  - Robust quote handling for `.env` values.
+
+- **`warden db-import` Command Enhancements:**
+
+  - Standardized implementation across all environments.
+  - Automatic database container startup if not running.
+  - Progress visualization with `pv`.
+  - Dynamic credential fetching from container environment.
+  - Environment-specific defaults (symfony/laravel/wordpress).
+
+- **File Transfer Commands (Laravel, Symfony, WordPress):**
+  - New `warden download-files` and `warden upload-files` commands.
+  - Rsync-based file synchronization over SSH.
+  - Standardized `-p|--path` argument parsing.
+
+### Changed
+
+- **Standardized Argument Parsing:**
+
+  - Unified `-f|--file` and `-p|--path` argument handling across all commands.
+  - Proper error messages for missing arguments.
+  - Support for both space-separated (`-f file`) and equals-separated (`-f=file`) formats.
+
+- **Removed Cloud Logic from Non-Magento Adapters:**
+
+  - Cleaned up `CLOUD_PROJECT` related code from Laravel, Symfony, and WordPress adapters.
+
+- **Magento 2 Improvements:**
+  - Enhanced `magento-versions.json` with updated service requirements.
+  - Improved `fix-deps` command with better version resolution.
+  - Standardized argument parsing in `db-dump`, `db-import`, `download-files`, `upload-files`.
+
+### Fixed
+
+- Fixed `.env` quote handling in credential parsing (Laravel/Symfony).
+- Fixed `db-import` argument parsing for `-f=filename` format.
+- Fixed database permission errors by using container credentials directly.
+
 ## [1.1.0] - 2025-12-09
 
 **v1.1.0: Multi-Framework Support & Intelligent Bootstrap**
