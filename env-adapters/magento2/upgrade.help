@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+[[ ! ${WARDEN_DIR} ]] && >&2 echo -e "\033[31mThis script is not intended to be run directly!\033[0m" && exit 1
+
+WARDEN_USAGE=$(cat <<EOF
+Upgrade Magento to a specified version.
+
+\033[33mUsage:\033[0m
+  upgrade [-h|--help] --version=<version> [--dry-run] [--skip-db-upgrade] [--skip-env-update]
+
+\033[33mOptions:\033[0m
+  -h, --help          Display this help menu
+
+\033[33mArguments:\033[0m
+  --version=<version>   Target version to upgrade to (required)
+
+  --dry-run             Show what would be done without making changes
+
+  --skip-db-upgrade     Skip database upgrade step
+
+  --skip-env-update     Skip environment dependency updates
+
+EOF
+)

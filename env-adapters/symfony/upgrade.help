@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+[[ ! ${WARDEN_DIR} ]] && >&2 echo -e "\033[31mThis script is not intended to be run directly!\033[0m" && exit 1
+
+WARDEN_USAGE=$(cat <<EOF
+Upgrade Symfony framework to a specified version.
+
+\033[33mUsage:\033[0m
+  upgrade [-h|--help] --version=<version> [--dry-run]
+
+\033[33mOptions:\033[0m
+  -h, --help            Display this help menu
+
+\033[33mArguments:\033[0m
+  --version=<version>   Target version to upgrade to (required)
+
+  --dry-run             Show what would be done without making changes
+
+EOF
+)
