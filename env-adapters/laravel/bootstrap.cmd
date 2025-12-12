@@ -5,19 +5,42 @@ START_TIME=$(date +%s)
 
 # env-variables is already sourced by the root dispatcher
 
+## configure command defaults
 CLEAN_INSTALL=
 COMPOSER_INSTALL=1
 SKIP_MIGRATE=
 FIX_DEPS=
+DOWNLOAD_SOURCE=
+DB_DUMP=
+DB_IMPORT=1
+ENV_REQUIRED=
 
+## argument parsing
 while (( "$#" )); do
     case "$1" in
         --clean-install)
             CLEAN_INSTALL=1
+            COMPOSER_INSTALL=
+            DB_IMPORT=
             shift
             ;;
         --fix-deps)
             FIX_DEPS=1
+            shift
+            ;;
+        --download-source)
+            DOWNLOAD_SOURCE=1
+            COMPOSER_INSTALL=
+            ENV_REQUIRED=1
+            shift
+            ;;
+        --db-dump=*)
+            DB_DUMP="${1#*=}"
+            ENV_REQUIRED=1
+            shift
+            ;;
+        --skip-db-import)
+            DB_IMPORT=
             shift
             ;;
         --skip-composer-install)
@@ -81,6 +104,23 @@ if [[ -n "${FIX_DEPS}" ]]; then
     fi
 fi
 
+## validate the selected environment
+if [[ $ENV_REQUIRED ]] && [ -z ${ENV_SOURCE_HOST+x} ]; then
+    echo "Invalid environment '${ENV_SOURCE}' or missing REMOTE_*_HOST configuration"
+    exit 2
+fi
+
+## download files from the remote
+if [[ $DOWNLOAD_SOURCE ]]; then
+    :: Downloading source from ${ENV_SOURCE} environment
+    warden download-files -e="${ENV_SOURCE}" --path="./"
+    
+    # Clean up generated files for fresh start
+    warden env exec php-fpm sh -c "
+        rm -rf storage/framework/cache/* storage/framework/views/* bootstrap/cache/*.php 2>/dev/null || true
+    " || true
+fi
+
 :: Starting Warden
 warden svc up
 if [[ ! -f ${WARDEN_HOME_DIR:-~/.warden}/ssl/certs/${TRAEFIK_DOMAIN:-test.test}.crt.pem ]]; then
@@ -118,17 +158,42 @@ if [[ $CLEAN_INSTALL ]]; then
         rm .env.warden.backup
     fi
     
+    # Get actual database credentials from the db container
+    DB_USER=$(warden env exec -T db printenv MYSQL_USER 2>/dev/null)
+    DB_PASS=$(warden env exec -T db printenv MYSQL_PASSWORD 2>/dev/null)
+    DB_NAME=$(warden env exec -T db printenv MYSQL_DATABASE 2>/dev/null)
+    
+    # Use defaults if not available
+    DB_USER=${DB_USER:-laravel}
+    DB_PASS=${DB_PASS:-laravel}
+    DB_NAME=${DB_NAME:-laravel}
+    
     # Update database settings for Warden
     :: Configuring database connection
     warden env exec php-fpm sed -i "s/DB_HOST=.*/DB_HOST=db/" .env
-    warden env exec php-fpm sed -i "s/DB_DATABASE=.*/DB_DATABASE=laravel/" .env
-    warden env exec php-fpm sed -i "s/DB_USERNAME=.*/DB_USERNAME=laravel/" .env
-    warden env exec php-fpm sed -i "s/DB_PASSWORD=.*/DB_PASSWORD=laravel/" .env
+    warden env exec php-fpm sed -i "s/DB_DATABASE=.*/DB_DATABASE=${DB_NAME}/" .env
+    warden env exec php-fpm sed -i "s/DB_USERNAME=.*/DB_USERNAME=${DB_USER}/" .env
+    warden env exec php-fpm sed -i "s/DB_PASSWORD=.*/DB_PASSWORD=${DB_PASS}/" .env
 fi
 
+# Run composer install without scripts to avoid issues before DB is configured
 if [[ $COMPOSER_INSTALL ]] && [[ ! $CLEAN_INSTALL ]]; then
-    :: Installing dependencies
-    warden env exec php-fpm composer install
+    :: Installing dependencies - skipping scripts
+    warden env exec php-fpm composer install --no-scripts
+fi
+
+## import database only if --skip-db-import is not specified
+if [[ ${DB_IMPORT} ]] && [[ ! ${CLEAN_INSTALL} ]]; then
+    if [[ -z "$DB_DUMP" ]] && [[ -n "${ENV_SOURCE_HOST+x}" ]]; then
+        DB_DUMP="storage/${WARDEN_ENV_NAME}_${ENV_SOURCE}-$(date +%Y%m%dT%H%M%S).sql.gz"
+        :: Downloading database from ${ENV_SOURCE}
+        warden db-dump --file="${DB_DUMP}" -e "$ENV_SOURCE"
+    fi
+
+    if [[ -n "$DB_DUMP" ]] && [[ -f "$DB_DUMP" ]]; then
+        :: Importing database
+        warden db-import --file="${DB_DUMP}"
+    fi
 fi
 
 # Ensure .env exists
@@ -140,11 +205,21 @@ fi
 
 # Configure database if not already done
 if warden env exec php-fpm grep -q "DB_HOST=127.0.0.1" .env 2>/dev/null; then
+    # Get actual database credentials from the db container
+    DB_USER=$(warden env exec -T db printenv MYSQL_USER 2>/dev/null)
+    DB_PASS=$(warden env exec -T db printenv MYSQL_PASSWORD 2>/dev/null)
+    DB_NAME=$(warden env exec -T db printenv MYSQL_DATABASE 2>/dev/null)
+    
+    # Use defaults if not available
+    DB_USER=${DB_USER:-laravel}
+    DB_PASS=${DB_PASS:-laravel}
+    DB_NAME=${DB_NAME:-laravel}
+    
     :: Configuring database connection
     warden env exec php-fpm sed -i "s/DB_HOST=.*/DB_HOST=db/" .env
-    warden env exec php-fpm sed -i "s/DB_DATABASE=.*/DB_DATABASE=laravel/" .env
-    warden env exec php-fpm sed -i "s/DB_USERNAME=.*/DB_USERNAME=laravel/" .env  
-    warden env exec php-fpm sed -i "s/DB_PASSWORD=.*/DB_PASSWORD=laravel/" .env
+    warden env exec php-fpm sed -i "s/DB_DATABASE=.*/DB_DATABASE=${DB_NAME}/" .env
+    warden env exec php-fpm sed -i "s/DB_USERNAME=.*/DB_USERNAME=${DB_USER}/" .env  
+    warden env exec php-fpm sed -i "s/DB_PASSWORD=.*/DB_PASSWORD=${DB_PASS}/" .env
 fi
 
 # Generate application key if missing

@@ -5,19 +5,42 @@ START_TIME=$(date +%s)
 
 # env-variables is already sourced by the root dispatcher
 
+## configure command defaults
 CLEAN_INSTALL=
 COMPOSER_INSTALL=1
 SKIP_MIGRATE=
 FIX_DEPS=
+DOWNLOAD_SOURCE=
+DB_DUMP=
+DB_IMPORT=1
+ENV_REQUIRED=
 
+## argument parsing
 while (( "$#" )); do
     case "$1" in
         --clean-install)
             CLEAN_INSTALL=1
+            COMPOSER_INSTALL=
+            DB_IMPORT=
             shift
             ;;
         --fix-deps)
             FIX_DEPS=1
+            shift
+            ;;
+        --download-source)
+            DOWNLOAD_SOURCE=1
+            COMPOSER_INSTALL=
+            ENV_REQUIRED=1
+            shift
+            ;;
+        --db-dump=*)
+            DB_DUMP="${1#*=}"
+            ENV_REQUIRED=1
+            shift
+            ;;
+        --skip-db-import)
+            DB_IMPORT=
             shift
             ;;
         --skip-composer-install)
@@ -81,6 +104,23 @@ if [[ -n "${FIX_DEPS}" ]]; then
     fi
 fi
 
+## validate the selected environment
+if [[ $ENV_REQUIRED ]] && [ -z ${ENV_SOURCE_HOST+x} ]; then
+    echo "Invalid environment '${ENV_SOURCE}' or missing REMOTE_*_HOST configuration"
+    exit 2
+fi
+
+## download files from the remote
+if [[ $DOWNLOAD_SOURCE ]]; then
+    :: Downloading source from ${ENV_SOURCE} environment
+    warden download-files -e="${ENV_SOURCE}" --path="./"
+    
+    # Clean up generated files for fresh start
+    warden env exec php-fpm sh -c "
+        rm -rf var/cache/* var/log/* 2>/dev/null || true
+    " || true
+fi
+
 :: Starting Warden
 warden svc up
 if [[ ! -f ${WARDEN_HOME_DIR:-~/.warden}/ssl/certs/${TRAEFIK_DOMAIN:-test.test}.crt.pem ]]; then
@@ -127,9 +167,24 @@ if [[ $CLEAN_INSTALL ]]; then
 fi
 
 # Run composer install if composer.json exists and not a clean install
+# Use --no-scripts to avoid cache:clear before database is configured
 if [[ $COMPOSER_INSTALL ]] && [[ ! $CLEAN_INSTALL ]] && warden env exec php-fpm test -f composer.json 2>/dev/null; then
-    :: Installing dependencies
-    warden env exec php-fpm composer install
+    :: Installing dependencies - skipping scripts
+    warden env exec php-fpm composer install --no-scripts
+fi
+
+## import database only if --skip-db-import is not specified
+if [[ ${DB_IMPORT} ]] && [[ ! ${CLEAN_INSTALL} ]]; then
+    if [[ -z "$DB_DUMP" ]] && [[ -n "${ENV_SOURCE_HOST+x}" ]]; then
+        DB_DUMP="var/${WARDEN_ENV_NAME}_${ENV_SOURCE}-$(date +%Y%m%dT%H%M%S).sql.gz"
+        :: Downloading database from ${ENV_SOURCE}
+        warden db-dump --file="${DB_DUMP}" -e "$ENV_SOURCE"
+    fi
+
+    if [[ -n "$DB_DUMP" ]] && [[ -f "$DB_DUMP" ]]; then
+        :: Importing database
+        warden db-import --file="${DB_DUMP}"
+    fi
 fi
 
 # Ensure .env exists
@@ -140,13 +195,30 @@ if ! warden env exec php-fpm test -f .env 2>/dev/null; then
 fi
 
 # Configure database if using Doctrine - do this INSIDE the container
+# Symfony uses .env.local for local overrides (takes precedence over .env)
 if warden env exec php-fpm test -f config/packages/doctrine.yaml 2>/dev/null; then
     :: Configuring database connection
     
-    # Remove all DATABASE_URL lines and add the correct one - INSIDE container
+    # Get actual database credentials from the db container
+    DB_USER=$(warden env exec -T db printenv MYSQL_USER 2>/dev/null)
+    DB_PASS=$(warden env exec -T db printenv MYSQL_PASSWORD 2>/dev/null)
+    DB_NAME=$(warden env exec -T db printenv MYSQL_DATABASE 2>/dev/null)
+    
+    # Use defaults if not available
+    DB_USER=${DB_USER:-symfony}
+    DB_PASS=${DB_PASS:-symfony}
+    DB_NAME=${DB_NAME:-symfony}
+    
+    # Determine which env file to use (.env.local preferred for local config)
     warden env exec php-fpm sh -c "
-        sed -i '/DATABASE_URL/d' .env && \
-        sed -i '/###< doctrine\/doctrine-bundle ###/i DATABASE_URL=\"mysql://symfony:symfony@db:3306/symfony\"' .env
+        ENV_FILE='.env'
+        if [ -f '.env.local' ]; then
+            ENV_FILE='.env.local'
+        fi
+        
+        # Remove existing DATABASE_URL and add the correct one
+        sed -i '/DATABASE_URL/d' \"\$ENV_FILE\"
+        echo 'DATABASE_URL=\"mysql://${DB_USER}:${DB_PASS}@db:3306/${DB_NAME}\"' >> \"\$ENV_FILE\"
     "
 fi
 
@@ -154,22 +226,32 @@ fi
 if [[ "${WARDEN_REDIS}" == "1" ]]; then
     :: Configuring Redis
     warden env exec php-fpm sh -c "
-        if ! grep -q '^REDIS_URL=' .env 2>/dev/null; then
-            echo 'REDIS_URL=redis://redis:6379' >> .env
+        ENV_FILE='.env'
+        if [ -f '.env.local' ]; then
+            ENV_FILE='.env.local'
+        fi
+        
+        if ! grep -q '^REDIS_URL=' \"\$ENV_FILE\" 2>/dev/null; then
+            echo 'REDIS_URL=redis://redis:6379' >> \"\$ENV_FILE\"
         fi
     "
 fi
 
-# Clear cache after configuration
-:: Clearing cache
-warden env exec php-fpm php bin/console cache:clear 2>/dev/null || true
+# Run composer auto-scripts now that database is configured
+# This runs cache:clear and other post-install scripts
+if [[ $COMPOSER_INSTALL ]] && warden env exec php-fpm test -f composer.json 2>/dev/null; then
+    :: Running composer scripts
+    warden env exec php-fpm composer run-script auto-scripts 2>/dev/null || true
+fi
 
 if [[ ! $SKIP_MIGRATE ]]; then
     :: Running migrations
     warden env exec php-fpm php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration 2>/dev/null || true
 fi
 
-# Skip set-config since we already did all configuration above
+# Clear cache after migrations
+:: Clearing cache
+warden env exec php-fpm php bin/console cache:clear 2>/dev/null || true
 
 echo "=========== THE APPLICATION HAS BEEN INSTALLED SUCCESSFULLY ============="
 echo "Frontend: https://${TRAEFIK_SUBDOMAIN:-app}.${TRAEFIK_DOMAIN:-test.test}/"

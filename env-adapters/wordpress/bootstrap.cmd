@@ -5,19 +5,42 @@ START_TIME=$(date +%s)
 
 # env-variables is already sourced by the root dispatcher
 
+## configure command defaults
 CLEAN_INSTALL=
 COMPOSER_INSTALL=1
 SKIP_WP_INSTALL=
 FIX_DEPS=
+DOWNLOAD_SOURCE=
+DB_DUMP=
+DB_IMPORT=1
+ENV_REQUIRED=
 
+## argument parsing
 while (( "$#" )); do
     case "$1" in
         --clean-install)
             CLEAN_INSTALL=1
+            COMPOSER_INSTALL=
+            DB_IMPORT=
             shift
             ;;
         --fix-deps)
             FIX_DEPS=1
+            shift
+            ;;
+        --download-source)
+            DOWNLOAD_SOURCE=1
+            COMPOSER_INSTALL=
+            ENV_REQUIRED=1
+            shift
+            ;;
+        --db-dump=*)
+            DB_DUMP="${1#*=}"
+            ENV_REQUIRED=1
+            shift
+            ;;
+        --skip-db-import)
+            DB_IMPORT=
             shift
             ;;
         --skip-composer-install)
@@ -81,6 +104,23 @@ if [[ -n "${FIX_DEPS}" ]]; then
     fi
 fi
 
+## validate the selected environment
+if [[ $ENV_REQUIRED ]] && [ -z ${ENV_SOURCE_HOST+x} ]; then
+    echo "Invalid environment '${ENV_SOURCE}' or missing REMOTE_*_HOST configuration"
+    exit 2
+fi
+
+## download files from the remote
+if [[ $DOWNLOAD_SOURCE ]]; then
+    :: Downloading source from ${ENV_SOURCE} environment
+    warden download-files -e="${ENV_SOURCE}" --path="./"
+    
+    # Clean up for fresh start
+    warden env exec php-fpm sh -c "
+        rm -rf wp-content/cache/* 2>/dev/null || true
+    " || true
+fi
+
 :: Starting Warden
 warden svc up
 if [[ ! -f ${WARDEN_HOME_DIR:-~/.warden}/ssl/certs/${TRAEFIK_DOMAIN:-test.test}.crt.pem ]]; then
@@ -107,9 +147,23 @@ if [[ $CLEAN_INSTALL ]]; then
 fi
 
 # Run composer install if composer.json exists
-if [[ $COMPOSER_INSTALL ]] && warden env exec php-fpm test -f composer.json; then
+if [[ $COMPOSER_INSTALL ]] && [[ ! $CLEAN_INSTALL ]] && warden env exec php-fpm test -f composer.json 2>/dev/null; then
     :: Installing composer dependencies
     warden env exec php-fpm composer install
+fi
+
+## import database only if --skip-db-import is not specified
+if [[ ${DB_IMPORT} ]] && [[ ! ${CLEAN_INSTALL} ]]; then
+    if [[ -z "$DB_DUMP" ]] && [[ -n "${ENV_SOURCE_HOST+x}" ]]; then
+        DB_DUMP="wp-content/${WARDEN_ENV_NAME}_${ENV_SOURCE}-$(date +%Y%m%dT%H%M%S).sql.gz"
+        :: Downloading database from ${ENV_SOURCE}
+        warden db-dump --file="${DB_DUMP}" -e "$ENV_SOURCE"
+    fi
+
+    if [[ -n "$DB_DUMP" ]] && [[ -f "$DB_DUMP" ]]; then
+        :: Importing database
+        warden db-import --file="${DB_DUMP}"
+    fi
 fi
 
 # Create wp-config.php
@@ -120,10 +174,20 @@ if ! warden env exec php-fpm test -f wp-config.php; then
         # Copy sample and configure
         warden env exec php-fpm cp wp-config-sample.php wp-config.php
         
+        # Get actual database credentials from the db container
+        DB_USER=$(warden env exec -T db printenv MYSQL_USER 2>/dev/null)
+        DB_PASS=$(warden env exec -T db printenv MYSQL_PASSWORD 2>/dev/null)
+        DB_NAME=$(warden env exec -T db printenv MYSQL_DATABASE 2>/dev/null)
+        
+        # Use defaults if not available
+        DB_USER=${DB_USER:-wordpress}
+        DB_PASS=${DB_PASS:-wordpress}
+        DB_NAME=${DB_NAME:-wordpress}
+        
         # Update database credentials
-        warden env exec php-fpm sed -i "s/database_name_here/wordpress/" wp-config.php
-        warden env exec php-fpm sed -i "s/username_here/wordpress/" wp-config.php
-        warden env exec php-fpm sed -i "s/password_here/wordpress/" wp-config.php
+        warden env exec php-fpm sed -i "s/database_name_here/${DB_NAME}/" wp-config.php
+        warden env exec php-fpm sed -i "s/username_here/${DB_USER}/" wp-config.php
+        warden env exec php-fpm sed -i "s/password_here/${DB_PASS}/" wp-config.php
         warden env exec php-fpm sed -i "s/localhost/db/" wp-config.php
         
         # Generate keys on host and copy to container
@@ -141,6 +205,25 @@ if ! warden env exec php-fpm test -f wp-config.php; then
     fi
 fi
 
+# Update wp-config.php for local environment if DB was imported
+if [[ ${DB_IMPORT} ]] && warden env exec php-fpm test -f wp-config.php 2>/dev/null; then
+    # Get actual database credentials from the db container
+    DB_USER=$(warden env exec -T db printenv MYSQL_USER 2>/dev/null)
+    DB_PASS=$(warden env exec -T db printenv MYSQL_PASSWORD 2>/dev/null)
+    DB_NAME=$(warden env exec -T db printenv MYSQL_DATABASE 2>/dev/null)
+    
+    # Use defaults if not available
+    DB_USER=${DB_USER:-wordpress}
+    DB_PASS=${DB_PASS:-wordpress}
+    DB_NAME=${DB_NAME:-wordpress}
+    
+    :: Updating wp-config.php for local environment
+    warden env exec php-fpm sed -i "s/define([[:space:]]*'DB_NAME'[[:space:]]*,[[:space:]]*'[^']*'/define( 'DB_NAME', '${DB_NAME}'/" wp-config.php
+    warden env exec php-fpm sed -i "s/define([[:space:]]*'DB_USER'[[:space:]]*,[[:space:]]*'[^']*'/define( 'DB_USER', '${DB_USER}'/" wp-config.php
+    warden env exec php-fpm sed -i "s/define([[:space:]]*'DB_PASSWORD'[[:space:]]*,[[:space:]]*'[^']*'/define( 'DB_PASSWORD', '${DB_PASS}'/" wp-config.php
+    warden env exec php-fpm sed -i "s/define([[:space:]]*'DB_HOST'[[:space:]]*,[[:space:]]*'[^']*'/define( 'DB_HOST', 'db'/" wp-config.php
+fi
+
 # Configure Redis if enabled
 if [[ "${WARDEN_REDIS}" == "1" ]] && warden env exec php-fpm test -f wp-config.php; then
     :: Configuring Redis
@@ -149,8 +232,8 @@ if [[ "${WARDEN_REDIS}" == "1" ]] && warden env exec php-fpm test -f wp-config.p
     warden env exec php-fpm sh -c "grep -q 'WP_REDIS_HOST' wp-config.php || sed -i \"/require_once.*wp-settings.php/i define('WP_REDIS_HOST', 'redis');\ndefine('WP_REDIS_PORT', 6379);\" wp-config.php"
 fi
 
-# Install WordPress if not already installed
-if [[ ! $SKIP_WP_INSTALL ]] && warden env exec php-fpm test -f wp-config.php; then
+# Install WordPress if not already installed and not cloning from remote
+if [[ ! $SKIP_WP_INSTALL ]] && [[ ! ${DOWNLOAD_SOURCE} ]] && warden env exec php-fpm test -f wp-config.php; then
     # Check if WordPress is already installed
     if ! warden env exec php-fpm php -r "require 'wp-config.php'; require 'wp-includes/version.php'; exit(is_blog_installed() ? 0 : 1);" 2>/dev/null; then
         :: Installing WordPress
@@ -185,6 +268,18 @@ if [[ ! $SKIP_WP_INSTALL ]] && warden env exec php-fpm test -f wp-config.php; th
     else
         echo "ℹ️  WordPress is already installed"
     fi
+fi
+
+# Update site URL after DB import for local development
+if [[ ${DB_IMPORT} ]] && warden env exec php-fpm test -f wp-config.php 2>/dev/null; then
+    :: Updating site URLs for local development
+    SITE_URL="https://${TRAEFIK_SUBDOMAIN:-app}.${TRAEFIK_DOMAIN:-test.test}"
+    warden env exec php-fpm php -r "
+        require 'wp-load.php';
+        update_option('siteurl', '$SITE_URL');
+        update_option('home', '$SITE_URL');
+        echo 'Site URLs updated to $SITE_URL' . PHP_EOL;
+    " 2>/dev/null || echo "Note: Could not update site URLs. You may need to update them manually."
 fi
 
 echo "=========== THE APPLICATION HAS BEEN INSTALLED SUCCESSFULLY ==========="
