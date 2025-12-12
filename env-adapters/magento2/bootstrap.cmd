@@ -121,15 +121,6 @@ if [[ -n "${FIX_DEPS}" ]]; then
             read -p "Version: " USER_VERSION
             
             if [[ -n "${USER_VERSION}" ]]; then
-                # Save to .env
-                if ! grep -q "^META_VERSION=" .env 2>/dev/null; then
-                    echo "META_VERSION=${USER_VERSION}" >> .env
-                else
-                    sed -i "s/^META_VERSION=.*/META_VERSION=${USER_VERSION}/" .env
-                fi
-                # Also update META_VERSION variable for later use in this script
-                META_VERSION="${USER_VERSION}"
-                
                 # Run fix-deps with specified version
                 source "${SCRIPT_DIR}/fix-deps.cmd" --version="${USER_VERSION}" 2>&1 | grep -v "\[DRY RUN\]\|Run without"
             else

@@ -33,11 +33,7 @@ fi
 
 # Detect Magento version if not specified
 if [[ -z "${MAGENTO_VERSION}" ]]; then
-    # Try META_VERSION from .env first
-    if [[ -n "${META_VERSION:-}" ]]; then
-        MAGENTO_VERSION="${META_VERSION}"
-        echo "Detected Magento version from META_VERSION: ${MAGENTO_VERSION}"
-    elif [[ -f "composer.json" ]] && command -v jq &> /dev/null; then
+    if [[ -f "composer.json" ]] && command -v jq &> /dev/null; then
         # Try to get version from composer.json
         MAGENTO_VERSION=$(jq -r '.require["magento/product-community-edition"] // .require["magento/product-enterprise-edition"] // "unknown"' composer.json | sed 's/[\^~]//g')
         if [[ "${MAGENTO_VERSION}" != "unknown" ]]; then
