@@ -110,32 +110,53 @@ commands/
     ├── laravel/
     │   ├── bootstrap.cmd
     │   ├── db-dump.cmd
+    │   ├── db-dump.help
     │   ├── db-import.cmd
     │   ├── download-files.cmd
+    │   ├── download-files.help
+    │   ├── fix-deps.cmd
+    │   ├── fix-deps.help
     │   ├── open.cmd
+    │   ├── open.help
     │   ├── set-config.cmd
     │   ├── upgrade.cmd
-    │   └── upload-files.cmd
+    │   ├── upgrade.help
+    │   ├── upload-files.cmd
+    │   └── upload-files.help
     │
     ├── symfony/
     │   ├── bootstrap.cmd
     │   ├── db-dump.cmd
+    │   ├── db-dump.help
     │   ├── db-import.cmd
     │   ├── download-files.cmd
+    │   ├── download-files.help
+    │   ├── fix-deps.cmd
+    │   ├── fix-deps.help
     │   ├── open.cmd
+    │   ├── open.help
     │   ├── set-config.cmd
     │   ├── upgrade.cmd
-    │   └── upload-files.cmd
+    │   ├── upgrade.help
+    │   ├── upload-files.cmd
+    │   └── upload-files.help
     │
     └── wordpress/
         ├── bootstrap.cmd
         ├── db-dump.cmd
+        ├── db-dump.help
         ├── db-import.cmd
         ├── download-files.cmd
+        ├── download-files.help
+        ├── fix-deps.cmd
+        ├── fix-deps.help
         ├── open.cmd
+        ├── open.help
         ├── set-config.cmd
         ├── upgrade.cmd
-        └── upload-files.cmd
+        ├── upgrade.help
+        ├── upload-files.cmd
+        └── upload-files.help
 ```
 
 ### How It Works
@@ -213,18 +234,15 @@ Deploy Magento application (run setup:upgrade, compile, deploy).
 **Options:**
 
 - `-h, --help` - Display help menu
-
-**Arguments:**
-
-- `full` - Full deployment (default)
-- `static` - Deploy static files only
+- `-j, --jobs=<n>` - Number of parallel jobs for static content (default: 4)
+- `-s, --static-only` - Deploy static content only (skip di:compile)
 
 **Example:**
 
 ```bash
 warden deploy
-warden deploy full
-warden deploy static
+warden deploy --jobs=8
+warden deploy --static-only
 ```
 
 #### `warden download-files`
@@ -356,16 +374,22 @@ Initialize Laravel environment with dependencies and database.
 **Options:**
 
 - `--clean-install` - Create fresh Laravel project
+- `--download-source` - Download source code from remote environment
+- `--db-dump=<file>` - Use specific database dump file
+- `--skip-db-import` - Skip database import
 - `--env-name=<name>` - Initialize environment with specified name
 - `--env-type=<type>` - Initialize environment with specified type
 - `--skip-composer-install` - Skip composer install
 - `--skip-migrate` - Skip database migrations
+- `--fix-deps` - Auto-fix dependency versions for framework
 
 **Example:**
 
 ```bash
 warden bootstrap
 warden bootstrap --clean-install
+warden bootstrap --download-source -e production
+warden bootstrap --db-dump=backup.sql.gz
 ```
 
 #### `warden db-dump`
@@ -469,17 +493,22 @@ Initialize Symfony environment with dependencies and database.
 
 - `-h, --help` - Display help menu
 - `--clean-install` - Create fresh Symfony project from scratch
+- `--download-source` - Download source code from remote environment
+- `--db-dump=<file>` - Use specific database dump file
+- `--skip-db-import` - Skip database import
 - `--env-name=<name>` - Initialize environment with specified name
 - `--env-type=<type>` - Initialize environment with specified type
 - `--skip-composer-install` - Skip composer install
 - `--skip-migrate` - Skip database migrations
+- `--fix-deps` - Auto-fix dependency versions for framework
 
 **Example:**
 
 ```bash
 warden bootstrap
 warden bootstrap --clean-install
-warden bootstrap --skip-migrate
+warden bootstrap --download-source -e staging
+warden bootstrap --db-dump=var/backup.sql.gz
 ```
 
 #### `warden db-dump`
@@ -583,16 +612,22 @@ Initialize WordPress environment with complete installation.
 
 - `-h, --help` - Display help menu
 - `--clean-install` - Download WordPress core and install
+- `--download-source` - Download source code from remote environment
+- `--db-dump=<file>` - Use specific database dump file
+- `--skip-db-import` - Skip database import
 - `--env-name=<name>` - Initialize environment with specified name
 - `--env-type=<type>` - Initialize environment with specified type
 - `--skip-composer-install` - Skip composer install
 - `--skip-wp-install` - Skip WordPress installation
+- `--fix-deps` - Auto-fix dependency versions for framework
 
 **Example:**
 
 ```bash
 warden bootstrap
 warden bootstrap --clean-install
+warden bootstrap --download-source -e production
+warden bootstrap --db-dump=wp-content/backup.sql.gz
 ```
 
 **Note:** With `--clean-install`, WordPress will be downloaded, wp-config.php created, and the site installed with admin credentials displayed.
