@@ -69,7 +69,7 @@ function local_db() {
 
     open_link "$DB"
 
-    ssh -L "$LOCAL_PORT":"$DB_ENV_NAME":"$REMOTE_PORT" -N -p 2222 -i ~/.warden/tunnel/ssh_key user@tunnel.warden.test || true
+    $SSH_COMMAND -L "$LOCAL_PORT":"$DB_ENV_NAME":"$REMOTE_PORT" -N -p 2222 -i ~/.warden/tunnel/ssh_key user@tunnel.warden.test || true
 }
 
 function local_shell() {
@@ -110,14 +110,14 @@ function local_elasticsearch() {
 
     open_link $ES
 
-    ssh -L "$LOCAL_PORT":"$ES_ENV_NAME":"$REMOTE_PORT" -N -p 2222 -i ~/.warden/tunnel/ssh_key user@tunnel.warden.test || true
+    $SSH_COMMAND -L "$LOCAL_PORT":"$ES_ENV_NAME":"$REMOTE_PORT" -N -p 2222 -i ~/.warden/tunnel/ssh_key user@tunnel.warden.test || true
 }
 
 # Remote stubs
 function remote_db() {
     # Symfony uses .env for DB config (usually DATABASE_URL). We fetch it via SSH.
     # Check .env.local first (overrides), then .env
-    local db_url=$(ssh -p $ENV_SOURCE_PORT $ENV_SOURCE_USER@$ENV_SOURCE_HOST "grep -h -E '^DATABASE_URL=' $ENV_SOURCE_DIR/.env.local $ENV_SOURCE_DIR/.env 2>/dev/null | head -n 1")
+    local db_url=$($SSH_COMMAND -p $ENV_SOURCE_PORT $ENV_SOURCE_USER@$ENV_SOURCE_HOST "grep -h -E '^DATABASE_URL=' $ENV_SOURCE_DIR/.env.local $ENV_SOURCE_DIR/.env 2>/dev/null | head -n 1")
     
     # Parse standard URL format: db_type://db_user:db_pass@db_host:db_port/db_name...
     # Strip prefix
@@ -166,11 +166,11 @@ function remote_db() {
 
     open_link "$DB"
 
-    ssh -L $LOCAL_PORT:"$db_host":"$db_port" -N -p $ENV_SOURCE_PORT $ENV_SOURCE_USER@$ENV_SOURCE_HOST || true
+    $SSH_COMMAND -L $LOCAL_PORT:"$db_host":"$db_port" -N -p $ENV_SOURCE_PORT $ENV_SOURCE_USER@$ENV_SOURCE_HOST || true
 }
 
 function remote_shell() {
-    ssh -t -p $ENV_SOURCE_PORT $ENV_SOURCE_USER@$ENV_SOURCE_HOST "cd $ENV_SOURCE_DIR; bash"
+    $SSH_COMMAND -t -p $ENV_SOURCE_PORT $ENV_SOURCE_USER@$ENV_SOURCE_HOST "cd $ENV_SOURCE_DIR; bash"
 }
 
 function remote_sftp() {

@@ -12,10 +12,14 @@ Initializes a Symfony development environment.
 
 ### Options
 
-    --clean-install          Create a new Symfony project from scratch
-    --fix-deps               Auto-detect Symfony version and set correct PHP/MySQL/Redis versions
-    --skip-composer-install  Skip running composer install
-    --skip-migrate           Skip running database migrations
+    --clean-install           Create a new Symfony project from scratch
+    --fix-deps                Auto-detect Symfony version and set correct PHP/MySQL/Redis versions
+    --download-source         Download source code from remote environment
+    --db-dump=<file>          Use a specific database dump file
+    --skip-db-import          Skip importing the database
+    --skip-composer-install   Skip running composer install
+    --skip-migrate            Skip running database migrations
+    --no-stream-db            Use intermediate dump file instead of streaming (default: streaming enabled)
 
 ### Description
 

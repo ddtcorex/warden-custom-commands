@@ -10,7 +10,7 @@ fi
 
 function dumpPremise () {
     # Fetch DB creds via SSH using grep/sed logic from open.cmd
-    local db_info=$(ssh -p $ENV_SOURCE_PORT $ENV_SOURCE_USER@$ENV_SOURCE_HOST "grep -E '^DB_(HOST|PORT|DATABASE|USERNAME|PASSWORD)=' $ENV_SOURCE_DIR/.env")
+    local db_info=$($SSH_COMMAND -p $ENV_SOURCE_PORT $ENV_SOURCE_USER@$ENV_SOURCE_HOST "grep -E '^DB_(HOST|PORT|DATABASE|USERNAME|PASSWORD)=' $ENV_SOURCE_DIR/.env")
 
     local db_host=$(echo "$db_info" | grep DB_HOST | cut -d= -f2 | tr -d '"'"'")
     local db_port=$(echo "$db_info" | grep DB_PORT | cut -d= -f2 | tr -d '"'"'")
@@ -25,9 +25,9 @@ function dumpPremise () {
     echo -e "⌛ \033[1;32mDumping \033[33m${db_name}\033[1;32m database from \033[33m${ENV_SOURCE_HOST}\033[1;32m...\033[0m"
 
     # mysqldump command
-    local db_dump="export MYSQL_PWD='${db_pass}'; mysqldump -h$db_host -P$db_port -u$db_user $db_name --no-tablespaces --single-transaction --routines | gzip"
+    local db_dump="export MYSQL_PWD='${db_pass}'; mysqldump --no-tablespaces --single-transaction --routines -h$db_host -P$db_port -u$db_user $db_name | gzip"
     
-    ssh -p $ENV_SOURCE_PORT $ENV_SOURCE_USER@$ENV_SOURCE_HOST "set -o pipefail; $db_dump" > "$DUMP_FILENAME"
+    $SSH_COMMAND -p $ENV_SOURCE_PORT $ENV_SOURCE_USER@$ENV_SOURCE_HOST "set -o pipefail; $db_dump" > "$DUMP_FILENAME"
 
     echo -e "✅ \033[32mDatabase dump complete! File: $DUMP_FILENAME\033[0m"
 }

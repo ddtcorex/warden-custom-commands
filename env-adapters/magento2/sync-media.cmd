@@ -30,12 +30,12 @@ function dumpCloud () {
 
 function dumpPremise () {
     echo -e "⌛ \033[1;32mDownloading files from $ENV_SOURCE_HOST\033[0m ..."
-    warden env exec php-fpm rsync -azvP -e 'ssh -p '"$ENV_SOURCE_PORT" \
+    warden env exec php-fpm rsync -azvP -e "${SSH_COMMAND} -p $ENV_SOURCE_PORT" \
         "${exclude_opts[@]}" \
         $ENV_SOURCE_USER@$ENV_SOURCE_HOST:$ENV_SOURCE_DIR/pub/media/ pub/media/ || true
 
     if [[ "$DUMP_INCLUDE_PRODUCT" -eq "0" ]]; then
-        warden env exec php-fpm rsync -azvP -e 'ssh -p '"$ENV_SOURCE_PORT" \
+        warden env exec php-fpm rsync -azvP -e "${SSH_COMMAND} -p $ENV_SOURCE_PORT" \
             $ENV_SOURCE_USER@$ENV_SOURCE_HOST:$ENV_SOURCE_DIR/pub/media/catalog/product/placeholder/ pub/media/catalog/product/placeholder/ \
             || true
     fi

@@ -26,8 +26,9 @@ function array_contains() {
 WARDEN_ENV_PATH="$(locateEnvPath)" || exit $?
 
 loadEnvConfig "${WARDEN_ENV_PATH}" || exit $?
-eval "$(cat "${WARDEN_ENV_PATH}/.env" | sed 's/\r$//g' | grep "^CLOUD_")"
-eval "$(cat "${WARDEN_ENV_PATH}/.env" | sed 's/\r$//g' | grep "^REMOTE_")"
+if [[ -f "${WARDEN_ENV_PATH}/.env" ]]; then
+    eval "$(grep -E '^(CLOUD_|REMOTE_)' "${WARDEN_ENV_PATH}/.env" | sed 's/\r$//g')"
+fi
 
 assertDockerRunning
 
@@ -66,14 +67,22 @@ ENV_SOURCE=$(echo "$ENV_SOURCE_VAR" | tr '[:upper:]' '[:lower:]')
 ENV_SOURCE_HOST_VAR="REMOTE_${ENV_SOURCE_VAR}_HOST"
 
 if [ -n "${!ENV_SOURCE_HOST_VAR+x}" ]; then
-    eval "ENV_SOURCE_HOST=\${"REMOTE_${ENV_SOURCE_VAR}_HOST"}"
-    eval "ENV_SOURCE_USER=\${"REMOTE_${ENV_SOURCE_VAR}_USER"}"
-    eval "ENV_SOURCE_PORT=\${"REMOTE_${ENV_SOURCE_VAR}_PORT"}"
-    eval "ENV_SOURCE_DIR=\${"REMOTE_${ENV_SOURCE_VAR}_PATH"}"
+    VAR_USER="REMOTE_${ENV_SOURCE_VAR}_USER"
+    VAR_PORT="REMOTE_${ENV_SOURCE_VAR}_PORT"
+    VAR_PATH="REMOTE_${ENV_SOURCE_VAR}_PATH"
+
+    ENV_SOURCE_HOST="${!ENV_SOURCE_HOST_VAR}"
+    ENV_SOURCE_USER="${!VAR_USER}"
+    ENV_SOURCE_PORT="${!VAR_PORT}"
+    if [[ -z "${ENV_SOURCE_PORT}" ]]; then
+        ENV_SOURCE_PORT=22
+    fi
+    ENV_SOURCE_DIR="${!VAR_PATH}"
 fi
 
-if eval "[[ -n \${REMOTE_${ENV_SOURCE_VAR}_URL+x} ]]"; then
-    eval "ENV_SOURCE_URL=\${"REMOTE_${ENV_SOURCE_VAR}_URL"}"
+VAR_URL="REMOTE_${ENV_SOURCE_VAR}_URL"
+if [[ -n "${!VAR_URL+x}" ]]; then
+    ENV_SOURCE_URL="${!VAR_URL}"
 else
     ENV_SOURCE_URL=
 fi
@@ -90,7 +99,12 @@ else
     DB_PREFIX="$REMOTE_DB_PREFIX"
 fi
 
-# Load environment-specific commands via symlinks
-if [[ -f "${SUBCOMMAND_DIR}/.load-env-commands" ]]; then
-    source "${SUBCOMMAND_DIR}/.load-env-commands"
+if [[ -z "${STREAM_DB:-}" ]]; then
+    STREAM_DB=1
 fi
+
+# SSH command with StrictHostKeyChecking disabled for seamless remote operations
+SSH_OPTS="-o StrictHostKeyChecking=no"
+SSH_COMMAND="ssh ${SSH_OPTS}"
+
+

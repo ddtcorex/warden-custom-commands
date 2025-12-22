@@ -32,7 +32,7 @@ while (( "$#" )); do
 done
 
 echo -e "⌛ \033[1;32mUploading files to $ENV_SOURCE_HOST\033[0m ..."
-warden env exec php-fpm rsync -azvP -e 'ssh -p '"$ENV_SOURCE_PORT" \
+warden env exec php-fpm rsync -azvP -e "${SSH_COMMAND} -p $ENV_SOURCE_PORT" \
     $UPLOAD_PATH $ENV_SOURCE_USER@$ENV_SOURCE_HOST:$ENV_SOURCE_DIR/$UPLOAD_PATH
 
 echo -e "✅ \033[32mUpload complete!\033[0m"

@@ -20,6 +20,7 @@ ADMIN_CREATE=1
 ENV_REQUIRED=
 FIX_DEPS=
 
+
 ## argument parsing
 while (( "$#" )); do
     case "$1" in
@@ -79,6 +80,11 @@ while (( "$#" )); do
             ENV_REQUIRED=1
             shift
             ;;
+        --no-stream-db)
+            STREAM_DB=
+            shift
+            ;;
+
         *)
             shift
             ;;
@@ -217,13 +223,18 @@ fi
 
 ## import database only if --skip-db-import is not specified
 if [[ ${DB_IMPORT} ]]; then
-    if [[ -z "$DB_DUMP" ]]; then
+    if [[ ${STREAM_DB} ]]; then
+        warden db-import --stream-db -e "$ENV_SOURCE"
+    elif [[ -z "$DB_DUMP" ]]; then
         DB_DUMP="var/${WARDEN_ENV_NAME}_${ENV_SOURCE}-`date +%Y%m%dT%H%M%S`.sql.gz"
         :: Get database
         warden db-dump --file="${DB_DUMP}" -e "$ENV_SOURCE"
-    fi
-
-    if [[ "$DB_DUMP" ]]; then
+        
+        if [[ "$DB_DUMP" ]]; then
+            :: Importing database
+            warden db-import --file="${DB_DUMP}"
+        fi
+    else
         :: Importing database
         warden db-import --file="${DB_DUMP}"
     fi

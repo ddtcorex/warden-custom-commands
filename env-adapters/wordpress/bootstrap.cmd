@@ -51,6 +51,10 @@ while (( "$#" )); do
             SKIP_WP_INSTALL=1
             shift
             ;;
+        --no-stream-db)
+            STREAM_DB=
+            shift
+            ;;
         *)
             shift
             ;;
@@ -154,15 +158,19 @@ fi
 
 ## import database only if --skip-db-import is not specified
 if [[ ${DB_IMPORT} ]] && [[ ! ${CLEAN_INSTALL} ]]; then
-    if [[ -z "$DB_DUMP" ]] && [[ -n "${ENV_SOURCE_HOST+x}" ]]; then
-        DB_DUMP="wp-content/${WARDEN_ENV_NAME}_${ENV_SOURCE}-$(date +%Y%m%dT%H%M%S).sql.gz"
-        :: Downloading database from ${ENV_SOURCE}
-        warden db-dump --file="${DB_DUMP}" -e "$ENV_SOURCE"
-    fi
+    if [[ ${STREAM_DB} ]] && [[ -z "$DB_DUMP" ]] && [[ -n "${ENV_SOURCE_HOST+x}" ]]; then
+        warden db-import --stream-db -e "$ENV_SOURCE"
+    else
+        if [[ -z "$DB_DUMP" ]] && [[ -n "${ENV_SOURCE_HOST+x}" ]]; then
+            DB_DUMP="wp-content/${WARDEN_ENV_NAME}_${ENV_SOURCE}-$(date +%Y%m%dT%H%M%S).sql.gz"
+            :: Downloading database from ${ENV_SOURCE}
+            warden db-dump --file="${DB_DUMP}" -e "$ENV_SOURCE"
+        fi
 
-    if [[ -n "$DB_DUMP" ]] && [[ -f "$DB_DUMP" ]]; then
-        :: Importing database
-        warden db-import --file="${DB_DUMP}"
+        if [[ -n "$DB_DUMP" ]] && [[ -f "$DB_DUMP" ]]; then
+            :: Importing database
+            warden db-import --file="${DB_DUMP}"
+        fi
     fi
 fi
 

@@ -66,6 +66,60 @@ chmod +x ~/.warden/commands/env-adapters/*/*.cmd
 
 Commands will be automatically available via `warden <command>`.
 
+### SSH Key Setup (Local → Remote Server)
+
+If you plan to use remote operations (cloning sites, syncing media/files, downloading databases), set up SSH keys for passwordless authentication.
+
+#### 1) Generate an SSH key on your local machine
+
+```bash
+# Use ed25519 (recommended) or RSA
+ssh-keygen -t ed25519 -C "your_email@example.com"
+
+# Or for RSA (wider compatibility)
+ssh-keygen -t rsa -b 4096 -C "your_email@example.com"
+```
+
+#### 2) Start the SSH agent and add your key
+
+```bash
+eval "$(ssh-agent -s)"
+ssh-add ~/.ssh/id_ed25519   # or ~/.ssh/id_rsa
+```
+
+#### 3) Add your public key to the remote server
+
+```bash
+ssh-copy-id -p 22 user@your-server.com
+
+# Or manually:
+cat ~/.ssh/id_ed25519.pub | ssh user@server 'cat >> ~/.ssh/authorized_keys'
+```
+
+#### 4) Test SSH login
+
+```bash
+ssh -p 22 user@your-server.com
+```
+
+#### 5) Optional: Simplify with `~/.ssh/config`
+
+```ssh-config
+Host staging
+    HostName staging.example.com
+    User deploy
+    Port 22
+    IdentityFile ~/.ssh/id_ed25519
+```
+
+Then connect with just `ssh staging`.
+
+#### Troubleshooting
+
+- **Permission denied**: Ensure `~/.ssh` is `700` and `authorized_keys` is `600` on remote
+- **Agent not running**: Add `eval "$(ssh-agent -s)" && ssh-add` to your `.bashrc`/`.zshrc`
+- **Host key verification**: Commands now include `-o StrictHostKeyChecking=no` to skip prompts
+
 ## Architecture
 
 ### Dispatcher Pattern
@@ -182,13 +236,24 @@ Initialize a new Magento 2 environment with all dependencies and configuration.
 - `-h, --help` - Display help menu
 - `--env-name=<name>` - Initialize environment with specified name
 - `--env-type=<type>` - Initialize environment with specified type
-- `--skip-deploy` - Skip deployment after installation
+- `--clean-install` - Create fresh Magento project
+- `--version=<version>` - Magento version for clean install (e.g., 2.4.8)
+- `--include-sample` - Include sample data (clean install)
+
+- `--no-stream-db` - Use intermediate dump file instead of streaming (default: streaming enabled)
+- `--download-source` - Download source code from remote
+- `--db-dump=<file>` - Use specific database dump file
+- `--skip-db-import` - Skip database import
+- `--skip-media-sync` - Skip media sync from remote
+- `--skip-composer-install` - Skip composer install
+- `--skip-admin-create` - Skip admin user creation
 
 **Example:**
 
 ```bash
 warden bootstrap
-warden bootstrap --skip-deploy
+warden bootstrap --clean-install --version=2.4.8
+warden bootstrap --download-source -e production
 ```
 
 #### `warden db-dump`
@@ -377,6 +442,7 @@ Initialize Laravel environment with dependencies and database.
 - `--download-source` - Download source code from remote environment
 - `--db-dump=<file>` - Use specific database dump file
 - `--skip-db-import` - Skip database import
+- `--no-stream-db` - Use intermediate dump file instead of streaming (default: streaming enabled)
 - `--env-name=<name>` - Initialize environment with specified name
 - `--env-type=<type>` - Initialize environment with specified type
 - `--skip-composer-install` - Skip composer install
@@ -496,6 +562,7 @@ Initialize Symfony environment with dependencies and database.
 - `--download-source` - Download source code from remote environment
 - `--db-dump=<file>` - Use specific database dump file
 - `--skip-db-import` - Skip database import
+- `--no-stream-db` - Use intermediate dump file instead of streaming (default: streaming enabled)
 - `--env-name=<name>` - Initialize environment with specified name
 - `--env-type=<type>` - Initialize environment with specified type
 - `--skip-composer-install` - Skip composer install
@@ -615,6 +682,7 @@ Initialize WordPress environment with complete installation.
 - `--download-source` - Download source code from remote environment
 - `--db-dump=<file>` - Use specific database dump file
 - `--skip-db-import` - Skip database import
+- `--no-stream-db` - Use intermediate dump file instead of streaming (default: streaming enabled)
 - `--env-name=<name>` - Initialize environment with specified name
 - `--env-type=<type>` - Initialize environment with specified type
 - `--skip-composer-install` - Skip composer install

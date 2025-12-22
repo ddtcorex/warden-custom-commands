@@ -10,7 +10,7 @@ fi
 
 function dumpPremise () {
     # Fetch DB creds via SSH using grep/sed logic from wordpress/open.cmd
-    local db_config=$(ssh -p $ENV_SOURCE_PORT $ENV_SOURCE_USER@$ENV_SOURCE_HOST "grep -E \"define\s*\(.*DB_(NAME|USER|PASSWORD|HOST)\" $ENV_SOURCE_DIR/wp-config.php")
+    local db_config=$($SSH_COMMAND -p $ENV_SOURCE_PORT $ENV_SOURCE_USER@$ENV_SOURCE_HOST "grep -E \"define\s*\(.*DB_(NAME|USER|PASSWORD|HOST)\" $ENV_SOURCE_DIR/wp-config.php")
 
     local db_name=$(echo "$db_config" | grep "DB_NAME" | sed -E "s/.*['\"]DB_NAME['\"]\s*,\s*['\"](.*)['\"].*/\1/")
     local db_user=$(echo "$db_config" | grep "DB_USER" | sed -E "s/.*['\"]DB_USER['\"]\s*,\s*['\"](.*)['\"].*/\1/")
@@ -28,8 +28,8 @@ function dumpPremise () {
 
     echo -e "⌛ \033[1;32mDumping \033[33m${db_name}\033[1;32m database from \033[33m${ENV_SOURCE_HOST}\033[1;32m...\033[0m"
 
-    local db_dump="export MYSQL_PWD='${db_pass}'; mysqldump -h$db_host -P$db_port -u$db_user $db_name --no-tablespaces --single-transaction --routines | gzip"
-    ssh -p $ENV_SOURCE_PORT $ENV_SOURCE_USER@$ENV_SOURCE_HOST "set -o pipefail; $db_dump" > "$DUMP_FILENAME"
+    local db_dump="export MYSQL_PWD='${db_pass}'; mysqldump --no-tablespaces --single-transaction --routines -h$db_host -P$db_port -u$db_user $db_name | gzip"
+    $SSH_COMMAND -p $ENV_SOURCE_PORT $ENV_SOURCE_USER@$ENV_SOURCE_HOST "set -o pipefail; $db_dump" > "$DUMP_FILENAME"
 
     echo -e "✅ \033[32mDatabase dump complete! File: $DUMP_FILENAME\033[0m"
 }

@@ -69,7 +69,7 @@ function local_db() {
 
     open_link "$DB"
 
-    ssh -L "$LOCAL_PORT":"$DB_ENV_NAME":"$REMOTE_PORT" -N -p 2222 -i ~/.warden/tunnel/ssh_key user@tunnel.warden.test || true
+    $SSH_COMMAND -L "$LOCAL_PORT":"$DB_ENV_NAME":"$REMOTE_PORT" -N -p 2222 -i ~/.warden/tunnel/ssh_key user@tunnel.warden.test || true
 }
 
 function local_shell() {
@@ -111,14 +111,14 @@ function local_elasticsearch() {
 
     open_link $ES
 
-    ssh -L "$LOCAL_PORT":"$ES_ENV_NAME":"$REMOTE_PORT" -N -p 2222 -i ~/.warden/tunnel/ssh_key user@tunnel.warden.test || true
+    $SSH_COMMAND -L "$LOCAL_PORT":"$ES_ENV_NAME":"$REMOTE_PORT" -N -p 2222 -i ~/.warden/tunnel/ssh_key user@tunnel.warden.test || true
 }
 
 # Remote stubs
 function remote_db() {
     # WordPress uses wp-config.php. We utilize grep/sed to parse it cleanly to avoid quoting hell.
     # We fetch the relevant lines via SSH first.
-    local db_config=$(ssh -p $ENV_SOURCE_PORT $ENV_SOURCE_USER@$ENV_SOURCE_HOST "grep -E \"define\s*\(.*DB_(NAME|USER|PASSWORD|HOST)\" $ENV_SOURCE_DIR/wp-config.php")
+    local db_config=$($SSH_COMMAND -p $ENV_SOURCE_PORT $ENV_SOURCE_USER@$ENV_SOURCE_HOST "grep -E \"define\s*\(.*DB_(NAME|USER|PASSWORD|HOST)\" $ENV_SOURCE_DIR/wp-config.php")
 
     # Parse values using sed. Pattern: define( 'CONSTANT', 'VALUE' );
     # We allow for single or double quotes and variable whitespace.
@@ -156,11 +156,11 @@ function remote_db() {
 
     open_link "$DB"
 
-    ssh -L $LOCAL_PORT:"$db_host":"$db_port" -N -p $ENV_SOURCE_PORT $ENV_SOURCE_USER@$ENV_SOURCE_HOST || true
+    $SSH_COMMAND -L $LOCAL_PORT:"$db_host":"$db_port" -N -p $ENV_SOURCE_PORT $ENV_SOURCE_USER@$ENV_SOURCE_HOST || true
 }
 
 function remote_shell() {
-    ssh -t -p $ENV_SOURCE_PORT $ENV_SOURCE_USER@$ENV_SOURCE_HOST "cd $ENV_SOURCE_DIR; bash"
+    $SSH_COMMAND -t -p $ENV_SOURCE_PORT $ENV_SOURCE_USER@$ENV_SOURCE_HOST "cd $ENV_SOURCE_DIR; bash"
 }
 
 function remote_sftp() {
