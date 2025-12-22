@@ -37,33 +37,33 @@ if [[ "$WARDEN_ELASTICSEARCH" -eq "1" ]] || [[ "$WARDEN_OPENSEARCH" -eq "1" ]]; 
     MAGENTO_VERSION=$(warden env exec php-fpm bin/magento --version 2>/dev/null | awk '{print $3}')
     
     # Magento version-specific search engine configuration
-    # - 2.4.8+ or unknown version: Uses opensearch engine with opensearch_* config keys (assume latest)
-    # - 2.4.6-2.4.7: Uses opensearch engine but with elasticsearch7_* config keys
-    # - Pre-2.4.6: Uses elasticsearch7
-    if [[ -z "${MAGENTO_VERSION}" ]] || { [[ -n "${MAGENTO_VERSION}" ]] && test "$(version "${MAGENTO_VERSION}")" -ge "$(version "2.4.8")"; }; then
-        # Magento 2.4.8+ OR unknown version (assume latest): opensearch engine with opensearch_* config keys
-        :: Configuring OpenSearch
-        SEARCH_HOST="opensearch"
-        SEARCH_ENGINE="opensearch"
-        CONFIG_PREFIX="opensearch"
-    elif [[ -n "${MAGENTO_VERSION}" ]] && test "$(version "${MAGENTO_VERSION}")" -ge "$(version "2.4.6")"; then
-        # Magento 2.4.6-2.4.7: opensearch engine with elasticsearch7_* config keys
-        :: Configuring OpenSearch
-        SEARCH_HOST="opensearch"
-        SEARCH_ENGINE="opensearch"
-        CONFIG_PREFIX="elasticsearch7"
-    elif [[ "$WARDEN_OPENSEARCH" -eq "1" ]]; then
-        # Pre-2.4.6 with OpenSearch enabled
-        :: Configuring OpenSearch
-        SEARCH_HOST="opensearch"
+    # Default to OpenSearch (Magento 2.4.8+ or unknown)
+    SEARCH_ENGINE="opensearch"
+    SEARCH_HOST="opensearch"
+    CONFIG_PREFIX="opensearch"
+    
+    # Determine version-specific overrides
+    if [[ -n "${MAGENTO_VERSION}" ]]; then
+        if test "$(version "${MAGENTO_VERSION}")" -lt "$(version "2.4.8")"; then
+            # Pre-2.4.8: Uses "elasticsearch7" engine name (even for OpenSearch connection in 2.4.6/7)
+            SEARCH_ENGINE="elasticsearch7"
+            CONFIG_PREFIX="elasticsearch7"
+            
+            # Use Elasticsearch host if OpenSearch is not enabled
+            if [[ "${WARDEN_OPENSEARCH:-0}" -ne "1" ]]; then
+                SEARCH_HOST="elasticsearch"
+            fi
+        fi
+    elif [[ "${WARDEN_OPENSEARCH:-0}" -eq "1" ]]; then
+        # Unknown version with explicit OpenSearch enabled: use elasticsearch7 engine (safer assumption)
         SEARCH_ENGINE="elasticsearch7"
         CONFIG_PREFIX="elasticsearch7"
+    fi
+    
+    if [[ "${SEARCH_ENGINE}" == "opensearch" ]]; then
+        :: Configuring OpenSearch
     else
-        # Pre-2.4.6 with Elasticsearch
         :: Configuring Elasticsearch
-        SEARCH_HOST="elasticsearch"
-        SEARCH_ENGINE="elasticsearch7"
-        CONFIG_PREFIX="elasticsearch7"
     fi
 
     warden env exec php-fpm bin/magento config:set catalog/search/engine $SEARCH_ENGINE || true
