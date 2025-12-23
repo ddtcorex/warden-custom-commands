@@ -14,7 +14,8 @@ SYNC_TYPE_DB=0
 SYNC_TYPE_FULL=0
 SYNC_PATH=""
 SYNC_DRY_RUN=0
-SYNC_NO_FLUSH=0
+SYNC_DELETE=0
+SYNC_NO_FLUSH=1
 SYNC_REMOTE_TO_REMOTE=0
 WARDEN_PARAMS=()
 
@@ -81,8 +82,12 @@ while (( "$#" )); do
             SYNC_DRY_RUN=1
             shift
             ;;
-        --no-flush)
-            SYNC_NO_FLUSH=1
+        --delete)
+            SYNC_DELETE=1
+            shift
+            ;;
+        --flush)
+            SYNC_NO_FLUSH=0
             shift
             ;;
         --) # End of all options
@@ -100,6 +105,9 @@ while (( "$#" )); do
             ;;
     esac
 done
+
+# Remove all trailing slashes from path to ensure consistent behavior
+while [[ "${SYNC_PATH}" == */ ]]; do SYNC_PATH="${SYNC_PATH%/}"; done
 
 # If no type is specified, default to file
 if [[ "${SYNC_TYPE_FILE}" -eq 0 && "${SYNC_TYPE_MEDIA}" -eq 0 && "${SYNC_TYPE_DB}" -eq 0 && "${SYNC_TYPE_FULL}" -eq 0 ]]; then
@@ -152,6 +160,7 @@ export ENV_SOURCE="${REMOTE_ENV}"
 source "${SUBCOMMAND_DIR}"/env-variables
 
 # Build sync description for better messaging
+SYNC_DESC=""
 if [[ -n "${SYNC_PATH}" ]]; then
     SYNC_DESC="Path: ${SYNC_PATH}"
 elif [[ "${SYNC_TYPE_FULL}" -eq 1 ]]; then
@@ -162,6 +171,7 @@ else
     [[ "${SYNC_TYPE_DB}" -eq 1 ]] && SYNC_DESC="${SYNC_DESC}Database "
 fi
 SYNC_DESC=$(printf "%s" "${SYNC_DESC}" | xargs) # trim trailing space
+[[ "${SYNC_DELETE}" -eq 1 ]] && SYNC_DESC="${SYNC_DESC} (with delete)"
 [[ "${SYNC_DRY_RUN}" -eq 1 ]] && SYNC_DESC="${SYNC_DESC} [DRY RUN]"
 
 # Confirmation prompt
@@ -189,7 +199,7 @@ else
 fi
 
 # Export variables for adapter scripts
-export SYNC_SOURCE SYNC_DESTINATION SYNC_TYPE_FILE SYNC_TYPE_MEDIA SYNC_TYPE_DB SYNC_TYPE_FULL SYNC_PATH SYNC_DRY_RUN SYNC_NO_FLUSH SYNC_REMOTE_TO_REMOTE DIRECTION
+export SYNC_SOURCE SYNC_DESTINATION SYNC_TYPE_FILE SYNC_TYPE_MEDIA SYNC_TYPE_DB SYNC_TYPE_FULL SYNC_PATH SYNC_DRY_RUN SYNC_DELETE SYNC_NO_FLUSH SYNC_REMOTE_TO_REMOTE DIRECTION
 
 # Dispatch to environment-specific implementation
 ENV_CMD="${SUBCOMMAND_DIR}/env-adapters/${WARDEN_ENV_TYPE}/sync.cmd"

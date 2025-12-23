@@ -12,6 +12,9 @@ RSYNC_OPTS="-azvP"
 if [[ "${SYNC_DRY_RUN:-0}" -eq 1 ]]; then
     RSYNC_OPTS="${RSYNC_OPTS} --dry-run"
 fi
+if [[ "${SYNC_DELETE:-0}" -eq 1 ]]; then
+    RSYNC_OPTS="${RSYNC_OPTS} --delete"
+fi
 
 # Define paths and exclusions
 MEDIA_PATH="public/uploads/"
@@ -30,32 +33,39 @@ function transfer_files() {
     done
 
     if [[ "${SYNC_REMOTE_TO_REMOTE:-0}" -eq 1 ]]; then
-        printf "⌛ \033[1;32mSyncing from %s to %s (piped tar) ...\033[0m\n" "${SYNC_SOURCE}" "${SYNC_DESTINATION}"
-        local tar_excludes=()
+        printf "⌛ \033[1;32mSyncing from %s to %s (remote rsync) ...\033[0m\n" "${SYNC_SOURCE}" "${SYNC_DESTINATION}"
+        
+        local rsync_excludes_str=""
         for item in "${excludes[@]}"; do
-            tar_excludes+=( --exclude="${item}" )
+            rsync_excludes_str+=" --exclude='${item}'"
         done
 
-        local cmd="${SSH_COMMAND} -p \"${SOURCE_REMOTE_PORT}\" \"${SOURCE_REMOTE_USER}@${SOURCE_REMOTE_HOST}\" \
-            \"tar -C \\\"${SOURCE_REMOTE_DIR}/${source_path}\\\" -cf - . \\\"${tar_excludes[@]}\\\"\" \
-            | ${SSH_COMMAND} -p \"${DEST_REMOTE_PORT}\" \"${DEST_REMOTE_USER}@${DEST_REMOTE_HOST}\" \
-            \"tar -C \\\"${DEST_REMOTE_DIR}/${dest_path}\\\" -xf -\""
-
-        if [[ "${SYNC_DRY_RUN}" -eq 1 ]]; then
-            printf "\033[33m[Dry Run] Command: %s\033[0m\n" "${cmd}"
-        else
-            eval "${cmd}"
+        # 1. Check/Create Destination Parent Directory (Local -> Dest)
+        if [[ "${SYNC_DRY_RUN:-0}" -ne 1 ]]; then
+            ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -p "${DEST_REMOTE_PORT}" "${DEST_REMOTE_USER}@${DEST_REMOTE_HOST}" \
+                "mkdir -p \"${DEST_REMOTE_DIR}/$(dirname "${dest_path}")\""
         fi
+
+        # 2. Run Rsync on Source (Source -> Dest) using Agent Forwarding (-A)
+        # In dry-run mode, RSYNC_OPTS contains --dry-run, so we SHOULD execute it.
+        local cmd="ssh -A -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -p \"${SOURCE_REMOTE_PORT}\" \"${SOURCE_REMOTE_USER}@${SOURCE_REMOTE_HOST}\" \
+            \"rsync ${RSYNC_OPTS} ${rsync_excludes_str} \
+            -e 'ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -o BatchMode=yes -o ConnectTimeout=10 -p ${DEST_REMOTE_PORT}' \
+            \\\"${SOURCE_REMOTE_DIR}/${source_path}\\\" \
+            \\\"${DEST_REMOTE_USER}@${DEST_REMOTE_HOST}:${DEST_REMOTE_DIR}/$(dirname "${dest_path}")/\\\"\""
+
+        eval "${cmd}"
     elif [[ "${direction}" == "download" ]]; then
         printf "⌛ \033[1;32mDownloading from %s:%s to %s ...\033[0m\n" "${ENV_SOURCE_HOST}" "${source_path}" "${dest_path}"
         warden env exec php-fpm rsync ${RSYNC_OPTS} -e "${SSH_COMMAND} -p ${ENV_SOURCE_PORT}" \
             "${exclude_args[@]}" \
-            "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}:${ENV_SOURCE_DIR}/${source_path}" "${dest_path}"
+            "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}:${ENV_SOURCE_DIR}/${source_path}" \
+            "$(dirname "${dest_path}")/"
     else
         printf "⌛ \033[1;32mUploading from %s to %s:%s ...\033[0m\n" "${source_path}" "${ENV_SOURCE_HOST}" "${dest_path}"
         warden env exec php-fpm rsync ${RSYNC_OPTS} -e "${SSH_COMMAND} -p ${ENV_SOURCE_PORT}" \
             "${exclude_args[@]}" \
-            "${source_path}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}:${ENV_SOURCE_DIR}/${dest_path}"
+            "${source_path}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}:${ENV_SOURCE_DIR}/$(dirname "${dest_path}")/"
     fi
 }
 
@@ -78,7 +88,7 @@ function sync_database() {
         printf "⌛ \033[1;32mSyncing DB from %s to %s ...\033[0m\n" "${SYNC_SOURCE}" "${SYNC_DESTINATION}"
         
         # Source DB info
-        local src_db_url=$(${SSH_COMMAND} -p "${SOURCE_REMOTE_PORT}" "${SOURCE_REMOTE_USER}@${SOURCE_REMOTE_HOST}" "grep -h -E '^DATABASE_URL=' \"${SOURCE_REMOTE_DIR}/.env.local\" \"${SOURCE_REMOTE_DIR}/.env\" 2>/dev/null | head -n 1")
+        local src_db_url=$(ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -p "${SOURCE_REMOTE_PORT}" "${SOURCE_REMOTE_USER}@${SOURCE_REMOTE_HOST}" "grep -h -E '^DATABASE_URL=' \"${SOURCE_REMOTE_DIR}/.env.local\" \"${SOURCE_REMOTE_DIR}/.env\" 2>/dev/null | head -n 1")
         src_db_url=${src_db_url#*=}
         src_db_url=$(printf "%s" "${src_db_url}" | tr -d '"'"'")
         src_db_url=${src_db_url#*://}
@@ -96,7 +106,7 @@ function sync_database() {
         src_db_port=${src_db_port:-3306}
 
         # Destination DB info
-        local dest_db_url=$(${SSH_COMMAND} -p "${DEST_REMOTE_PORT}" "${DEST_REMOTE_USER}@${DEST_REMOTE_HOST}" "grep -h -E '^DATABASE_URL=' \"${DEST_REMOTE_DIR}/.env.local\" \"${DEST_REMOTE_DIR}/.env\" 2>/dev/null | head -n 1")
+        local dest_db_url=$(ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -p "${DEST_REMOTE_PORT}" "${DEST_REMOTE_USER}@${DEST_REMOTE_HOST}" "grep -h -E '^DATABASE_URL=' \"${DEST_REMOTE_DIR}/.env.local\" \"${DEST_REMOTE_DIR}/.env\" 2>/dev/null | head -n 1")
         dest_db_url=${dest_db_url#*=}
         dest_db_url=$(printf "%s" "${dest_db_url}" | tr -d '"'"'")
         dest_db_url=${dest_db_url#*://}
@@ -114,10 +124,10 @@ function sync_database() {
         dest_db_port=${dest_db_port:-3306}
 
         printf "Streaming mysqldump from %s to %s ...\n" "${SYNC_SOURCE}" "${SYNC_DESTINATION}"
-        ${SSH_COMMAND} -p "${SOURCE_REMOTE_PORT}" "${SOURCE_REMOTE_USER}@${SOURCE_REMOTE_HOST}" \
+        ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -p "${SOURCE_REMOTE_PORT}" "${SOURCE_REMOTE_USER}@${SOURCE_REMOTE_HOST}" \
             "export MYSQL_PWD='${src_db_pass}'; mysqldump --single-transaction --no-tablespaces --routines -h${src_db_host} -P${src_db_port} -u${src_db_user} ${src_db_name}" \
             | sed "${SED_FILTERS[@]}" \
-            | ${SSH_COMMAND} -p "${DEST_REMOTE_PORT}" "${DEST_REMOTE_USER}@${DEST_REMOTE_HOST}" \
+            | ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -p "${DEST_REMOTE_PORT}" "${DEST_REMOTE_USER}@${DEST_REMOTE_HOST}" \
             "export MYSQL_PWD='${dest_db_pass}'; mysql -h${dest_db_host} -P${dest_db_port} -u${dest_db_user} ${dest_db_name}"
         return
     fi
@@ -179,7 +189,7 @@ fi
 if [[ "${SYNC_NO_FLUSH:-0}" -eq 0 && "${SYNC_DRY_RUN:-0}" -eq 0 ]]; then
     printf "🧹 \033[1;32mClearing Cache ...\033[0m\n"
     if [[ "${SYNC_REMOTE_TO_REMOTE:-0}" -eq 1 ]]; then
-        ${SSH_COMMAND} -p "${DEST_REMOTE_PORT}" "${DEST_REMOTE_USER}@${DEST_REMOTE_HOST}" "cd \"${DEST_REMOTE_DIR}\" && warden env exec -T php-fpm bin/console cache:clear" || true
+        ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -p "${DEST_REMOTE_PORT}" "${DEST_REMOTE_USER}@${DEST_REMOTE_HOST}" "cd \"${DEST_REMOTE_DIR}\" && php bin/console cache:clear" || true
     else
         warden env exec -T php-fpm bin/console cache:clear || true
     fi

@@ -224,6 +224,15 @@ This release represents the stable version of the Warden Custom Commands, design
 
 ### Fixed
 
-- Fixed regex when removing sandbox mode comments in exported databases.
-- Improved table exclusion lists for database exports (ignoring logs, sessions, etc.).
-- Added `opensearch` command configuration support during setup.
+- **Breaking:** `warden sync` no longer flushes cache by default. Added `--flush` flag to enable it.
+- **Removed:** `--no-flush` flag (redundant as no-flush is now default).
+- **Major:** Replaced all `tar` piping logic with native `rsync` for both local and remote-to-remote syncs.
+- **Requirement:** Remote-to-Remote sync now uses SSH Agent Forwarding (`ssh -A`). Ensure your local SSH agent has the necessary keys (`ssh-add`).
+- Added full `--delete` flag support for ALL sync operations (including remote-to-remote).
+- Improved SSH connectivity with `StrictHostKeyChecking=no`, `UserKnownHostsFile=/dev/null`, and `LogLevel=ERROR` for silent, non-interactive operation.
+- Fixed `warden sync` directory nesting issues by standardizing parent-directory referencing.
+- Fixed `warden sync` dry-run logic for remote-to-remote operations (now correctly shows incremental file list without executing changes).
+- Fixed `warden sync` remote-to-remote cache flushing by using direct `php`/`wp` commands instead of `warden env exec`.
+- Enhanced `warden sync` to auto-create parent directories on destination if missing.
+- Fixed `warden bootstrap` crash related to uninitialized variables during partial syncs.
+- Improved path normalization to robustly strip all trailing slashes (e.g. `path//` -> `path`).

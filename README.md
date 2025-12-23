@@ -211,15 +211,16 @@ The unified synchronization command for files, media, and databases.
 **Options:**
 
 - `-h, --help` - Display help menu
-- `--source=NAME` - Source environment (default: staging)
-- `--destination=NAME` - Destination environment (default: local)
-- `--file` - Sync source code/files
-- `--media` - Sync media files
-- `--db` - Sync database (streaming)
-- `--full` - Sync everything (file, media, db)
-- `-p, --path=PATH` - Sync matching path only
-- `--dry-run` - Show changes without performing them
-- `--no-flush` - Do not flush cache after sync
+- `-s`, `--source`: Source environment (default: `staging`)
+- `-d`, `--destination`: Destination environment (default: `local`)
+- `-f`, `--file`: Sync source code/files
+- `-m`, `--media`: Sync media files
+- `--db`: Sync database (streaming, no local dump file created)
+- `--full`: Sync everything (file, media, db)
+- `-p`, `--path`: Sync a specific directory or file path
+- `--dry-run`: Show what would happen without making changes
+- `--flush`: Flush cache after sync (default: disabled)
+- `--delete`: Delete files on destination that are not present in source
 
 **Example:**
 
@@ -231,7 +232,10 @@ warden sync --path=pub/media/tmp    # Sync specific path
 ```
 
 > [!IMPORTANT]
-> Operations to remote environments (where destination is not `local`) will always require a confirmation.
+> Operations to remote environments (where neither source nor destination is `local`) use **SSH Agent Forwarding**.
+> - The local machine connects to the Source.
+> - The Source connects to the Destination using **your local keys**.
+> - **Requirement:** You must have your SSH keys loaded locally (`ssh-add -l`). If empty, run `ssh-add`.
 
 ### Magento 2 Commands
 
