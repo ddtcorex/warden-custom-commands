@@ -47,6 +47,12 @@ This release introduces a powerful, unified `sync` command, enables direct datab
 - Fixed exit code leakage in `db-import` where scripts would return error code 1 even after successful imports.
 - Fixed `warden sync` defaulting to "Staging" even when `-s dev` was passed.
 - Fixed "local: can only be used in a function" errors in multiple scripts.
+- Fixed `warden sync` directory nesting issues by standardizing parent-directory referencing.
+- Fixed `warden sync` dry-run logic for remote-to-remote operations (now correctly shows incremental file list without executing changes).
+- Fixed `warden sync` remote-to-remote cache flushing by using direct `php`/`wp` commands instead of `warden env exec`.
+- Enhanced `warden sync` to auto-create parent directories on destination if missing.
+- Fixed `warden bootstrap` crash related to uninitialized variables during partial syncs.
+- Improved path normalization to robustly strip all trailing slashes (e.g. `path//` -> `path`).
 
 ## [1.3.0] - 2025-12-12
 
@@ -221,18 +227,3 @@ This release represents the stable version of the Warden Custom Commands, design
   - **Streamlined Import:** `warden db-import` supports direct import of compressed `.sql.gz` files.
 - **Environment Sync:** Tools (`sync-media`, `download-files`, `upload-files`) to easily synchronize assets and media between local and remote environments using `rsync`.
 - **Developer Shortcuts:** `warden open` to quickly access shell, database, and application services; `warden deploy` for standard Magento deployment sequences.
-
-### Fixed
-
-- **Breaking:** `warden sync` no longer flushes cache by default. Added `--flush` flag to enable it.
-- **Removed:** `--no-flush` flag (redundant as no-flush is now default).
-- **Major:** Replaced all `tar` piping logic with native `rsync` for both local and remote-to-remote syncs.
-- **Requirement:** Remote-to-Remote sync now uses SSH Agent Forwarding (`ssh -A`). Ensure your local SSH agent has the necessary keys (`ssh-add`).
-- Added full `--delete` flag support for ALL sync operations (including remote-to-remote).
-- Improved SSH connectivity with `StrictHostKeyChecking=no`, `UserKnownHostsFile=/dev/null`, and `LogLevel=ERROR` for silent, non-interactive operation.
-- Fixed `warden sync` directory nesting issues by standardizing parent-directory referencing.
-- Fixed `warden sync` dry-run logic for remote-to-remote operations (now correctly shows incremental file list without executing changes).
-- Fixed `warden sync` remote-to-remote cache flushing by using direct `php`/`wp` commands instead of `warden env exec`.
-- Enhanced `warden sync` to auto-create parent directories on destination if missing.
-- Fixed `warden bootstrap` crash related to uninitialized variables during partial syncs.
-- Improved path normalization to robustly strip all trailing slashes (e.g. `path//` -> `path`).
