@@ -3,7 +3,7 @@ printf "\033[33mUsage:\033[0m
   sync [options]
 
 \033[33mOptions:\033[0m
-  -s, --source=NAME    Source environment (default: staging)
+  -s, -e, --source, --environment=NAME    Source environment (default: staging)
   -d, --destination=NAME Destination environment (default: local)
   -f, --file           Sync source code/files
   -m, --media          Sync media files

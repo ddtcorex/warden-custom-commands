@@ -22,11 +22,11 @@ WARDEN_PARAMS=()
 # Parse arguments
 while (( "$#" )); do
     case "$1" in
-        -s=*|--source=*)
+        -s=*|--source=*|-e=*|--environment=*)
             SYNC_SOURCE="${1#*=}"
             shift
             ;;
-        -s|--source)
+        -s|--source|-e|--environment)
             SYNC_SOURCE="$2"
             shift 2
             ;;
