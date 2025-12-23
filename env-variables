@@ -143,8 +143,4 @@ if [[ -n "${!ENV_SOURCE_HOST_VAR+x}" ]]; then
     ENV_SOURCE_URL="${!VAR_URL:-}"
 
     SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR"
-    SSH_COMMAND="ssh ${SSH_OPTS}"
-    if [[ -n "${ENV_SOURCE_PORT}" ]]; then
-        SSH_COMMAND="ssh ${SSH_OPTS} -p ${ENV_SOURCE_PORT}"
-    fi
 fi

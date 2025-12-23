@@ -57,13 +57,13 @@ function transfer_files() {
         eval "${cmd}"
     elif [[ "${direction}" == "download" ]]; then
         printf "⌛ \033[1;32mDownloading from %s:%s to %s ...\033[0m\n" "${ENV_SOURCE_HOST}" "${source_path}" "${dest_path}"
-        warden env exec php-fpm rsync ${RSYNC_OPTS} -e "${SSH_COMMAND} -p ${ENV_SOURCE_PORT}" \
+        warden env exec php-fpm rsync ${RSYNC_OPTS} -e "ssh ${SSH_OPTS} -p ${ENV_SOURCE_PORT}" \
             "${exclude_args[@]}" \
             "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}:${ENV_SOURCE_DIR}/${source_path}" \
             "$(dirname "${dest_path}")/"
     else
         printf "⌛ \033[1;32mUploading from %s to %s:%s ...\033[0m\n" "${source_path}" "${ENV_SOURCE_HOST}" "${dest_path}"
-        warden env exec php-fpm rsync ${RSYNC_OPTS} -e "${SSH_COMMAND} -p ${ENV_SOURCE_PORT}" \
+        warden env exec php-fpm rsync ${RSYNC_OPTS} -e "ssh ${SSH_OPTS} -p ${ENV_SOURCE_PORT}" \
             "${exclude_args[@]}" \
             "${source_path}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}:${ENV_SOURCE_DIR}/$(dirname "${dest_path}")/"
     fi
@@ -128,7 +128,7 @@ function sync_database() {
     fi
 
     # Fetch DB config via SSH
-    local db_config=$(${SSH_COMMAND} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "grep -E \"define\s*\(.*DB_(NAME|USER|PASSWORD|HOST)\" \"${ENV_SOURCE_DIR}/wp-config.php\"")
+    local db_config=$(ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "grep -E \"define\s*\(.*DB_(NAME|USER|PASSWORD|HOST)\" \"${ENV_SOURCE_DIR}/wp-config.php\"")
     
     # Parse values
     local db_name=$(printf "%s" "${db_config}" | grep "DB_NAME" | sed -E "s/.*['\"]DB_NAME['\"]\s*,\s*['\"](.*)['\"].*/\1/")
@@ -145,7 +145,7 @@ function sync_database() {
     db_port=${db_port:-3306}
     
     printf "Streaming mysqldump from %s:%s ...\n" "${ENV_SOURCE_HOST}" "${db_name}"
-    ${SSH_COMMAND} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" \
+    ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" \
         "export MYSQL_PWD='${db_pass}'; mysqldump --single-transaction --no-tablespaces --routines -h${db_host} -P${db_port} -u${db_user} ${db_name}" \
         | sed "${SED_FILTERS[@]}" \
         | warden db import --force
