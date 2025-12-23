@@ -1,23 +1,23 @@
 #!/usr/bin/env bash
-[[ ! ${WARDEN_DIR} ]] && >&2 echo -e "\033[31mThis script is not intended to be run directly!\033[0m" && exit 1
+set -u
 
 # env-variables is already sourced by the root dispatcher
 
-if [ -z ${!ENV_SOURCE_HOST_VAR+x} ]; then
-    echo "Invalid environment '${ENV_SOURCE}'"
+if [ -z "${ENV_SOURCE_HOST_VAR+x}" ]; then
+    printf "Invalid environment '%s'\n" "${ENV_SOURCE}" >&2
     exit 2
 fi
 
-function dumpPremise () {
-    # Fetch DB creds via SSH using logic from symfony/open.cmd
+function dump_premise () {
+    # Fetch DB creds via SSH using logic
     # Check .env.local first, then .env
-    local db_url=$(ssh -p $ENV_SOURCE_PORT $ENV_SOURCE_USER@$ENV_SOURCE_HOST "grep -h -E '^DATABASE_URL=' $ENV_SOURCE_DIR/.env.local $ENV_SOURCE_DIR/.env 2>/dev/null | head -n 1")
+    local db_url=$(${SSH_COMMAND} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "grep -h -E '^DATABASE_URL=' \"${ENV_SOURCE_DIR}/.env.local\" \"${ENV_SOURCE_DIR}/.env\" 2>/dev/null | head -n 1")
     
     # Parse standard URL format: db_type://db_user:db_pass@db_host:db_port/db_name...
     # Strip prefix
     db_url=${db_url#*=}
-    # Strip quotes if present (both single and double)
-    db_url=$(echo "$db_url" | tr -d '"'"'")
+    # Strip quotes if present
+    db_url=$(printf "%s" "${db_url}" | tr -d '"'"'")
     
     db_url=${db_url#*://}
     local db_user_pass=${db_url%%@*}
@@ -28,7 +28,7 @@ function dumpPremise () {
     local db_host=${db_host_port%%:*}
     local db_port=${db_host_port#*:}
     
-    if [[ "$db_host" == "$db_port" ]]; then
+    if [[ "${db_host}" == "${db_port}" ]]; then
         db_port=3306
     else
         db_port=${db_port%%\?*}
@@ -39,30 +39,25 @@ function dumpPremise () {
     db_host=${db_host:-127.0.0.1}
     db_port=${db_port:-3306}
 
-    echo -e "⌛ \033[1;32mDumping \033[33m${db_name}\033[1;32m database from \033[33m${ENV_SOURCE_HOST}\033[1;32m...\033[0m"
+    printf "⌛ \033[1;32mDumping \033[33m%s\033[1;32m database from \033[33m%s\033[1;32m...\033[0m\n" "${db_name}" "${ENV_SOURCE_HOST}"
 
-    local db_dump="export MYSQL_PWD='${db_pass}'; mysqldump -h$db_host -P$db_port -u$db_user $db_name --no-tablespaces --single-transaction --routines | gzip"
-    ssh -p $ENV_SOURCE_PORT $ENV_SOURCE_USER@$ENV_SOURCE_HOST "set -o pipefail; $db_dump" > "$DUMP_FILENAME"
+    local db_dump="export MYSQL_PWD='${db_pass}'; mysqldump --no-tablespaces --single-transaction --routines -h${db_host} -P${db_port} -u${db_user} ${db_name} | gzip"
+    ${SSH_COMMAND} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "set -o pipefail; ${db_dump}" > "${DUMP_FILENAME}"
 
-    echo -e "✅ \033[32mDatabase dump complete! File: $DUMP_FILENAME\033[0m"
+    printf "✅ \033[32mDatabase dump complete! File: %s\033[0m\n" "${DUMP_FILENAME}"
 }
 
-DUMP_FILENAME=
+DUMP_FILENAME=""
 
 while (( "$#" )); do
     case "$1" in
-        -f|--file)
-            if [ -n "$2" ] && [ ${2:0:1} != "-" ]; then
-                DUMP_FILENAME="$2"
-                shift 2
-            else
-                echo "Error: Argument for $1 is missing" >&2
-                exit 1
-            fi
-            ;;
-        --file=*|-f=*)
+        -f=*|--file=*)
             DUMP_FILENAME="${1#*=}"
             shift
+            ;;
+        -f|--file)
+            DUMP_FILENAME="$2"
+            shift 2
             ;;
 
         *)
@@ -71,12 +66,12 @@ while (( "$#" )); do
     esac
 done
 
-if [[ -z "$DUMP_FILENAME" ]] && [[ -n "${WARDEN_PARAMS[0]+1}" ]]; then
+if [[ -z "${DUMP_FILENAME}" ]] && [[ -n "${WARDEN_PARAMS[0]+1}" ]]; then
     DUMP_FILENAME="${WARDEN_PARAMS[0]}"
 fi
 
-if [ -z "$DUMP_FILENAME" ]; then
-    DUMP_FILENAME="var/${WARDEN_ENV_NAME}_${ENV_SOURCE}-`date +%Y%m%dT%H%M%S`.sql.gz"
+if [[ -z "${DUMP_FILENAME}" ]]; then
+    DUMP_FILENAME="var/${WARDEN_ENV_NAME}_${ENV_SOURCE}-$(date +%Y%m%dT%H%M%S).sql.gz"
 fi
 
-dumpPremise
+dump_premise

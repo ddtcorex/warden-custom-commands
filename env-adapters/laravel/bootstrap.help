@@ -14,8 +14,12 @@ Initializes a Laravel development environment.
 
     --clean-install           Create a new Laravel project from scratch
     --fix-deps                Auto-detect Laravel version and set correct PHP/MySQL/Redis versions
+    --download-source         Download source code from remote environment
+    --db-dump=FILE            Use a specific database dump file
+    --skip-db-import          Skip importing the database
     --skip-composer-install   Skip running composer install
-    --skip-migrate           Skip running database migrations
+    --skip-migrate            Skip running database migrations
+    --no-stream-db            Use intermediate dump file instead of streaming (default: streaming enabled)
 
 ### Description
 

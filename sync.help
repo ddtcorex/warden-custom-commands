@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+printf "\033[33mUsage:\033[0m
+  sync [options]
+
+\033[33mOptions:\033[0m
+  -s, --source=NAME    Source environment (default: staging)
+  -d, --destination=NAME Destination environment (default: local)
+  -f, --file           Sync source code/files
+  -m, --media          Sync media files
+  --db                 Sync database (streaming)
+  --full               Sync everything (file, media, db)
+  -p, --path=PATH      Sync a specific directory or file path
+  --dry-run            Show changes without performing them
+  --flush              Flush cache after sync (default: disabled)
+  --delete             Delete files on destination that are not in source (rsync only)
+  -h, --help           Display this help message
+
+\033[33mExamples:\033[0m
+  warden sync --db                    Sync DB from staging to local
+  warden sync --source=prod --media   Sync media from production to local
+  warden sync --destination=dev --file Sync files from local to dev
+  warden sync --path=pub/media/tmp    Sync a specific path from staging
+"

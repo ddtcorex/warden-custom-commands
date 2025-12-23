@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-[[ ! ${WARDEN_DIR} ]] && >&2 echo -e "\033[31mThis script is not intended to be run directly!\033[0m" && exit 1
+set -u
+[[ ! "${WARDEN_DIR:-}" ]] && >&2 printf "\033[31mThis script is not intended to be run directly!\033[0m\n" && exit 1
 
 ## Magento 2 Upgrade Command
 ## Upgrades Magento to a specified version
@@ -15,9 +16,13 @@ SKIP_ENV_UPDATE=""
 # Parse arguments
 while (( "$#" )); do
     case "$1" in
-        --version=*)
+        -v=*|--version=*)
             TARGET_VERSION="${1#*=}"
             shift
+            ;;
+        -v|--version)
+            TARGET_VERSION="$2"
+            shift 2
             ;;
         --dry-run)
             DRY_RUN=1
@@ -46,13 +51,13 @@ if [[ -z "${TARGET_VERSION}" ]]; then
     fatal "Target version is required. Usage: warden upgrade --version=<version>"
 fi
 
-echo ""
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "Magento 2 Upgrade"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-echo "Target version: ${TARGET_VERSION}"
-echo ""
+printf "\n"
+printf "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+printf "Magento 2 Upgrade\n"
+printf "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+printf "\n"
+printf "Target version: %s\n" "${TARGET_VERSION}"
+printf "\n"
 
 # Detect current version
 CURRENT_VERSION=$(warden env exec -T php-fpm php bin/magento --version 2>/dev/null | grep -oP '\d+\.\d+\.\d+(-p\d+)?' | head -n1 || true)
@@ -66,52 +71,53 @@ if [[ -z "${CURRENT_VERSION}" ]]; then
          CURRENT_VERSION=$(warden env exec -T php-fpm composer show magento/product-community-edition 2>/dev/null | grep 'versions' | grep -oP ' \K\d+\.\d+\.\d+(-p\d+)?' | head -n1 || echo "unknown")
     fi
 fi
-echo "Current version: ${CURRENT_VERSION}"
-echo ""
+printf "Current version: %s\n" "${CURRENT_VERSION}"
+printf "\n"
 
-if [[ -n "${DRY_RUN}" ]]; then
-    echo "[DRY RUN] Would perform the following steps:"
-    echo "  1. Run fix-deps --version=${TARGET_VERSION} to update PHP/Composer versions"
-    echo "  2. Restart environment (warden env down && warden env up)"
-    echo "  3. composer require-commerce magento/product-community-edition ${TARGET_VERSION} --with-all-dependencies"
-    echo "  4. (composer update handled by require-commerce)"
-    echo "  5. bin/magento setup:upgrade"
-    echo "  6. bin/magento setup:di:compile"
-    echo "  7. bin/magento cache:flush"
+if [[ -n "${DRY_RUN:-}" ]]; then
+    printf "[DRY RUN] Would perform the following steps:\n"
+    printf "  1. Run fix-deps --version=%s to update PHP/Composer versions\n" "${TARGET_VERSION}"
+    printf "  2. Restart environment (warden env down && warden env up)\n"
+    printf "  3. composer require-commerce magento/product-community-edition %s --with-all-dependencies\n" "${TARGET_VERSION}"
+    printf "  4. (composer update handled by require-commerce)\n"
+    printf "  5. bin/magento setup:upgrade\n"
+    printf "  6. bin/magento setup:di:compile\n"
+    printf "  7. bin/magento cache:flush\n"
     exit 0
 fi
 
 # Confirm upgrade
-echo "⚠ This will update versions for PHP, Composer, Varnish, Redis, RabbitMQ, Elasticsearch/OpenSearch, and Database in .env and restart the environment."
-read -p "Proceed with upgrade to ${TARGET_VERSION}? [y/N] " -n 1 -r
-echo ""
-if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-    echo "Upgrade cancelled."
+printf "⚠ This will update versions for PHP, Composer, Varnish, Redis, RabbitMQ, Elasticsearch/OpenSearch, and Database in .env and restart the environment.\n"
+printf "Proceed with upgrade to %s? [y/N] " "${TARGET_VERSION}"
+read -n 1 -r
+printf "\n"
+if [[ ! "${REPLY:-n}" =~ ^[Yy]$ ]]; then
+    printf "Upgrade cancelled.\n"
     exit 0
 fi
 
 # Step 1: Update environment dependencies for target version
-if [[ -z "${SKIP_ENV_UPDATE}" ]]; then
-    echo ""
-    echo "Step 1/7: Updating environment for target version..."
-    if [[ -f "${SUBCOMMAND_DIR}/fix-deps.cmd" ]]; then
-        source "${SUBCOMMAND_DIR}/fix-deps.cmd" --version="${TARGET_VERSION}"
+if [[ -z "${SKIP_ENV_UPDATE:-}" ]]; then
+    printf "\n"
+    printf "Step 1/7: Updating environment for target version...\n"
+    if [[ -f "${SUBCOMMAND_DIR:-}/fix-deps.cmd" ]]; then
+        source "${SUBCOMMAND_DIR:-}/fix-deps.cmd" --version="${TARGET_VERSION}"
     else
-        echo "⚠ fix-deps not found, skipping environment update"
+        printf "⚠ fix-deps not found, skipping environment update\n"
     fi
     
-    echo ""
-    echo "Step 2/7: Restarting environment (PHP, Composer, Varnish, Redis, RabbitMQ, Elasticsearch/OpenSearch, Database)..."
+    printf "\n"
+    printf "Step 2/7: Restarting environment (PHP, Composer, Varnish, Redis, RabbitMQ, Elasticsearch/OpenSearch, Database)...\n"
     warden env down
     warden env up -d
     
     # Wait for services to be ready
-    echo "Waiting for services to start..."
+    printf "Waiting for services to start...\n"
     sleep 5
     warden shell -c "while ! nc -z db 3306 </dev/null; do sleep 2; done"
 else
-    echo ""
-    echo "Steps 1-2: Skipped (--skip-env-update)"
+    printf "\n"
+    printf "Steps 1-2: Skipped (--skip-env-update)\n"
 fi
 
 echo "Step 3/7: Updating composer.json..."
@@ -134,7 +140,7 @@ warden env exec -T php-fpm composer create-project --no-install --ignore-platfor
 warden env exec -T php-fpm mv temp_upgrade_source/composer.json composer.new.json
 warden env exec -T php-fpm rm -rf temp_upgrade_source
 
-echo "Merging composer.json configuration..."
+printf "Merging composer.json configuration...\n"
 # Merge logic: Current * Target (Target overrides keys in Current)
 # We specifically target require, require-dev, conflict, autoload, minimum-stability, prefer-stable, and extra
 # This preserves 3rd party packages in 'require' while updating Magento ones
@@ -167,9 +173,9 @@ for pkg in $(echo $RELAX_PACKAGES | tr " " "\n" | cut -d: -f1); do
     fi
 done
 
-if [[ -n "$EXISTING_PACKAGES_TO_RELAX" ]]; then
-    echo "Relaxing version constraints for: $EXISTING_PACKAGES_TO_RELAX"
-    warden env exec -T php-fpm composer require $EXISTING_PACKAGES_TO_RELAX --no-update
+if [[ -n "${EXISTING_PACKAGES_TO_RELAX}" ]]; then
+    printf "Relaxing version constraints for: %s\n" "${EXISTING_PACKAGES_TO_RELAX}"
+    warden env exec -T php-fpm composer require ${EXISTING_PACKAGES_TO_RELAX} --no-update
 fi
 
 echo ""
@@ -203,9 +209,9 @@ echo ""
 # Cleanup backup
 warden env exec -T php-fpm rm -f composer.json.bak
 
-echo ""
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "✅ Magento upgrade to ${TARGET_VERSION} completed!"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
+printf "\n"
+printf "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+printf "✅ Magento upgrade to %s completed!\n" "${TARGET_VERSION}"
+printf "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+printf "\n"
 

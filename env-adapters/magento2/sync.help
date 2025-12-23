@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+printf "\033[33mMagento 2 Sync Options:\033[0m
+  --file           Sync code excluding media, static files, and logs
+  --media          Sync pub/media excluding cache and large archives
+  --db             Stream database dump from remote to local
+  --full           Sync all of the above
+  --dry-run        RSYNC dry-run mode
+"

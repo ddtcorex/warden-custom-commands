@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-[[ ! ${WARDEN_DIR} ]] && >&2 echo -e "\033[31mThis script is not intended to be run directly!\033[0m" && exit 1
+set -u
+[[ ! "${WARDEN_DIR:-}" ]] && >&2 printf "\033[31mThis script is not intended to be run directly!\033[0m\n" && exit 1
 
 SUBCOMMAND_DIR=$(dirname "${BASH_SOURCE[0]}")
 
@@ -14,9 +15,17 @@ while (( "$#" )); do
             INIT_ENV_NAME="${1#*=}"
             shift
             ;;
+        --env-name)
+            INIT_ENV_NAME="$2"
+            shift 2
+            ;;
         --env-type=*)
             INIT_ENV_TYPE="${1#*=}"
             shift
+            ;;
+        --env-type)
+            INIT_ENV_TYPE="$2"
+            shift 2
             ;;
         *)
             ARGS_REST+=("$1")
@@ -33,13 +42,13 @@ FIX_DEPS_FLAG=""
 
 # For bootstrap, if .env doesn't exist, run env-init first
 if [[ ! -f .env ]]; then
-    echo "No .env found. Running env-init..."
+    printf "No .env found. Running env-init...\n"
     
     # Run env-init
     HOST_ARGS=()
-    if [[ -n "${INIT_ENV_NAME}" ]]; then
+    if [[ -n "${INIT_ENV_NAME:-}" ]]; then
         HOST_ARGS+=("${INIT_ENV_NAME}")
-        if [[ -n "${INIT_ENV_TYPE}" ]]; then
+        if [[ -n "${INIT_ENV_TYPE:-}" ]]; then
             HOST_ARGS+=("${INIT_ENV_TYPE}")
         fi
     fi
@@ -59,7 +68,7 @@ source "${SUBCOMMAND_DIR}/env-variables"
 
 # Dispatch to environment-specific bootstrap with fix-deps flag if needed
 if [[ -f "${SUBCOMMAND_DIR}/env-adapters/${WARDEN_ENV_TYPE}/bootstrap.cmd" ]]; then
-    source "${SUBCOMMAND_DIR}/env-adapters/${WARDEN_ENV_TYPE}/bootstrap.cmd" ${FIX_DEPS_FLAG} "$@"
+    source "${SUBCOMMAND_DIR}/env-adapters/${WARDEN_ENV_TYPE}/bootstrap.cmd" ${FIX_DEPS_FLAG:-} "$@"
 else
     fatal "Bootstrap is not supported for environment type '${WARDEN_ENV_TYPE}'"
 fi

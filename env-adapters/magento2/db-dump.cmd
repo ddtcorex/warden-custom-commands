@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-[[ ! ${WARDEN_DIR} ]] && >&2 echo -e "\033[31mThis script is not intended to be run directly!\033[0m" && exit 1
+set -u
 
 # env-variables is already sourced by the root dispatcher
 
-if [ -z ${!ENV_SOURCE_HOST_VAR+x} ]; then
-    echo "Invalid environment '${ENV_SOURCE}'"
+if [ -z "${ENV_SOURCE_HOST_VAR+x}" ]; then
+    printf "Invalid environment '%s'\n" "${ENV_SOURCE}" >&2
     exit 2
 fi
 
@@ -98,106 +98,57 @@ IGNORED_TABLES=(
     'kiwicommerce_activity'
     'kiwicommerce_activity_detail'
     'kiwicommerce_activity_log'
-    'kiwicommerce_login_activity'
-    'kl_events'
-    'kl_products'
-    'kl_sync'
-    'mageplaza_smtp_log'
-    'mailchimp_errors'
-    'mailchimp_sync_batches'
-    'mailchimp_sync_ecommerce'
-    'mailchimp_webhook_request'
-    'mpproductlabels_rule_meta_cl'
-    'msp_tfa_trusted'
-    'msp_tfa_user_config'
-    'ub_migrate_step'
-    'ub_migrate_map_step_2'
-    'ub_migrate_map_step_3'
-    'ub_migrate_map_step_3_attribute'
-    'ub_migrate_map_step_3_attribute_option'
-    'ub_migrate_map_step_4'
-    'ub_migrate_map_step_5'
-    'ub_migrate_map_step_5_product_download'
-    'ub_migrate_map_step_5_product_option'
-    'ub_migrate_map_step_6'
-    'ub_migrate_map_step_6_customer_address'
-    'ub_migrate_map_step_7'
-    'ub_migrate_map_step_7_invoice'
-    'ub_migrate_map_step_7_invoice_item'
-    'ub_migrate_map_step_7_order'
-    'ub_migrate_map_step_7_order_address'
-    'ub_migrate_map_step_7_order_item'
-    'ub_migrate_map_step_7_quote'
-    'ub_migrate_map_step_7_quote_address'
-    'ub_migrate_map_step_7_quote_item'
-    'ub_migrate_map_step_8'
-    'ub_migrate_map_step_8_downloadable_link_purchased'
-    'ub_migrate_map_step_8_rating'
-    'ub_migrate_map_step_8_review'
-    'ub_migrate_map_step_8_review_summary'
-    'ub_migrate_map_step_8_subscriber'
 )
-ignored_opts=()
 
-function dumpCloud () {
-    RELATIONSHIP=database-slave
+function dump_cloud () {
+    # Determine relationship
+    local RELATIONSHIP="database"
+    if [[ -n "${MAGENTO_CLOUD_RELATIONSHIP:-}" ]]; then
+        RELATIONSHIP="${MAGENTO_CLOUD_RELATIONSHIP}"
+    fi
 
-    echo -e "🤔 \033[1;34mChecking which database relationship to use ...\033[0m"
-    local db_name=$(magento-cloud environment:relationships \
-        --project="$CLOUD_PROJECT" \
-        --environment="$ENV_SOURCE_HOST" \
-        --property=database-slave.0.path \
-        2>/dev/null || true)
-    [[ -z "$db_name" ]] && RELATIONSHIP=database
-
-    if [[ "$FULL_DUMP" -eq "0" ]]; then
+    local ignored_opts=()
+    if [[ "${FULL_DUMP:-0}" -eq "0" ]]; then
         for table in "${IGNORED_TABLES[@]}"; do
-            ignored_opts+=( --exclude-table="${DB_PREFIX}${table}" )
+            ignored_opts+=( --ignore-table="${table}" )
         done
     fi
 
-    echo -e "⌛ \033[1;32mDumping \033[33m$ENV_SOURCE_HOST\033[1;32m database ...\033[0m"
-    magento-cloud db:dump \
-        --project="$CLOUD_PROJECT" \
-        --environment="$ENV_SOURCE_HOST" \
-        --relationship=$RELATIONSHIP \
-        --schema-only \
-        --stdout \
-        --gzip > "$DUMP_FILENAME"
+    printf "⌛ \033[1;32mDumping database from Cloud (\033[33m%s\033[1;32m)...\033[0m\n" "${ENV_SOURCE_HOST}"
 
-    magento-cloud db:dump \
-        --project="$CLOUD_PROJECT" \
-        --environment="$ENV_SOURCE_HOST" \
-        --relationship=$RELATIONSHIP \
-        ${ignored_opts[@]} \
-        --stdout \
-        --gzip >> "$DUMP_FILENAME"
+    # Use magento-cloud CLI to dump metadata first (no data, routines)
+    magento-cloud db:dump -p "${CLOUD_PROJECT}" -e "${ENV_SOURCE_HOST}" --relationship="${RELATIONSHIP}" --schema-only --stdout --gzip > "${DUMP_FILENAME}"
 
-    echo -e "✅ \033[32mDatabase dump complete! File: $DUMP_FILENAME\033[0m"
+    # Use magento-cloud CLI to dump data (excluding ignored tables)
+    magento-cloud db:dump -p "${CLOUD_PROJECT}" -e "${ENV_SOURCE_HOST}" --relationship="${RELATIONSHIP}" "${ignored_opts[@]}" --stdout --gzip >> "${DUMP_FILENAME}"
+
+    printf "✅ \033[32mDatabase dump complete! File: %s\033[0m\n" "${DUMP_FILENAME}"
 }
 
-function dumpPremise () {
-    local db_info=$(ssh -p $ENV_SOURCE_PORT $ENV_SOURCE_USER@$ENV_SOURCE_HOST 'php -r "\$a=include \"'"$ENV_SOURCE_DIR"'/app/etc/env.php\"; var_export(\$a[\"db\"][\"connection\"][\"default\"]);"')
-    local db_host=$(warden env exec php-fpm php -r "\$a = $db_info; echo strpos(\$a['host'], ':') === false ? \$a['host'] : explode(':', \$a['host'])[0];")
-    local db_port=$(warden env exec php-fpm php -r "\$a = $db_info; echo strpos(\$a['host'], ':') === false ? '3306' : explode(':', \$a['host'])[1];")
-    local db_user=$(warden env exec php-fpm php -r "\$a = $db_info; echo \$a['username'];")
-    local db_pass=$(warden env exec php-fpm php -r "\$a = $db_info; echo \$a['password'];")
-    local db_name=$(warden env exec php-fpm php -r "\$a = $db_info; echo \$a['dbname'];")
+function dump_premise () {
+    local db_info=$(${SSH_COMMAND} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" 'php -r "\$a=include \"'"${ENV_SOURCE_DIR}"'/app/etc/env.php\"; var_export(\$a[\"db\"][\"connection\"][\"default\"]);"')
+    local db_host=$(warden env exec php-fpm php -r "\$a = ${db_info}; echo strpos(\$a['host'], ':') === false ? \$a['host'] : explode(':', \$a['host'])[0];")
+    local db_port=$(warden env exec php-fpm php -r "\$a = ${db_info}; echo strpos(\$a['host'], ':') === false ? '3306' : explode(':', \$a['host'])[1];")
+    local db_user=$(warden env exec php-fpm php -r "\$a = ${db_info}; echo \$a['username'];")
+    local db_pass=$(warden env exec php-fpm php -r "\$a = ${db_info}; echo \$a['password'];")
+    local db_name=$(warden env exec php-fpm php -r "\$a = ${db_info}; echo \$a['dbname'];")
 
-    if [[ "$FULL_DUMP" -eq "0" ]]; then
+    local ignored_opts=()
+    if [[ "${FULL_DUMP:-0}" -eq "0" ]]; then
         for table in "${IGNORED_TABLES[@]}"; do
-            ignored_opts+=( --ignore-table="${db_name}.${DB_PREFIX}${table}" )
+            ignored_opts+=( --ignore-table="${db_name}.${DB_PREFIX:-}${table}" )
         done
     fi
 
-    echo -e "⌛ \033[1;32mDumping \033[33m${db_name}\033[1;32m database from \033[33m${ENV_SOURCE_HOST}\033[1;32m...\033[0m"
+    printf "⌛ \033[1;32mDumping \033[33m%s\033[1;32m database from \033[33m%s\033[1;32m...\033[0m\n" "${db_name}" "${ENV_SOURCE_HOST}"
 
-    local db_dump="export MYSQL_PWD='${db_pass}'; mysqldump -h$db_host -P$db_port -u$db_user $db_name --no-tablespaces --single-transaction --no-data --routines | sed -e '/999999.*enable the sandbox mode/d' -e 's/DEFINER=[^*]*\*/\*/g' -e 's/ROW_FORMAT=FIXED//g' | gzip"
-    ssh -p $ENV_SOURCE_PORT $ENV_SOURCE_USER@$ENV_SOURCE_HOST "set -o pipefail; $db_dump" > "$DUMP_FILENAME"
+    local db_dump_metadata="export MYSQL_PWD='${db_pass}'; mysqldump --single-transaction --no-tablespaces --no-data --routines -h${db_host} -P${db_port} -u${db_user} ${db_name} | sed -e '/999999.*enable the sandbox mode/d' -e 's/DEFINER=[^*]*\*/\*/g' -e 's/ROW_FORMAT=FIXED//g' | gzip"
+    ${SSH_COMMAND} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "set -o pipefail; ${db_dump_metadata}" > "${DUMP_FILENAME}"
 
-    local db_dump="export MYSQL_PWD='${db_pass}'; mysqldump -h$db_host -P$db_port -u$db_user $db_name --no-tablespaces --single-transaction --skip-triggers --no-create-info "${ignored_opts[@]}" | sed -e '/999999.*enable the sandbox mode/d' -e 's/DEFINER=[^*]*\*/\*/g' -e 's/ROW_FORMAT=FIXED//g' | gzip"
-    ssh -p $ENV_SOURCE_PORT $ENV_SOURCE_USER@$ENV_SOURCE_HOST "set -o pipefail; $db_dump" >> "$DUMP_FILENAME"
-    echo -e "✅ \033[32mDatabase dump complete! File: $DUMP_FILENAME\033[0m"
+    local db_dump_data="export MYSQL_PWD='${db_pass}'; mysqldump --single-transaction --no-tablespaces --skip-triggers --no-create-info ${ignored_opts[*]} -h${db_host} -P${db_port} -u${db_user} ${db_name} | sed -e '/999999.*enable the sandbox mode/d' -e 's/DEFINER=[^*]*\*/\*/g' -e 's/ROW_FORMAT=FIXED//g' | gzip"
+    ${SSH_COMMAND} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "set -o pipefail; ${db_dump_data}" >> "${DUMP_FILENAME}"
+    
+    printf "✅ \033[32mDatabase dump complete! File: %s\033[0m\n" "${DUMP_FILENAME}"
 }
 
 DUMP_FILENAME=
@@ -206,18 +157,13 @@ EXCLUDE_SENSITIVE_DATA=0
 
 while (( "$#" )); do
     case "$1" in
-        -f|--file)
-            if [ -n "$2" ] && [ ${2:0:1} != "-" ]; then
-                DUMP_FILENAME="$2"
-                shift 2
-            else
-                echo "Error: Argument for $1 is missing" >&2
-                exit 1
-            fi
-            ;;
-        --file=*|-f=*)
+        -f=*|--file=*)
             DUMP_FILENAME="${1#*=}"
             shift
+            ;;
+        -f|--file)
+            DUMP_FILENAME="$2"
+            shift 2
             ;;
         --full)
             FULL_DUMP=1
@@ -233,15 +179,15 @@ while (( "$#" )); do
     esac
 done
 
-if [[ -z "$DUMP_FILENAME" ]] && [[ -n "${WARDEN_PARAMS[0]+1}" ]]; then
+if [[ -z "${DUMP_FILENAME}" ]] && [[ -n "${WARDEN_PARAMS[0]+1}" ]]; then
     DUMP_FILENAME="${WARDEN_PARAMS[0]}"
 fi
 
-if [ -z "$DUMP_FILENAME" ]; then
-    DUMP_FILENAME="var/${WARDEN_ENV_NAME}_${ENV_SOURCE}-`date +%Y%m%dT%H%M%S`.sql.gz"
+if [[ -z "${DUMP_FILENAME}" ]]; then
+    DUMP_FILENAME="var/${WARDEN_ENV_NAME}_${ENV_SOURCE}-$(date +%Y%m%dT%H%M%S).sql.gz"
 fi
 
-if [[ "$FULL_DUMP" -eq "0" && "$EXCLUDE_SENSITIVE_DATA" -eq "1" ]]; then
+if [[ "${FULL_DUMP}" -eq "0" && "${EXCLUDE_SENSITIVE_DATA}" -eq "1" ]]; then
     IGNORED_TABLES+=(
         'admin_user' 'admin_passwords'
         'sales_order' 'sales_order_address' 'sales_order_grid' 'sales_order_item' 'sales_order_payment' 'sales_order_status_history' 'sales_order_tax' 'sales_order_tax_item' 'magento_sales_order_grid_archive'
@@ -267,8 +213,8 @@ if [[ "$FULL_DUMP" -eq "0" && "$EXCLUDE_SENSITIVE_DATA" -eq "1" ]]; then
     )
 fi
 
-if [ -z ${CLOUD_PROJECT+x} ]; then
-    dumpPremise
+if [[ -z "${CLOUD_PROJECT+x}" ]]; then
+    dump_premise
 else
-    dumpCloud
+    dump_cloud
 fi

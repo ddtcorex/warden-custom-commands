@@ -14,7 +14,7 @@ Description:
 Options:
   -h, --help              Show this help message
   --dry-run               Preview changes without modifying .env
-  --version=VERSION       Specify Magento version manually (e.g., 2.4.6)
+  -v, --version=VERSION   Specify Magento version manually (e.g., 2.4.6)
 
 Features:
   • Auto-detects Magento version from META_VERSION, composer.json, or installation
@@ -25,12 +25,7 @@ Features:
 
 Examples:
   # Auto-detect version and show what would change
-  warden fix-deps --dry-run
-
-  # Auto-detect and apply changes
-  warden fix-deps
-
-  # Fix dependencies for specific Magento version
+  warden fix-deps -v=2.4.6
   warden fix-deps --version=2.4.6
 
   # Apply fixes for Magento 2.4.8

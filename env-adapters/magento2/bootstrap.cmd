@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-[[ ! ${WARDEN_DIR} ]] && >&2 echo -e "\033[31mThis script is not intended to be run directly!\033[0m" && exit 1
-
+set -u
 START_TIME=$(date +%s)
 
 # env-variables is already sourced by the root dispatcher
@@ -20,8 +19,9 @@ ADMIN_CREATE=1
 ENV_REQUIRED=
 FIX_DEPS=
 
+
 ## argument parsing
-while (( "$#" )); do
+while [[ "$#" -gt 0 ]]; do
     case "$1" in
         --clean-install)
             CLEAN_INSTALL=1
@@ -34,16 +34,24 @@ while (( "$#" )); do
             FIX_DEPS=1
             shift
             ;;
-        --meta-package=*)
+        -p|--meta-package)
+            META_PACKAGE="$2"
+            shift 2
+            ;;
+        -p=*|--meta-package=*)
             META_PACKAGE="${1#*=}"
             shift
             ;;
-        --meta-version=*|--version=*)
+        -v|--meta-version|--version)
+            META_VERSION="$2"
+            if ! test $(version "${META_VERSION}") -ge "$(version 2.0.0)" && [[ ! "${META_VERSION}" =~ ^2\.[0-9]+\.x$ ]]; then
+                fatal "Invalid version ${META_VERSION} specified (valid values are 2.0.0 or later)"
+            fi
+            shift 2
+            ;;
+        -v=*|--meta-version=*|--version=*)
             META_VERSION="${1#*=}"
-            if
-                ! test $(version "${META_VERSION}") -ge "$(version 2.0.0)" \
-                && [[ ! "${META_VERSION}" =~ ^2\.[0-9]+\.x$ ]]
-            then
+            if ! test $(version "${META_VERSION}") -ge "$(version 2.0.0)" && [[ ! "${META_VERSION}" =~ ^2\.[0-9]+\.x$ ]]; then
                 fatal "Invalid version ${META_VERSION} specified (valid values are 2.0.0 or later)"
             fi
             shift
@@ -74,11 +82,21 @@ while (( "$#" )); do
             ADMIN_CREATE=
             shift
             ;;
+        --db-dump)
+            DB_DUMP="$2"
+            ENV_REQUIRED=1
+            shift 2
+            ;;
         --db-dump=*)
             DB_DUMP="${1#*=}"
             ENV_REQUIRED=1
             shift
             ;;
+        --no-stream-db)
+            STREAM_DB=
+            shift
+            ;;
+
         *)
             shift
             ;;
@@ -121,13 +139,13 @@ if [[ -n "${FIX_DEPS}" ]]; then
 fi
 
 ## validate the selected environment
-if [[ $ENV_REQUIRED ]] && [ -z ${!ENV_SOURCE_HOST_VAR+x} ]; then
-    echo "Invalid environment '${ENV_SOURCE}'"
+if [[ "${ENV_REQUIRED:-}" ]] && [[ -z "${!ENV_SOURCE_HOST_VAR+x}" ]]; then
+    printf "Invalid environment '%s'\n" "${ENV_SOURCE}" >&2
     exit 2
 fi
 
 ## create an auth.json file in case it is missing during a clean installation
-if [ ! -f "${WARDEN_ENV_PATH}/auth.json" ] && [ $CLEAN_INSTALL ]; then
+if [[ ! -f "${WARDEN_ENV_PATH}/auth.json" ]] && [[ "${CLEAN_INSTALL:-}" ]]; then
     echo "Creating auth.json since it’s missing..."
     cat << EOT > "${WARDEN_ENV_PATH}/auth.json"
 {
@@ -141,9 +159,9 @@ if [ ! -f "${WARDEN_ENV_PATH}/auth.json" ] && [ $CLEAN_INSTALL ]; then
 EOT
 fi
 
-## download files from the remote
-if [[ $DOWNLOAD_SOURCE ]]; then
-    warden download-source -e=${ENV_SOURCE}
+if [[ "${DOWNLOAD_SOURCE:-}" ]]; then
+    ## download files from the remote
+    warden sync --file --source="${ENV_SOURCE}"
     
     # Combined file operations to reduce container exec overhead
     warden env exec php-fpm sh -c "
@@ -162,7 +180,7 @@ fi
 INIT_ERROR=
 
 ## attempt to install mutagen if not already present
-if [[ $OSTYPE =~ ^darwin ]] && ! which mutagen >/dev/null 2>&1 && which brew >/dev/null 2>&1; then
+if [[ "${OSTYPE}" =~ ^darwin ]] && ! command -v mutagen >/dev/null 2>&1 && command -v brew >/dev/null 2>&1; then
     warning "Mutagen could not be found; attempting install via brew."
     brew install havoc-io/mutagen/mutagen
 fi
@@ -173,7 +191,7 @@ for DEP_NAME in warden mutagen pv; do
         continue
     fi
 
-    if ! which "${DEP_NAME}" 2>/dev/null >/dev/null; then
+    if ! command -v "${DEP_NAME}" >/dev/null 2>&1; then
         error "Command '${DEP_NAME}' not found. Please install."
         INIT_ERROR=1
     fi
@@ -210,20 +228,25 @@ warden env up
 ## wait for mariadb to start listening for connections
 warden shell -c "while ! nc -z db 3306 </dev/null; do sleep 2; done"
 
-if [[ $COMPOSER_INSTALL ]]; then
+if [[ "${COMPOSER_INSTALL:-}" ]]; then
     :: Installing dependencies
     warden env exec php-fpm composer install
 fi
 
 ## import database only if --skip-db-import is not specified
-if [[ ${DB_IMPORT} ]]; then
-    if [[ -z "$DB_DUMP" ]]; then
+if [[ "${DB_IMPORT:-}" ]]; then
+    if [[ "${STREAM_DB:-}" ]]; then
+        warden db-import --stream-db -e "$ENV_SOURCE"
+    elif [[ -z "$DB_DUMP" ]]; then
         DB_DUMP="var/${WARDEN_ENV_NAME}_${ENV_SOURCE}-`date +%Y%m%dT%H%M%S`.sql.gz"
         :: Get database
         warden db-dump --file="${DB_DUMP}" -e "$ENV_SOURCE"
-    fi
-
-    if [[ "$DB_DUMP" ]]; then
+        
+        if [[ "$DB_DUMP" ]]; then
+            :: Importing database
+            warden db-import --file="${DB_DUMP}"
+        fi
+    else
         :: Importing database
         warden db-import --file="${DB_DUMP}"
     fi
@@ -236,6 +259,12 @@ else
 fi
 
 if [ ! -f "${WARDEN_ENV_PATH}/app/etc/env.php" ] && [ ! $CLEAN_INSTALL ]; then
+    :: Configuring environment variables
+    printf "WARDEN_ENV_PATH: %s\n" "${WARDEN_ENV_PATH}"
+    if ! mkdir -p "${WARDEN_ENV_PATH}/app/etc"; then
+        printf "😮 \033[31mFailed to create directory %s/app/etc\033[0m\n" "${WARDEN_ENV_PATH}" >&2
+        exit 1
+    fi
     cat << EOT > "${WARDEN_ENV_PATH}/app/etc/env.php"
 <?php
 return [
@@ -246,7 +275,7 @@ return [
         'key' => '${ENCRYPT_KEY}'
     ],
     'db' => [
-        'table_prefix' => '${DB_PREFIX}',
+        'table_prefix' => '${DB_PREFIX:-}',
         'connection' => [
             'default' => [
                 'host' => 'db',
@@ -339,7 +368,7 @@ if [[ ${CLEAN_INSTALL} ]] && [[ ! -f "${WARDEN_WEB_ROOT}/composer.json" ]]; then
         --db-name=magento \
         --db-user=magento \
         --db-password=magento \
-        --db-prefix=${DB_PREFIX} \
+        --db-prefix=${DB_PREFIX:-} \
         --search-engine=${SEARCH_ENGINE} \
         --${SEARCH_COMMAND}-host=${SEARCH_HOST} \
         --${SEARCH_COMMAND}-port=9200 \
@@ -350,7 +379,7 @@ fi
 
 warden set-config
 
-if [[ ${CLEAN_INSTALL} ]] && [[ $INCLUDE_SAMPLE ]]; then
+if [[ "${CLEAN_INSTALL:-}" ]] && [[ "${INCLUDE_SAMPLE:-}" ]]; then
     :: Installing sample data
     # Chained execution for performance
     warden env exec php-fpm sh -c "
@@ -361,12 +390,11 @@ if [[ ${CLEAN_INSTALL} ]] && [[ $INCLUDE_SAMPLE ]]; then
     "
 fi
 
-if [[ $MEDIA_SYNC ]]; then
-    :: Syncing media from remote server
-    warden sync-media -e "$ENV_SOURCE"
+if [[ "${MEDIA_SYNC:-}" ]]; then
+    warden sync --media --source="${ENV_SOURCE}"
 fi
 
-if [[ $ADMIN_CREATE -eq "1" ]]; then
+if [[ "${ADMIN_CREATE:-}" == "1" ]]; then
     :: Creating admin user
     warden env exec php-fpm bin/magento admin:user:create \
         --admin-user=admin \

@@ -5,13 +5,14 @@ WARDEN_USAGE=$(cat <<EOF
 Open tunnel to services
 
 \033[33mUsage:\033[0m
-  open [-h|--help] [db|shell|sftp|admin|elasticsearch] [--environment=<environment>|-e <environment>]
+  open [-h|--help] [db|shell|sftp|admin|elasticsearch] [-e|--environment=<env>] [-a|--xdg-open]
 
 \033[33mOptions:\033[0m
   -h, --help                                       Display this help menu
 
 \033[33mArguments:\033[0m
-  -e|--environment=<local|dev|staging|production>  Specific environment to use. Default: local
+  -e, --environment=NAME    Specific environment to use. Default: local
+  -a, --xdg-open            Open using xdg-open/open command.
 
 EOF
 )

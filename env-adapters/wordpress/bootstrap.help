@@ -14,8 +14,12 @@ Initializes a WordPress development environment.
 
     --clean-install           Download fresh WordPress installation
     --fix-deps                Auto-detect WordPress version and set correct PHP/MySQL versions
+    --download-source         Download source code from remote environment
+    --db-dump=FILE            Use a specific database dump file
+    --skip-db-import          Skip importing the database
     --skip-composer-install   Skip running composer install
     --skip-wp-install         Skip WordPress installation wizard
+    --no-stream-db            Use intermediate dump file instead of streaming (default: streaming enabled)
 
 ### Description
 

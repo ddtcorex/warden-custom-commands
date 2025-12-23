@@ -1,28 +1,28 @@
 #!/usr/bin/env bash
-[[ ! ${WARDEN_DIR} ]] && >&2 echo -e "\033[31mThis script is not intended to be run directly!\033[0m" && exit 1
+set -u
 
 # env-variables is already sourced by the root dispatcher
 
 function open_link() {
-    if [[ "$OPEN_CL" -eq "1" ]]; then
-        OPEN=$(which xdg-open || which open || which start) || true
-        if [ -n "$OPEN" ]; then
-            $OPEN "${1}"
+    if [[ "${OPEN_CL:-0}" -eq "1" ]]; then
+        local OPEN=$(command -v xdg-open || command -v open || command -v start || true)
+        if [[ -n "${OPEN:-}" ]]; then
+            "${OPEN}" "${1}"
         fi
     fi
 }
 
-function findLocalPort() {
-    LOCAL_PORT=$1
+function find_local_port() {
+    LOCAL_PORT="${1}"
 
-    while [[ $(lsof -Pi :$LOCAL_PORT -sTCP:LISTEN -t) ]]; do
+    while [[ $(lsof -Pi :"${LOCAL_PORT}" -sTCP:LISTEN -t) ]]; do
         LOCAL_PORT=$((LOCAL_PORT+1))
     done
 }
 
 # URL encode special characters for database connection strings
 function urlencode() {
-    local string="$1"
+    local string="${1}"
     local strlen=${#string}
     local encoded=""
     local pos c o
@@ -35,7 +35,7 @@ function urlencode() {
         esac
         encoded+="$o"
     done
-    echo "$encoded"
+    printf "%s" "$encoded"
 }
 
 function get_db_info() {
@@ -45,8 +45,8 @@ function get_db_info() {
 }
 
 function local_db() {
-    REMOTE_PORT=3306
-    findLocalPort $REMOTE_PORT
+    local REMOTE_PORT=3306
+    find_local_port "${REMOTE_PORT}"
 
     get_db_info
     
@@ -56,20 +56,18 @@ function local_db() {
     DB_NAME=${DB_NAME:-symfony}
 
     # URL encode credentials for special characters
-    local encoded_user=$(urlencode "$DB_USER")
-    local encoded_pass=$(urlencode "$DB_PASS")
+    local encoded_user=$(urlencode "${DB_USER}")
+    local encoded_pass=$(urlencode "${DB_PASS}")
 
-    DB_ENV_NAME="$WARDEN_ENV_NAME"-db-1
-    DB="mysql://${encoded_user}:${encoded_pass}@127.0.0.1:$LOCAL_PORT/${DB_NAME}"
+    local DB_ENV_NAME="${WARDEN_ENV_NAME}-db-1"
+    local DB="mysql://${encoded_user}:${encoded_pass}@127.0.0.1:${LOCAL_PORT}/${DB_NAME}"
 
-    echo -e "SSH tunnel opened to \033[32m$DB_ENV_NAME\033[0m at: \033[32m$DB\033[0m"
-    echo
-    echo "Quitting this command (with Ctrl+C or equivalent) will close the tunnel."
-    echo
+    printf "SSH tunnel opened to \033[32m%s\033[0m at: \033[32m%s\033[0m\n" "${DB_ENV_NAME}" "${DB}"
+    printf "\nQuitting this command (with Ctrl+C or equivalent) will close the tunnel.\n\n"
 
-    open_link "$DB"
+    open_link "${DB}"
 
-    ssh -L "$LOCAL_PORT":"$DB_ENV_NAME":"$REMOTE_PORT" -N -p 2222 -i ~/.warden/tunnel/ssh_key user@tunnel.warden.test || true
+    ssh -L "${LOCAL_PORT}:${DB_ENV_NAME}:${REMOTE_PORT}" -N -p 2222 -i ~/.warden/tunnel/ssh_key user@tunnel.warden.test || true
 }
 
 function local_shell() {
@@ -77,53 +75,52 @@ function local_shell() {
 }
 
 function local_sftp() {
-    echo "Not Supported."
+    printf "Not Supported.\n"
 }
 
 function local_admin() {
-    APP_DOMAIN="https://${TRAEFIK_SUBDOMAIN}.${TRAEFIK_DOMAIN}/"
-    echo -e "\033[32m$ENV_SOURCE_VAR\033[0m app at: \033[32m${APP_DOMAIN}\033[0m"
+    local APP_DOMAIN="https://${TRAEFIK_SUBDOMAIN}.${TRAEFIK_DOMAIN}/"
+    printf "\033[32m%s\033[0m app at: \033[32m%s\033[0m\n" "${ENV_SOURCE_VAR}" "${APP_DOMAIN}"
     open_link "${APP_DOMAIN}"
 }
 
 function local_elasticsearch() {
-    REMOTE_PORT=9200
-    findLocalPort $REMOTE_PORT
+    local REMOTE_PORT=9200
+    find_local_port "${REMOTE_PORT}"
 
-    if [[ "$WARDEN_ELASTICSEARCH" -eq "1" ]] || [[ "$WARDEN_OPENSEARCH" -eq "1" ]]; then
-        if [[ "$WARDEN_OPENSEARCH" -eq "1" ]]; then
-            ES_ENV_NAME="$WARDEN_ENV_NAME"-opensearch-1
+    local ES_ENV_NAME=""
+    if [[ "${WARDEN_ELASTICSEARCH:-0}" -eq "1" ]] || [[ "${WARDEN_OPENSEARCH:-0}" -eq "1" ]]; then
+        if [[ "${WARDEN_OPENSEARCH:-0}" -eq "1" ]]; then
+            ES_ENV_NAME="${WARDEN_ENV_NAME}-opensearch-1"
         else
-            ES_ENV_NAME="$WARDEN_ENV_NAME"-elasticsearch-1
+            ES_ENV_NAME="${WARDEN_ENV_NAME}-elasticsearch-1"
         fi
     else
-        echo "Elastic Search or Open Search not enabled for project"
+        printf "Elastic Search or Open Search not enabled for project\n"
         exit
     fi
 
-    ES="http://localhost:$LOCAL_PORT"
+    local ES="http://localhost:${LOCAL_PORT}"
 
-    echo -e "Elastic Search tunnel opened to \033[32m$ES_ENV_NAME\033[0m at: \033[32m$ES\033[0m"
-    echo
-    echo "Quitting this command (with Ctrl+C or equivalent) will close the tunnel."
-    echo
+    printf "Elastic Search tunnel opened to \033[32m%s\033[0m at: \033[32m%s\033[0m\n" "${ES_ENV_NAME}" "${ES}"
+    printf "\nQuitting this command (with Ctrl+C or equivalent) will close the tunnel.\n\n"
 
-    open_link $ES
+    open_link "${ES}"
 
-    ssh -L "$LOCAL_PORT":"$ES_ENV_NAME":"$REMOTE_PORT" -N -p 2222 -i ~/.warden/tunnel/ssh_key user@tunnel.warden.test || true
+    ${SSH_COMMAND} -L "${LOCAL_PORT}:${ES_ENV_NAME}:${REMOTE_PORT}" -N -p 2222 -i ~/.warden/tunnel/ssh_key user@tunnel.warden.test || true
 }
 
 # Remote stubs
 function remote_db() {
     # Symfony uses .env for DB config (usually DATABASE_URL). We fetch it via SSH.
     # Check .env.local first (overrides), then .env
-    local db_url=$(ssh -p $ENV_SOURCE_PORT $ENV_SOURCE_USER@$ENV_SOURCE_HOST "grep -h -E '^DATABASE_URL=' $ENV_SOURCE_DIR/.env.local $ENV_SOURCE_DIR/.env 2>/dev/null | head -n 1")
+    local db_url=$(${SSH_COMMAND} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "grep -h -E '^DATABASE_URL=' \"${ENV_SOURCE_DIR}/.env.local\" \"${ENV_SOURCE_DIR}/.env\" 2>/dev/null | head -n 1")
     
     # Parse standard URL format: db_type://db_user:db_pass@db_host:db_port/db_name...
     # Strip prefix
     db_url=${db_url#*=}
     # Strip quotes if present (both single and double)
-    db_url=$(echo "$db_url" | tr -d '"'"'")
+    db_url=$(printf "%s" "${db_url}" | tr -d '"'"'")
     
     # Remove prefix
     db_url=${db_url#*://}
@@ -137,7 +134,7 @@ function remote_db() {
     local db_host=${db_host_port%%:*}
     local db_port=${db_host_port#*:}
     # Handle port if missing (if no colon)
-    if [[ "$db_host" == "$db_port" ]]; then
+    if [[ "${db_host}" == "${db_port}" ]]; then
         db_port=3306
     else
         # db_port might contain query parameters start, strip them
@@ -151,48 +148,47 @@ function remote_db() {
     db_host=${db_host:-127.0.0.1}
     db_port=${db_port:-3306}
 
-    findLocalPort $db_port
+    find_local_port "${db_port}"
 
     # URL encode credentials for special characters
-    local encoded_user=$(urlencode "$db_user")
-    local encoded_pass=$(urlencode "$db_pass")
+    local encoded_user=$(urlencode "${db_user}")
+    local encoded_pass=$(urlencode "${db_pass}")
 
-    DB="mysql://${encoded_user}:${encoded_pass}@127.0.0.1:$LOCAL_PORT/$db_name"
+    local DB="mysql://${encoded_user}:${encoded_pass}@127.0.0.1:${LOCAL_PORT}/${db_name}"
 
-    echo -e "SSH tunnel opened to \033[32m$db_name\033[0m at: \033[32m$DB\033[0m"
-    echo
-    echo "Quitting this command (with Ctrl+C or equivalent) will close the tunnel."
-    echo
+    printf "SSH tunnel opened to \033[32m%s\033[0m at: \033[32m%s\033[0m\n" "${db_name}" "${DB}"
+    printf "\nQuitting this command (with Ctrl+C or equivalent) will close the tunnel.\n\n"
 
-    open_link "$DB"
+    open_link "${DB}"
 
-    ssh -L $LOCAL_PORT:"$db_host":"$db_port" -N -p $ENV_SOURCE_PORT $ENV_SOURCE_USER@$ENV_SOURCE_HOST || true
+    ${SSH_COMMAND} -L "${LOCAL_PORT}:${db_host}:${db_port}" -N -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" || true
 }
 
 function remote_shell() {
-    ssh -t -p $ENV_SOURCE_PORT $ENV_SOURCE_USER@$ENV_SOURCE_HOST "cd $ENV_SOURCE_DIR; bash"
+    ${SSH_COMMAND} -t -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "cd ${ENV_SOURCE_DIR}; bash"
 }
 
 function remote_sftp() {
-    SFTP_LINK="sftp://$ENV_SOURCE_USER@$ENV_SOURCE_HOST:$ENV_SOURCE_PORT$ENV_SOURCE_DIR"
-    echo -e "SFTP to \033[32m$ENV_SOURCE_VAR\033[0m at: \033[32m$SFTP_LINK\033[0m"
-    open_link $SFTP_LINK
+    local SFTP_LINK="sftp://${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}:${ENV_SOURCE_PORT}${ENV_SOURCE_DIR}"
+    printf "SFTP to \033[32m%s\033[0m at: \033[32m%s\033[0m\n" "${ENV_SOURCE_VAR}" "${SFTP_LINK}"
+    open_link "${SFTP_LINK}"
 }
 
 function remote_admin() {
-    if [[ ! -z "$ENV_SOURCE_URL" ]]; then
-        echo -e "\033[32m$ENV_SOURCE_VAR\033[0m app at: \033[32m${ENV_SOURCE_URL}\033[0m"
+    if [[ -n "${ENV_SOURCE_URL:-}" ]]; then
+        printf "\033[32m%s\033[0m app at: \033[32m%s\033[0m\n" "${ENV_SOURCE_VAR}" "${ENV_SOURCE_URL}"
         open_link "${ENV_SOURCE_URL}"
     else
-        echo "REMOTE_${ENV_SOURCE_VAR}_URL is not set in .env"
+        printf "REMOTE_%s_URL is not set in .env\n" "${ENV_SOURCE_VAR}" >&2
     fi
 }
 
 # Default to LOCAL if no -e specified or -e local
-if [[ "$ENV_SOURCE_DEFAULT" -eq "1" ]] || [[ "$ENV_SOURCE" == "local" ]]; then
+ENV_SOURCE_VAR="${ENV_SOURCE:-LOCAL}"
+if [[ "${ENV_SOURCE_DEFAULT:-0}" -eq "1" ]] || [[ "${ENV_SOURCE:-}" == "local" ]]; then
     ENV_SOURCE_VAR="LOCAL"
-elif [ -z ${ENV_SOURCE_HOST+x} ]; then
-    echo "Invalid environment '${ENV_SOURCE}' or missing configuration."
+elif [[ -z "${ENV_SOURCE_HOST:-}" ]]; then
+    printf "Invalid environment '%s' or missing configuration.\n" "${ENV_SOURCE:-}" >&2
     exit 2
 fi
 
@@ -204,37 +200,41 @@ while (( "$#" )); do
             OPEN_CL=1
             shift
             ;;
+        -a=*)
+            if [[ "${1#*=}" =~ ^(true|1)$ ]]; then OPEN_CL=1; fi
+            shift
+            ;;
         *)
             shift
             ;;
     esac
 done
 
-SERVICE=
+SERVICE=""
 
-if [ -z ${WARDEN_PARAMS[0]+x} ]; then
-    echo "Please specify the service you want to open"
+if [[ -z "${WARDEN_PARAMS[0]+x}" ]]; then
+    printf "Please specify the service you want to open\n" >&2
     exit 2
 else
-    SERVICE=${WARDEN_PARAMS[0]}
+    SERVICE="${WARDEN_PARAMS[0]}"
 fi
 
-if [[ "$SERVICE" = "opensearch" ]]; then
+if [[ "${SERVICE}" = "opensearch" ]]; then
     SERVICE="elasticsearch"
 fi
 
-if [[ "$ENV_SOURCE_VAR" = "LOCAL" ]]; then
+if [[ "${ENV_SOURCE_VAR}" = "LOCAL" ]]; then
     if type "local_${SERVICE}" &>/dev/null; then
         local_"${SERVICE}"
     else
-        echo "Service '$SERVICE' not supported."
+        printf "Service '%s' not supported.\n" "${SERVICE}" >&2
         exit 1
     fi
 else
     if type "remote_${SERVICE}" &>/dev/null; then
         remote_"${SERVICE}"
     else
-        echo "Service '$SERVICE' not supported remotely."
+        printf "Service '%s' not supported remotely.\n" "${SERVICE}" >&2
         exit 1
     fi
 fi

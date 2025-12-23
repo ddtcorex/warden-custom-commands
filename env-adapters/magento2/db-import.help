@@ -3,11 +3,16 @@
 
 WARDEN_USAGE=$(cat <<EOF
 \033[33mUsage:\033[0m
-  db-import [-h|--help] [-f|--file=<file>]
+  db-import [-h|--help] [-f|--file=<file>] [--stream-db] [-e|--environment=<env>]
 
 \033[33mOptions:\033[0m
   -h, --help                   Display this help menu.
 
   -f, --file=<file>            Path to existing database dump file. Can be gzipped.
+
+  --stream-db                  Stream database directly from remote environment specified by -e.
+
+  -e, --environment=<env>      Remote environment to stream from (e.g. staging, prod).
+                               Only used with --stream-db.
 EOF
 )
