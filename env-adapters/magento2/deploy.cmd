@@ -26,7 +26,7 @@ while (( "$#" )); do
             DEPLOY_JOBS="$2"
             shift 2
             ;;
-        --static-only|-s)
+        --only-static|-o)
             STATIC_ONLY=1
             shift
             ;;

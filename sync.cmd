@@ -5,9 +5,9 @@ set -u
 SUBCOMMAND_DIR=$(dirname "${BASH_SOURCE[0]}")
 source "${SUBCOMMAND_DIR}"/env-variables
 
-# Default values
-SYNC_SOURCE="staging"
-SYNC_DESTINATION="local"
+# Default values - use centralized ENV_SOURCE and ENV_DESTINATION from env-variables
+SYNC_SOURCE="${ENV_SOURCE:-staging}"
+SYNC_DESTINATION="${ENV_DESTINATION:-local}"
 SYNC_TYPE_FILE=0
 SYNC_TYPE_MEDIA=0
 SYNC_TYPE_DB=0
@@ -17,27 +17,10 @@ SYNC_DRY_RUN=0
 SYNC_DELETE=0
 SYNC_NO_FLUSH=1
 SYNC_REMOTE_TO_REMOTE=0
-WARDEN_PARAMS=()
 
-# Parse arguments
+# Parse remaining arguments (source/destination already handled by env-variables)
 while (( "$#" )); do
     case "$1" in
-        -s=*|--source=*|-e=*|--environment=*)
-            SYNC_SOURCE="${1#*=}"
-            shift
-            ;;
-        -s|--source|-e|--environment)
-            SYNC_SOURCE="$2"
-            shift 2
-            ;;
-        -d=*|--destination=*)
-            SYNC_DESTINATION="${1#*=}"
-            shift
-            ;;
-        -d|--destination)
-            SYNC_DESTINATION="$2"
-            shift 2
-            ;;
         -f|--file)
             SYNC_TYPE_FILE=1
             shift
