@@ -5,13 +5,13 @@ WARDEN_USAGE=$(cat <<EOF
 Upgrade Laravel framework to a specified version.
 
 \033[33mUsage:\033[0m
-  upgrade [-h|--help] --version=<version> [--dry-run]
+  upgrade [-h|--help] -v|--version=<version> [--dry-run]
 
 \033[33mOptions:\033[0m
   -h, --help            Display this help menu
 
 \033[33mArguments:\033[0m
-  --version=<version>   Target version to upgrade to (required)
+  -v, --version=VERSION Target version to upgrade to (required)
 
   --dry-run             Show what would be done without making changes
 

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-[[ ! ${WARDEN_DIR} ]] && >&2 echo -e "\033[31mThis script is not intended to be run directly!\033[0m" && exit 1
+set -u
+[[ ! "${WARDEN_DIR:-}" ]] && >&2 printf "\033[31mThis script is not intended to be run directly!\033[0m\n" && exit 1
 
 # env-variables is already sourced by the root dispatcher
 
@@ -13,9 +14,13 @@ while (( "$#" )); do
             DRY_RUN=1
             shift
             ;;
-        --version=*)
+        -v=*|--version=*)
             MAGENTO_VERSION="${1#*=}"
             shift
+            ;;
+        -v|--version)
+            MAGENTO_VERSION="$2"
+            shift 2
             ;;
         *)
             shift
@@ -27,7 +32,7 @@ SCRIPT_DIR=$(dirname "${BASH_SOURCE[0]}")
 JSON_FILE="${SCRIPT_DIR}/magento-versions.json"
 
 if [[ ! -f "${JSON_FILE}" ]]; then
-    >&2 echo "Error: magento-versions.json not found at ${JSON_FILE}"
+    >&2 printf "Error: magento-versions.json not found at %s\n" "${JSON_FILE}"
     exit 1
 fi
 
@@ -37,15 +42,15 @@ if [[ -z "${MAGENTO_VERSION}" ]]; then
         # Try to get version from composer.json
         MAGENTO_VERSION=$(jq -r '.require["magento/product-community-edition"] // .require["magento/product-enterprise-edition"] // "unknown"' composer.json | sed 's/[\^~]//g')
         if [[ "${MAGENTO_VERSION}" != "unknown" ]]; then
-            echo "Detected Magento version from composer.json: ${MAGENTO_VERSION}"
+            printf "Detected Magento version from composer.json: %s\n" "${MAGENTO_VERSION}"
         fi
     fi
     
     # Fall back to installed version if available
-    if [[ -z "${MAGENTO_VERSION}" ]] || [[ "${MAGENTO_VERSION}" == "unknown" ]]; then
+    if [[ -z "${MAGENTO_VERSION:-}" ]] || [[ "${MAGENTO_VERSION:-}" == "unknown" ]]; then
         if warden env exec php-fpm bin/magento --version &> /dev/null; then
             MAGENTO_VERSION=$(warden env exec php-fpm bin/magento --version 2>/dev/null | awk '{print $3}')
-            echo "Detected installed Magento version: ${MAGENTO_VERSION}"
+            printf "Detected installed Magento version: %s\n" "${MAGENTO_VERSION}"
         fi
     fi
 fi
@@ -53,14 +58,14 @@ fi
 # Store original version for display
 ORIGINAL_VERSION="${MAGENTO_VERSION}"
 
-if [[ -z "${MAGENTO_VERSION}" ]]; then
-    echo "Warning: Could not detect Magento version. Using default (latest) configuration."
+if [[ -z "${MAGENTO_VERSION:-}" ]]; then
+    printf "Warning: Could not detect Magento version. Using default (latest) configuration.\n"
     VERSION_KEY="default"
 else
     # Read version requirements - Check if version exists in JSON
     if jq -e ".\"${MAGENTO_VERSION}\"" "${JSON_FILE}" > /dev/null 2>&1; then
         VERSION_KEY="${MAGENTO_VERSION}"
-        echo "Using Magento version: ${MAGENTO_VERSION}"
+        printf "Using Magento version: %s\n" "${MAGENTO_VERSION}"
     else
         # Fallback logic: Find latest available patch for this main version
         # 1. Extract valid base version (X.Y.Z)
@@ -76,27 +81,27 @@ else
             FALLBACK_VERSION=$(grep -P -m 1 "^\s*\"${ESCAPED_BASE}(?:-[^\"]+)?\"\s*:" "${JSON_FILE}" | grep -oP "\"\K[^\"]+(?=\")")
             
             if [[ -n "${FALLBACK_VERSION}" ]]; then
-                echo "⚠ Version '${MAGENTO_VERSION}' not found."
-                echo "⚠ Enforcing latest available version '${FALLBACK_VERSION}'."
+                printf "⚠ Version '%s' not found.\n" "${MAGENTO_VERSION}"
+                printf "⚠ Enforcing latest available version '%s'.\n" "${FALLBACK_VERSION}"
                 
                 VERSION_KEY="${FALLBACK_VERSION}"
                 MAGENTO_VERSION="${FALLBACK_VERSION}"
                 
                 # Update .env to enforce this version for bootstrap
-                if [[ -z "${DRY_RUN}" ]]; then
+                if [[ -z "${DRY_RUN:-}" ]]; then
                     if grep -q "^META_VERSION=" .env 2>/dev/null; then
                         sed -i "s/^META_VERSION=.*/META_VERSION=${FALLBACK_VERSION}/" .env
                     else
-                        echo "META_VERSION=${FALLBACK_VERSION}" >> .env
+                        printf "META_VERSION=%s\n" "${FALLBACK_VERSION}" >> .env
                     fi
-                    echo "Updated META_VERSION in .env to ${FALLBACK_VERSION}"
+                    printf "Updated META_VERSION in .env to %s\n" "${FALLBACK_VERSION}"
                 fi
             else
-                 echo "Warning: No configuration found for ${BASE_VERSION}.*. Using default."
+                 printf "Warning: No configuration found for %s.*. Using default.\n" "${BASE_VERSION}"
                  VERSION_KEY="default"
             fi
         else
-            echo "Warning: Could not parse version ${MAGENTO_VERSION}. Using default."
+            printf "Warning: Could not parse version %s. Using default.\n" "${MAGENTO_VERSION:-}"
             VERSION_KEY="default"
         fi
     fi
@@ -111,35 +116,35 @@ REDIS_VERSION=$(jq -r ".\"${VERSION_KEY}\".redis" "${JSON_FILE}")
 COMPOSER_VERSION=$(jq -r ".\"${VERSION_KEY}\".composer" "${JSON_FILE}")
 RABBITMQ_VERSION=$(jq -r ".\"${VERSION_KEY}\".rabbitmq" "${JSON_FILE}")
 VARNISH_VERSION=$(jq -r ".\"${VERSION_KEY}\".varnish" "${JSON_FILE}")
-echo ""
-echo "Recommended versions for Magento ${MAGENTO_VERSION:-latest}:"
-echo "  PHP: ${PHP_VERSION}"
-echo "  MySQL: ${MYSQL_VERSION} / MariaDB: ${MARIADB_VERSION}"
-[[ "${OPENSEARCH_VERSION}" != "null" ]] && echo "  OpenSearch: ${OPENSEARCH_VERSION}"
-[[ "${ELASTICSEARCH_VERSION}" != "null" ]] && echo "  Elasticsearch: ${ELASTICSEARCH_VERSION}"
-echo "  Redis: ${REDIS_VERSION}"
-echo "  Composer: ${COMPOSER_VERSION}"
-echo "  RabbitMQ: ${RABBITMQ_VERSION}"
-echo "  Varnish: ${VARNISH_VERSION}"
-echo ""
+printf "\n"
+printf "Recommended versions for Magento %s:\n" "${MAGENTO_VERSION:-latest}"
+printf "  PHP: %s\n" "${PHP_VERSION}"
+printf "  MySQL: %s / MariaDB: %s\n" "${MYSQL_VERSION}" "${MARIADB_VERSION}"
+[[ "${OPENSEARCH_VERSION}" != "null" ]] && printf "  OpenSearch: %s\n" "${OPENSEARCH_VERSION}"
+[[ "${ELASTICSEARCH_VERSION}" != "null" ]] && printf "  Elasticsearch: %s\n" "${ELASTICSEARCH_VERSION}"
+printf "  Redis: %s\n" "${REDIS_VERSION}"
+printf "  Composer: %s\n" "${COMPOSER_VERSION}"
+printf "  RabbitMQ: %s\n" "${RABBITMQ_VERSION}"
+printf "  Varnish: %s\n" "${VARNISH_VERSION}"
+printf "\n"
 
-if [[ -n "${DRY_RUN}" ]]; then
-    echo "[DRY RUN] Would update .env with the following changes:"
-    echo "  PHP_VERSION=${PHP_VERSION}"
-    echo "  MYSQL_DISTRIBUTION_VERSION=${MARIADB_VERSION} (MariaDB)"
-    [[ "${OPENSEARCH_VERSION}" != "null" ]] && echo "  WARDEN_OPENSEARCH=1" && echo "  OPENSEARCH_VERSION=${OPENSEARCH_VERSION}"
-    [[ "${ELASTICSEARCH_VERSION}" != "null" ]] && echo "  WARDEN_ELASTICSEARCH=1" && echo "  ELASTICSEARCH_VERSION=${ELASTICSEARCH_VERSION}"
-    echo "  REDIS_VERSION=${REDIS_VERSION}"
-    echo "  COMPOSER_VERSION=${COMPOSER_VERSION}"
-    [[ "${RABBITMQ_VERSION}" != "null" ]] && echo "  RABBITMQ_VERSION=${RABBITMQ_VERSION}"
-    [[ "${VARNISH_VERSION}" != "null" ]] && echo "  VARNISH_VERSION=${VARNISH_VERSION}"
-    echo ""
-    echo "Run without --dry-run to apply changes."
+if [[ -n "${DRY_RUN:-}" ]]; then
+    printf "[DRY RUN] Would update .env with the following changes:\n"
+    printf "  PHP_VERSION=%s\n" "${PHP_VERSION}"
+    printf "  MYSQL_DISTRIBUTION_VERSION=%s (MariaDB)\n" "${MARIADB_VERSION}"
+    [[ "${OPENSEARCH_VERSION}" != "null" ]] && printf "  WARDEN_OPENSEARCH=1\n" && printf "  OPENSEARCH_VERSION=%s\n" "${OPENSEARCH_VERSION}"
+    [[ "${ELASTICSEARCH_VERSION}" != "null" ]] && printf "  WARDEN_ELASTICSEARCH=1\n" && printf "  ELASTICSEARCH_VERSION=%s\n" "${ELASTICSEARCH_VERSION}"
+    printf "  REDIS_VERSION=%s\n" "${REDIS_VERSION}"
+    printf "  COMPOSER_VERSION=%s\n" "${COMPOSER_VERSION}"
+    [[ "${RABBITMQ_VERSION}" != "null" ]] && printf "  RABBITMQ_VERSION=%s\n" "${RABBITMQ_VERSION}"
+    [[ "${VARNISH_VERSION}" != "null" ]] && printf "  VARNISH_VERSION=%s\n" "${VARNISH_VERSION}"
+    printf "\n"
+    printf "Run without --dry-run to apply changes.\n"
     exit 0
 fi
 
 # Apply changes to .env
-echo "Updating .env file..."
+printf "Updating .env file...\n"
 
 # Update or add PHP_VERSION
 if grep -q "^PHP_VERSION=" .env; then

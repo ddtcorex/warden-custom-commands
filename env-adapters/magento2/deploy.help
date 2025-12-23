@@ -5,7 +5,7 @@ WARDEN_USAGE=$(cat <<EOF
 Deploy Magento locally. By default, runs a full deployment.
 
 \033[33mUsage:\033[0m
-  deploy [-h|--help] [-s|--static-only] [-j|--jobs <n>]
+  deploy [-h|--help] [-s|--static-only] [-j|--jobs=<n>]
 
 \033[33mOptions:\033[0m
   -h, --help          Display this help menu

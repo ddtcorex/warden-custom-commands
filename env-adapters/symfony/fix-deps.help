@@ -14,7 +14,7 @@ Description:
 Options:
   -h, --help              Show this help message
   --dry-run               Preview changes without modifying .env
-  --version=VERSION       Specify Symfony version manually (e.g., 6.4)
+  -v, --version=VERSION   Specify Symfony version manually (e.g., 6.4)
 
 Features:
   • Auto-detects Symfony version from composer.json or bin/console
@@ -24,12 +24,7 @@ Features:
 
 Examples:
   # Auto-detect version and show what would change
-  warden fix-deps --dry-run
-
-  # Auto-detect and apply changes
-  warden fix-deps
-
-  # Fix dependencies for specific Symfony version
+  warden fix-deps -v=6.4
   warden fix-deps --version=6.4
 
 Dependencies Updated:

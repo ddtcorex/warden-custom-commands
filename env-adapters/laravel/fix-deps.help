@@ -14,7 +14,7 @@ Description:
 Options:
   -h, --help              Show this help message
   --dry-run               Preview changes without modifying .env
-  --version=VERSION       Specify Laravel version manually (e.g., 10)
+  -v, --version=VERSION   Specify Laravel version manually (e.g., 10)
 
 Features:
   • Auto-detects Laravel version from composer.json or artisan
@@ -24,12 +24,7 @@ Features:
 
 Examples:
   # Auto-detect version and show what would change
-  warden fix-deps --dry-run
-
-  # Auto-detect and apply changes
-  warden fix-deps
-
-  # Fix dependencies for specific Laravel version
+  warden fix-deps -v=10
   warden fix-deps --version=10
 
 Dependencies Updated:

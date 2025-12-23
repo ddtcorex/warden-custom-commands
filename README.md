@@ -22,20 +22,20 @@ Custom commands that extend Warden's functionality for multiple framework types.
    ```
 
 3. **Mutagen** 0.11.4 or later (macOS only, for sync sessions)
-   ```bash
-   # Will be automatically installed via Homebrew if not present
-   ```
+```bash
+# Will be automatically installed via Homebrew if not present
+```
 
 ### Install Warden
 
-**Option 1: Via Homebrew (Recommended)**
+### Option 1: Via Homebrew (Recommended)
 
 ```bash
 brew install wardenenv/warden/warden
 warden svc up
 ```
 
-**Option 2: Alternative Installation (Manual)**
+### Option 2: Alternative Installation (Manual)
 
 ```bash
 sudo mkdir /opt/warden
@@ -126,17 +126,13 @@ Then connect with just `ssh staging`.
 
 Commands use a **dispatcher pattern** where root commands delegate to environment-specific implementations:
 
-```
+```text
 commands/
 ├── bootstrap.cmd          # Dispatcher → env-adapters/{type}/bootstrap.cmd
 ├── db-dump.cmd            # Dispatcher → env-adapters/{type}/db-dump.cmd
 ├── db-import.cmd          # Dispatcher → env-adapters/{type}/db-import.cmd
 ├── deploy.cmd             # Dispatcher → env-adapters/{type}/deploy.cmd
-├── download-files.cmd     # Dispatcher → env-adapters/{type}/download-files.cmd
 ├── open.cmd               # Dispatcher → env-adapters/{type}/open.cmd
-├── set-config.cmd         # Dispatcher → env-adapters/{type}/set-config.cmd
-├── sync-media.cmd         # Dispatcher → env-adapters/{type}/sync-media.cmd
-├── upload-files.cmd       # Dispatcher → env-adapters/{type}/upload-files.cmd
 │
 ├── self-update.cmd        # Global command
 ├── env-variables          # Global environment loader
@@ -151,66 +147,47 @@ commands/
     │   ├── db-import.help
     │   ├── deploy.cmd
     │   ├── deploy.help
-    │   ├── download-files.cmd
-    │   ├── download-files.help
     │   ├── open.cmd
     │   ├── open.help
-    │   ├── set-config.cmd
-    │   ├── sync-media.cmd
-    │   ├── sync-media.help
-    │   ├── upload-files.cmd
-    │   └── upload-files.help
     │
     ├── laravel/
     │   ├── bootstrap.cmd
     │   ├── db-dump.cmd
     │   ├── db-dump.help
     │   ├── db-import.cmd
-    │   ├── download-files.cmd
-    │   ├── download-files.help
     │   ├── fix-deps.cmd
     │   ├── fix-deps.help
     │   ├── open.cmd
     │   ├── open.help
     │   ├── set-config.cmd
     │   ├── upgrade.cmd
-    │   ├── upgrade.help
-    │   ├── upload-files.cmd
-    │   └── upload-files.help
+    │   └── upgrade.help
     │
     ├── symfony/
     │   ├── bootstrap.cmd
     │   ├── db-dump.cmd
     │   ├── db-dump.help
     │   ├── db-import.cmd
-    │   ├── download-files.cmd
-    │   ├── download-files.help
     │   ├── fix-deps.cmd
     │   ├── fix-deps.help
     │   ├── open.cmd
     │   ├── open.help
     │   ├── set-config.cmd
     │   ├── upgrade.cmd
-    │   ├── upgrade.help
-    │   ├── upload-files.cmd
-    │   └── upload-files.help
+    │   └── upgrade.help
     │
     └── wordpress/
         ├── bootstrap.cmd
         ├── db-dump.cmd
         ├── db-dump.help
         ├── db-import.cmd
-        ├── download-files.cmd
-        ├── download-files.help
         ├── fix-deps.cmd
         ├── fix-deps.help
         ├── open.cmd
         ├── open.help
         ├── set-config.cmd
         ├── upgrade.cmd
-        ├── upgrade.help
-        ├── upload-files.cmd
-        └── upload-files.help
+        └── upgrade.help
 ```
 
 ### How It Works
@@ -225,9 +202,40 @@ commands/
 
 ## Commands Reference
 
+### Common Commands
+
+#### `warden sync`
+
+The unified synchronization command for files, media, and databases.
+
+**Options:**
+
+- `-h, --help` - Display help menu
+- `--source=NAME` - Source environment (default: staging)
+- `--destination=NAME` - Destination environment (default: local)
+- `--file` - Sync source code/files
+- `--media` - Sync media files
+- `--db` - Sync database (streaming)
+- `--full` - Sync everything (file, media, db)
+- `-p, --path=PATH` - Sync matching path only
+- `--dry-run` - Show changes without performing them
+- `--no-flush` - Do not flush cache after sync
+
+**Example:**
+
+```bash
+warden sync --db                    # Sync DB from staging to local
+warden sync --source=prod --media   # Sync media from production
+warden sync --destination=dev --file # Upload local files to dev environment
+warden sync --path=pub/media/tmp    # Sync specific path
+```
+
+> [!IMPORTANT]
+> Operations to remote environments (where destination is not `local`) will always require a confirmation.
+
 ### Magento 2 Commands
 
-#### `warden bootstrap`
+#### Magento 2: `warden bootstrap`
 
 Initialize a new Magento 2 environment with all dependencies and configuration.
 
@@ -256,7 +264,7 @@ warden bootstrap --clean-install --version=2.4.8
 warden bootstrap --download-source -e production
 ```
 
-#### `warden db-dump`
+#### Magento 2: `warden db-dump`
 
 Create a database backup with optional compression.
 
@@ -276,7 +284,7 @@ warden db-dump --file=production-backup.sql.gz --environment=production
 warden db-dump --exclude-sensitive-data
 ```
 
-#### `warden db-import`
+#### Magento 2: `warden db-import`
 
 Import database from local or remote file.
 
@@ -292,7 +300,7 @@ warden db-import --file=backup.sql.gz
 warden db-import -f /path/to/database.sql
 ```
 
-#### `warden deploy`
+#### Magento 2: `warden deploy`
 
 Deploy Magento application (run setup:upgrade, compile, deploy).
 
@@ -310,58 +318,7 @@ warden deploy --jobs=8
 warden deploy --static-only
 ```
 
-#### `warden download-files`
-
-Download files from a remote environment to the local file system.
-
-**Options:**
-
-- `-h, --help` - Display help menu
-- `-e, --environment=<dev|staging|production>` - Environment to sync files from (default: staging)
-- `-p, --path=<dump_path>` - Specific path to download (default: ./)
-
-**Example:**
-
-```bash
-warden download-files
-warden download-files --environment=production
-warden download-files --path=pub/media/
-```
-
-#### `warden download-source`
-
-Download source code files from a remote environment to the local file system (excludes generated, var, pub/media, pub/static, and archive files).
-
-**Options:**
-
-- `-h, --help` - Display help menu
-- `-e, --environment=<dev|staging|production>` - Environment to download from (default: staging)
-
-**Example:**
-
-```bash
-warden download-source
-warden download-source --environment=production
-```
-
-#### `warden upload-files`
-
-Upload files from the local file system to a remote environment.
-
-**Options:**
-
-- `-h, --help` - Display help menu
-- `-e, --environment=<dev|staging|production>` - Environment to upload files to (default: staging)
-- `-p, --path=<upload_path>` - Specific path to upload (default: ./)
-
-**Example:**
-
-```bash
-warden upload-files
-warden upload-files --environment=production --path=pub/media/
-```
-
-#### `warden open`
+#### Magento 2: `warden open`
 
 Open Magento services in browser or establish tunnels.
 
@@ -386,7 +343,7 @@ warden open admin
 warden open --environment=staging
 ```
 
-#### `warden set-config`
+#### Magento 2: `warden set-config`
 
 Configure Magento settings (base URLs, cache, sessions, etc.).
 
@@ -396,23 +353,8 @@ Configure Magento settings (base URLs, cache, sessions, etc.).
 warden set-config
 ```
 
-#### `warden sync-media`
 
-Download media files from a remote environment to the local file system.
-
-**Options:**
-
-- `-h, --help` - Display help menu
-- `-e, --environment=<dev|staging|production>` - Environment to sync media from (default: staging)
-
-**Example:**
-
-```bash
-warden sync-media
-warden sync-media --environment=production
-```
-
-#### `warden upgrade`
+#### Magento 2: `warden upgrade`
 
 Upgrade Magento to a specified version.
 
@@ -432,7 +374,7 @@ warden upgrade --version=2.4.8-p3 --skip-db-upgrade
 
 ### Laravel Commands
 
-#### `warden bootstrap`
+#### Laravel: `warden bootstrap`
 
 Initialize Laravel environment with dependencies and database.
 
@@ -458,7 +400,7 @@ warden bootstrap --download-source -e production
 warden bootstrap --db-dump=backup.sql.gz
 ```
 
-#### `warden db-dump`
+#### Laravel: `warden db-dump`
 
 Dump database from a remote Laravel environment.
 
@@ -474,7 +416,7 @@ warden db-dump -e dev
 warden db-dump --file=production-backup.sql.gz -e production
 ```
 
-#### `warden db-import`
+#### Laravel: `warden db-import`
 
 Import database dump into Laravel project.
 
@@ -489,7 +431,7 @@ warden db-import -f database.sql.gz
 warden db-import --file=backup.sql
 ```
 
-#### `warden open`
+#### Laravel: `warden open`
 
 Open Laravel services (local or remote).
 
@@ -507,23 +449,8 @@ warden open db
 warden open -e staging shell
 ```
 
-#### `warden download-files` / `warden upload-files`
 
-Sync files between local and remote environments.
-
-**Options:**
-
-- `-e, --environment=<dev|staging|production>` - Environment
-- `-p, --path=<path>` - Path to sync (default: ./)
-
-**Example:**
-
-```bash
-warden download-files -e dev -p storage/app/
-warden upload-files -e staging --path=public/uploads/
-```
-
-#### `warden set-config`
+#### Laravel: `warden set-config`
 
 Update Laravel `.env` configuration with Warden-specific settings.
 
@@ -533,7 +460,7 @@ Update Laravel `.env` configuration with Warden-specific settings.
 warden set-config
 ```
 
-#### `warden upgrade`
+#### Laravel: `warden upgrade`
 
 Upgrade Laravel framework to a specified version.
 
@@ -551,7 +478,7 @@ warden upgrade --version=10.x --dry-run
 
 ### Symfony Commands
 
-#### `warden bootstrap`
+#### Symfony: `warden bootstrap`
 
 Initialize Symfony environment with dependencies and database.
 
@@ -578,7 +505,7 @@ warden bootstrap --download-source -e staging
 warden bootstrap --db-dump=var/backup.sql.gz
 ```
 
-#### `warden db-dump`
+#### Symfony: `warden db-dump`
 
 Dump database from a remote Symfony environment.
 
@@ -594,7 +521,7 @@ warden db-dump -e dev
 warden db-dump --file=production-backup.sql.gz -e production
 ```
 
-#### `warden db-import`
+#### Symfony: `warden db-import`
 
 Import database dump into Symfony project.
 
@@ -609,7 +536,7 @@ warden db-import --file=database.sql.gz
 warden db-import -f backup.sql
 ```
 
-#### `warden open`
+#### Symfony: `warden open`
 
 Open Symfony services (local or remote).
 
@@ -627,23 +554,8 @@ warden open db
 warden open -e staging shell
 ```
 
-#### `warden download-files` / `warden upload-files`
 
-Sync files between local and remote environments.
-
-**Options:**
-
-- `-e, --environment=<dev|staging|production>` - Environment
-- `-p, --path=<path>` - Path to sync (default: ./)
-
-**Example:**
-
-```bash
-warden download-files -e dev -p var/uploads/
-warden upload-files -e staging --path=public/assets/
-```
-
-#### `warden set-config`
+#### Symfony: `warden set-config`
 
 Update Symfony configuration for Warden environment.
 
@@ -653,7 +565,7 @@ Update Symfony configuration for Warden environment.
 warden set-config
 ```
 
-#### `warden upgrade`
+#### Symfony: `warden upgrade`
 
 Upgrade Symfony framework to a specified version.
 
@@ -671,7 +583,7 @@ warden upgrade --version=6.4 --dry-run
 
 ### WordPress Commands
 
-#### `warden bootstrap`
+#### WordPress: `warden bootstrap`
 
 Initialize WordPress environment with complete installation.
 
@@ -700,7 +612,7 @@ warden bootstrap --db-dump=wp-content/backup.sql.gz
 
 **Note:** With `--clean-install`, WordPress will be downloaded, wp-config.php created, and the site installed with admin credentials displayed.
 
-#### `warden db-dump`
+#### WordPress: `warden db-dump`
 
 Dump database from a remote WordPress environment.
 
@@ -716,7 +628,7 @@ warden db-dump -e dev
 warden db-dump --file=production-backup.sql.gz -e production
 ```
 
-#### `warden db-import`
+#### WordPress: `warden db-import`
 
 Import database dump into WordPress.
 
@@ -737,7 +649,7 @@ warden db-import -f backup.sql
 warden env exec php-fpm wp search-replace 'old-domain.com' 'app.test.test'
 ```
 
-#### `warden open`
+#### WordPress: `warden open`
 
 Open WordPress services (local or remote).
 
@@ -755,23 +667,7 @@ warden open db
 warden open -e staging admin
 ```
 
-#### `warden download-files` / `warden upload-files`
-
-Sync files between local and remote environments.
-
-**Options:**
-
-- `-e, --environment=<dev|staging|production>` - Environment
-- `-p, --path=<path>` - Path to sync (default: ./)
-
-**Example:**
-
-```bash
-warden download-files -e dev -p wp-content/uploads/
-warden upload-files -e staging --path=wp-content/themes/
-```
-
-#### `warden set-config`
+#### WordPress: `warden set-config`
 
 Update WordPress configuration for Warden environment.
 
@@ -781,7 +677,7 @@ Update WordPress configuration for Warden environment.
 warden set-config
 ```
 
-#### `warden upgrade`
+#### WordPress: `warden upgrade`
 
 Upgrade WordPress core to a specified version.
 

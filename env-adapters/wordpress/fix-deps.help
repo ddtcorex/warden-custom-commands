@@ -14,7 +14,7 @@ Description:
 Options:
   -h, --help              Show this help message
   --dry-run               Preview changes without modifying .env
-  --version=VERSION       Specify WordPress version manually (e.g., 6.5)
+  -v, --version=VERSION   Specify WordPress version manually (e.g., 6.5)
 
 Features:
   • Auto-detects WordPress version from version.php or WP-CLI
@@ -23,12 +23,7 @@ Features:
 
 Examples:
   # Auto-detect version and show what would change
-  warden fix-deps --dry-run
-
-  # Auto-detect and apply changes
-  warden fix-deps
-
-  # Fix dependencies for specific WordPress version
+  warden fix-deps -v=6.5
   warden fix-deps --version=6.5
 
 Dependencies Updated:

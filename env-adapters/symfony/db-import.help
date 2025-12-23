@@ -8,13 +8,13 @@ Import a database dump into the Symfony database.
 
 ### Synopsis
 
-    warden db-import [--file=<filename>] [--stream-db] [-e <env>]
+    warden db-import [-f|--file=<file>] [--stream-db] [-e|--environment=<env>]
 
 ### Options
 
-    -f, --file=<filename>    Path to database dump file (.sql or .sql.gz)
+    -f, --file=FILE          Path to database dump file (.sql or .sql.gz)
     --stream-db              Stream database directly from remote environment specified by -e
-    -e, --environment=<env>  Remote environment to stream from (e.g. staging, prod)
+    -e, --environment=NAME   Remote environment to stream from (e.g. staging, prod)
 
 ### Description
 

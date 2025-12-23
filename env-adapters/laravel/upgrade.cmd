@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-[[ ! ${WARDEN_DIR} ]] && >&2 echo -e "\033[31mThis script is not intended to be run directly!\033[0m" && exit 1
+set -u
+[[ ! "${WARDEN_DIR:-}" ]] && >&2 printf "\033[31mThis script is not intended to be run directly!\033[0m\n" && exit 1
 
 ## Laravel Upgrade Command
 ## Upgrades Laravel framework to a specified version
@@ -11,9 +12,13 @@ DRY_RUN=""
 # Parse arguments
 while (( "$#" )); do
     case "$1" in
-        --version=*)
+        -v=*|--version=*)
             TARGET_VERSION="${1#*=}"
             shift
+            ;;
+        -v|--version)
+            TARGET_VERSION="$2"
+            shift 2
             ;;
         --dry-run)
             DRY_RUN=1
@@ -34,32 +39,33 @@ if [[ -z "${TARGET_VERSION}" ]]; then
     fatal "Target version is required. Usage: warden upgrade --version=<version>"
 fi
 
-echo ""
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "Laravel Upgrade"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-echo "Target version: ${TARGET_VERSION}"
-echo ""
+printf "\n"
+printf "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+printf "Laravel Upgrade\n"
+printf "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+printf "\n"
+printf "Target version: %s\n" "${TARGET_VERSION}"
+printf "\n"
 
 # Detect current version
 CURRENT_VERSION=$(warden env exec -T php-fpm php artisan --version 2>/dev/null | grep -oP '\d+\.\d+\.\d+' || echo "unknown")
-echo "Current version: ${CURRENT_VERSION}"
-echo ""
+printf "Current version: %s\n" "${CURRENT_VERSION}"
+printf "\n"
 
-if [[ -n "${DRY_RUN}" ]]; then
-    echo "[DRY RUN] Would perform the following steps:"
-    echo "  1. composer require laravel/framework:^${TARGET_VERSION} --no-update"
-    echo "  2. composer update"
-    echo "  3. php artisan migrate (if applicable)"
+if [[ -n "${DRY_RUN:-}" ]]; then
+    printf "[DRY RUN] Would perform the following steps:\n"
+    printf "  1. composer require laravel/framework:^%s --no-update\n" "${TARGET_VERSION}"
+    printf "  2. composer update\n"
+    printf "  3. php artisan migrate (if applicable)\n"
     exit 0
 fi
 
 # Confirm upgrade
-read -p "Proceed with upgrade to ${TARGET_VERSION}? [y/N] " -n 1 -r
-echo ""
-if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-    echo "Upgrade cancelled."
+printf "Proceed with upgrade to %s? [y/N] " "${TARGET_VERSION}"
+read -n 1 -r
+printf "\n"
+if [[ ! "${REPLY:-n}" =~ ^[Yy]$ ]]; then
+    printf "Upgrade cancelled.\n"
     exit 0
 fi
 
@@ -75,8 +81,8 @@ echo ""
 echo "Step 3/3: Running migrations..."
 warden env exec -T php-fpm php artisan migrate --force || true
 
-echo ""
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "✅ Laravel upgrade to ${TARGET_VERSION} completed!"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
+printf "\n"
+printf "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+printf "✅ Laravel upgrade to %s completed!\n" "${TARGET_VERSION}"
+printf "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+printf "\n"

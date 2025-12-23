@@ -3,16 +3,15 @@
 
 WARDEN_USAGE=$(cat <<EOF
 \033[33mUsage:\033[0m
-  bootstrap [-e <dev|production|staging>] [--no-pull] [--skip-db-import] [--skip-media-sync] [--skip-composer-install] [--skip-admin-create] [--db-dump <file>.sql.gz]
+  bootstrap [-e|--environment=<env>] [--no-pull] [--skip-db-import] [--skip-media-sync] [--skip-composer-install] [--skip-admin-create] [--db-dump=<file>]
 
 \033[33mOptions:\033[0m
   -h, --help              Display this help menu
 
   --clean-install         Perform clean installation
 
-  --meta-package          Magento meta package (magento/project-community-edition, magento/project-enterprise-edition)
-
-  --meta-version          Magento version
+  --meta-package=PACKAGE   Magento meta package (magento/project-community-edition, magento/project-enterprise-edition)
+  --meta-version=VERSION   Magento version
 
   --include-sample        Include sample data into the installation
 
@@ -25,9 +24,8 @@ WARDEN_USAGE=$(cat <<EOF
   --skip-admin-create     Skips over admin user create.
 
 \033[33mArguments:\033[0m
-  -e, --environment=<dev|staging|production>  Environment to sync media from. Default: staging
-
-  --db-dump=<file>.sql.gz                     Expects path to .sql.gz file for import during init
+  -e, --environment=NAME    Environment to sync media from. Default: staging
+  --db-dump=FILE            Expects path to .sql.gz file for import during init
 
 EOF
 )

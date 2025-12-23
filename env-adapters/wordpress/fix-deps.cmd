@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-[[ ! ${WARDEN_DIR} ]] && >&2 echo -e "\033[31mThis script is not intended to be run directly!\033[0m" && exit 1
+set -u
+[[ ! "${WARDEN_DIR:-}" ]] && >&2 printf "\033[31mThis script is not intended to be run directly!\033[0m\n" && exit 1
 
 # env-variables is already sourced by the root dispatcher
 
@@ -13,9 +14,13 @@ while (( "$#" )); do
             DRY_RUN=1
             shift
             ;;
-        --version=*)
+        -v=*|--version=*)
             WORDPRESS_VERSION="${1#*=}"
             shift
+            ;;
+        -v|--version)
+            WORDPRESS_VERSION="$2"
+            shift 2
             ;;
         *)
             shift

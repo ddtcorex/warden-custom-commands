@@ -15,7 +15,7 @@ Initializes a Symfony development environment.
     --clean-install           Create a new Symfony project from scratch
     --fix-deps                Auto-detect Symfony version and set correct PHP/MySQL/Redis versions
     --download-source         Download source code from remote environment
-    --db-dump=<file>          Use a specific database dump file
+    --db-dump=FILE            Use a specific database dump file
     --skip-db-import          Skip importing the database
     --skip-composer-install   Skip running composer install
     --skip-migrate            Skip running database migrations

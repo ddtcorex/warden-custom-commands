@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-[[ ! ${WARDEN_DIR} ]] && >&2 echo -e "\033[31mThis script is not intended to be run directly!\033[0m" && exit 1
+set -u
+[[ ! "${WARDEN_DIR:-}" ]] && >&2 printf "\033[31mThis script is not intended to be run directly!\033[0m\n" && exit 1
 
 START_TIME=$(date +%s)
 
@@ -33,6 +34,11 @@ while (( "$#" )); do
             COMPOSER_INSTALL=
             ENV_REQUIRED=1
             shift
+            ;;
+        --db-dump)
+            DB_DUMP="$2"
+            ENV_REQUIRED=1
+            shift 2
             ;;
         --db-dump=*)
             DB_DUMP="${1#*=}"
@@ -109,15 +115,14 @@ if [[ -n "${FIX_DEPS}" ]]; then
 fi
 
 ## validate the selected environment
-if [[ $ENV_REQUIRED ]] && [ -z ${ENV_SOURCE_HOST+x} ]; then
-    echo "Invalid environment '${ENV_SOURCE}' or missing REMOTE_*_HOST configuration"
+if [[ "${ENV_REQUIRED:-}" ]] && [[ -z "${ENV_SOURCE_HOST+x}" ]]; then
+    printf "Invalid environment '%s' or missing REMOTE_*_HOST configuration\n" "${ENV_SOURCE}" >&2
     exit 2
 fi
 
 ## download files from the remote
-if [[ $DOWNLOAD_SOURCE ]]; then
-    :: Downloading source from ${ENV_SOURCE} environment
-    warden download-files -e="${ENV_SOURCE}" --path="./"
+if [[ "${DOWNLOAD_SOURCE:-}" ]]; then
+    warden sync --file --source="${ENV_SOURCE}" --path="./"
     
     # Clean up generated files for fresh start
     warden env exec php-fpm sh -c "
@@ -138,7 +143,7 @@ warden env up
 warden shell -c "while ! nc -z db 3306 </dev/null; do sleep 2; done"
 
 # Clean install - create new Laravel project
-if [[ $CLEAN_INSTALL ]]; then
+if [[ "${CLEAN_INSTALL:-}" ]]; then
     :: Creating new Laravel project
     
     # Backup Warden's .env
@@ -181,14 +186,14 @@ if [[ $CLEAN_INSTALL ]]; then
 fi
 
 # Run composer install without scripts to avoid issues before DB is configured
-if [[ $COMPOSER_INSTALL ]] && [[ ! $CLEAN_INSTALL ]]; then
+if [[ "${COMPOSER_INSTALL:-}" ]] && [[ ! "${CLEAN_INSTALL:-}" ]]; then
     :: Installing dependencies - skipping scripts
     warden env exec php-fpm composer install --no-scripts
 fi
 
 ## import database only if --skip-db-import is not specified
-if [[ ${DB_IMPORT} ]] && [[ ! ${CLEAN_INSTALL} ]]; then
-    if [[ ${STREAM_DB} ]] && [[ -z "$DB_DUMP" ]] && [[ -n "${ENV_SOURCE_HOST+x}" ]]; then
+if [[ "${DB_IMPORT:-}" ]] && [[ ! "${CLEAN_INSTALL:-}" ]]; then
+    if [[ "${STREAM_DB:-}" ]] && [[ -z "${DB_DUMP}" ]] && [[ -n "${ENV_SOURCE_HOST+x}" ]]; then
         warden db-import --stream-db -e "$ENV_SOURCE"
     else
         if [[ -z "$DB_DUMP" ]] && [[ -n "${ENV_SOURCE_HOST+x}" ]]; then

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-[[ ! ${WARDEN_DIR} ]] && >&2 echo -e "\033[31mThis script is not intended to be run directly!\033[0m" && exit 1
+set -u
+[[ ! "${WARDEN_DIR:-}" ]] && >&2 printf "\033[31mThis script is not intended to be run directly!\033[0m\n" && exit 1
 
 # env-variables is already sourced by the root dispatcher
 
@@ -84,8 +85,8 @@ fi
 :: Update configuration
 before_set_config
 
-warden db connect -e "UPDATE ${DB_PREFIX}core_config_data SET value = 'https://${TRAEFIK_SUBDOMAIN}.${TRAEFIK_DOMAIN}/' WHERE path IN ('web/secure/base_url', 'web/unsecure/base_url', 'web/secure/base_link_url', 'web/unsecure/base_link_url')" || true
-warden db connect -e "DELETE FROM ${DB_PREFIX}core_config_data WHERE path IN ('web/secure/base_static_url', 'web/secure/base_media_url', 'web/unsecure/base_static_url', 'web/unsecure/base_media_url')" || true
+warden db connect -e "UPDATE ${DB_PREFIX:-}core_config_data SET value = 'https://${TRAEFIK_SUBDOMAIN}.${TRAEFIK_DOMAIN}/' WHERE path IN ('web/secure/base_url', 'web/unsecure/base_url', 'web/secure/base_link_url', 'web/unsecure/base_link_url')" || true
+warden db connect -e "DELETE FROM ${DB_PREFIX:-}core_config_data WHERE path IN ('web/secure/base_static_url', 'web/secure/base_media_url', 'web/unsecure/base_static_url', 'web/unsecure/base_media_url')" || true
 
 warden env exec php-fpm bin/magento config:set -q --lock-env web/unsecure/base_url "https://${TRAEFIK_SUBDOMAIN}.${TRAEFIK_DOMAIN}/" || true
 warden env exec php-fpm bin/magento config:set -q --lock-env web/secure/base_url "https://${TRAEFIK_SUBDOMAIN}.${TRAEFIK_DOMAIN}/" || true
