@@ -20,6 +20,10 @@ fi
 MEDIA_PATH="pub/media/"
 CODE_EXCLUDE=('/generated' '/var' '/pub/media' '/pub/static' '*.gz' '*.zip' '*.tar' '*.7z' '*.sql' '.git' '.idea' 'node_modules')
 MEDIA_EXCLUDE=('*.gz' '*.zip' '*.tar' '*.7z' '*.sql' 'tmp' 'itm' 'import' 'export' 'importexport' 'captcha' 'analytics' 'catalog/product/cache' 'catalog/product.rm' 'catalog/product/product' 'opti_image' 'webp_image' 'webp_cache' 'shoppingfeed' 'amasty/blog/cache')
+# Exclude product images by default unless --include-product is passed
+if [[ "${SYNC_INCLUDE_PRODUCT:-0}" -eq 0 ]]; then
+    MEDIA_EXCLUDE+=('catalog/product')
+fi
 
 # Function for file transfer (uses rsync)
 function transfer_files() {
