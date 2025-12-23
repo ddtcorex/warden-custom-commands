@@ -5,6 +5,49 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2025-12-23
+
+**v1.4.0: Unified Sync & Enhanced Robustness**
+
+This release introduces a powerful, unified `sync` command, enables direct database streaming for faster imports, and significantly improves the stability and error handling of all bash scripts.
+
+### Added
+
+- **Unified `warden sync` Command:**
+  - Replaces `download-files`, `upload-files`, `sync-media`, `sync-db` with a single, versatile command.
+  - Supports `--file` (f), `--media` (m), `--db`, and `--full` synchronization types.
+  - Supports custom paths via `-p|--path`.
+  - Supports `remote-to-remote` synchronization (piping data between two remote servers without local storage).
+  - Smart defaults: Defaults to "Files" sync if no type specified; defaults to "Staging" source if not specified.
+  - **Streaming Database Sync:** Direct piping of mysqldump output to mysql import, eliminating intermediate dump files for faster operations.
+  - **Centralized SQL Cleanup:** Standardized `sed` filters applied during streaming (stripping DEFINERs, fixing collations, removing sensitive data).
+
+- **Magento 2 Improvements:**
+  - **Refactored Search Configuration:** Simplified search engine logic with support for version-specific overrides.
+  - **Bootstrap Stability:** Added directory validation to ensure `app/etc/` exists before writing configuration files.
+
+### Changed
+
+- **Database Import Refactor:**
+  - All `db-import` commands (all adapters) now support the `--stream-db` flag for direct imports.
+  - Logic standardized to prevent exit code leakage (fixed `exit 1` on success).
+
+- **Environment Selection Logic:**
+  - Updated `env-variables` to explicitly support `-s|--source` flags.
+  - Prevents overwriting of `ENV_SOURCE` if already set by a dispatcher, properly fixing `warden sync -s dev`.
+
+- **Bash Script Robustness:**
+  - **Strict `local` Scoping:** Audited and fixed all instances of valid variables incorrectly flagged as `local` outside of functions.
+  - **`set -u` Compatibility:** Added default value expansions (`${VAR:-}`) across all scripts to prevent "unbound variable" errors.
+  - **UX Refinements:** Removed redundant confirmation prompts when syncing from remote to `local` (safe operation).
+
+### Fixed
+
+- Fixed critical bug where `warden bootstrap` would fail on fresh installs due to missing `app/etc` directory.
+- Fixed exit code leakage in `db-import` where scripts would return error code 1 even after successful imports.
+- Fixed `warden sync` defaulting to "Staging" even when `-s dev` was passed.
+- Fixed "local: can only be used in a function" errors in multiple scripts.
+
 ## [1.3.0] - 2025-12-12
 
 **v1.3.0: Remote Cloning & Dynamic Configuration**
