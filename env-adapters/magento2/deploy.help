@@ -5,15 +5,17 @@ WARDEN_USAGE=$(cat <<EOF
 Deploy Magento locally. By default, runs a full deployment.
 
 \033[33mUsage:\033[0m
-  deploy [-h|--help] [-o|--only-static] [-j|--jobs=<n>]
+  deploy [-h|--help] [-e|--environment=<env>] [-o|--only-static] [-j|--jobs=<n>]
 
 \033[33mOptions:\033[0m
-  -h, --help          Display this help menu
+  -h, --help                Display this help menu
 
 \033[33mArguments:\033[0m
-  -o, --only-static   Deploy static files only (skip composer, upgrade, compile)
+  -e, --environment=<env>   Remote environment to deploy to (e.g. staging, prod). Default: local
 
-  -j, --jobs=<n>      Number of parallel jobs for static content deploy. Default: 4
+  -o, --only-static         Deploy static files only (skip composer, upgrade, compile)
+
+  -j, --jobs=<n>            Number of parallel jobs for static content deploy. Default: 4
 
 EOF
 )

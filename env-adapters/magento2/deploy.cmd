@@ -3,6 +3,20 @@ set -u
 
 # env-variables is already sourced by the root dispatcher
 
+# Helper for remote execution
+function remote_exec() {
+    # Default to LOCAL if no -e specified or -e local
+    local TARGET_ENV="${ENV_SOURCE:-local}"
+    if [[ "${ENV_SOURCE_DEFAULT:-0}" -eq "1" ]] || [[ "${TARGET_ENV}" == "local" ]]; then
+        warden env exec -T php-fpm "$@"
+    elif [[ -n "${ENV_SOURCE_HOST:-}" ]]; then
+        ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "cd \"${ENV_SOURCE_DIR}\" && $*"
+    else
+        printf "Invalid environment '%s'\n" "${TARGET_ENV}" >&2
+        exit 2
+    fi
+}
+
 # Hooks
 function after_deploy_static() { :; }
 
@@ -39,20 +53,25 @@ done
 function deploy_static() {
     printf "\n"
     printf "⌛ \033[1;32mClearing static assets...\033[0m\n"
-    warden env exec -T php-fpm rm -rf pub/static/* var/view_preprocessed/*
+    remote_exec rm -rf pub/static/* var/view_preprocessed/*
 
     printf "\n"
     printf "⌛ \033[1;32mDeploying static content...\033[0m\n"
     
     # Check Magento version for --jobs support (2.2+)
-    MAGENTO_VERSION=$(warden env exec -T php-fpm bin/magento --version 2>/dev/null | grep -oP '\d+\.\d+' | head -n1 || printf "2.4")
-    MAJOR_MINOR=$(printf "%s" "$MAGENTO_VERSION" | awk -F. '{print $1"."$2}')
+    MAGENTO_VERSION=$(remote_exec bin/magento --version 2>/dev/null | grep -oP '\d+\.\d+' | head -n1 || echo "2.4")
     
-    if (( $(printf "%s >= 2.2" "${MAJOR_MINOR:-2.4}" | bc -l) )); then
-        warden env exec -T php-fpm bin/magento setup:static-content:deploy -f --jobs=${DEPLOY_JOBS:-4}
+    # Ensure it's a valid MAJOR.MINOR format (e.g. 2.4)
+    MAJOR_MINOR=$(echo "${MAGENTO_VERSION}" | awk -F. '{if ($1 && $2) print $1"."$2; else print "2.4"}')
+    
+    # Robust comparison using bc
+    IS_MODERN_MAGENTO=$(echo "${MAJOR_MINOR} >= 2.2" | bc -l 2>/dev/null || echo "1")
+    
+    if [[ "${IS_MODERN_MAGENTO}" -eq 1 ]]; then
+        remote_exec bin/magento setup:static-content:deploy -f --jobs=${DEPLOY_JOBS:-4}
     else
         printf "Note: --jobs not supported on Magento < 2.2, using sequential deployment\n"
-        warden env exec -T php-fpm bin/magento setup:static-content:deploy -f
+        remote_exec bin/magento setup:static-content:deploy -f
     fi
     
     after_deploy_static
@@ -64,28 +83,28 @@ function deploy_static() {
 function deploy_full() {
     printf "\n"
     printf "⌛ \033[1;32mInstalling dependencies...\033[0m\n"
-    warden env exec -T php-fpm composer install
+    remote_exec composer install
     
     # Apply patches if ece-tools is installed
-    if warden env exec -T php-fpm test -f vendor/bin/ece-patches; then
+    if remote_exec test -f vendor/bin/ece-patches; then
         printf "\n"
         printf "⌛ \033[1;32mApplying patches...\033[0m\n"
-        warden env exec -T php-fpm php vendor/bin/ece-patches apply || true
+        remote_exec php vendor/bin/ece-patches apply || true
     fi
 
     printf "\n"
     printf "⌛ \033[1;32mRunning setup:upgrade...\033[0m\n"
-    warden env exec -T php-fpm bin/magento setup:upgrade
+    remote_exec bin/magento setup:upgrade
 
     printf "\n"
     printf "⌛ \033[1;32mRunning setup:di:compile...\033[0m\n"
-    warden env exec -T php-fpm bin/magento setup:di:compile
+    remote_exec bin/magento setup:di:compile
     
     deploy_static
 
     printf "\n"
     printf "⌛ \033[1;32mFlushing cache...\033[0m\n"
-    warden env exec -T php-fpm bin/magento cache:flush
+    remote_exec bin/magento cache:flush
 
     printf "\n"
     printf "✅ \033[32mFull deploy complete!\033[0m\n"

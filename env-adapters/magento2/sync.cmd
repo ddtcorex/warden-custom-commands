@@ -8,7 +8,7 @@ if [ -z "${ENV_SOURCE_HOST_VAR+x}" ]; then
 fi
 
 # Determine RSYNC options
-RSYNC_OPTS="-azvP"
+RSYNC_OPTS="-azvPLk"
 if [[ "${SYNC_DRY_RUN:-0}" -eq 1 ]]; then
     RSYNC_OPTS="${RSYNC_OPTS} --dry-run"
 fi
@@ -31,6 +31,52 @@ function transfer_files() {
     local source_path="${2}"
     local dest_path="${3}"
     local excludes=("${@:4}")
+
+    # Path-aware env.php exclusion (only if it exists on destination)
+    local target_file="app/etc/env.php"
+    local rel_exclude=""
+    local exists_on_dest=0
+
+    # 1. Check if it exists on destination
+    if [[ "${SYNC_REMOTE_TO_REMOTE:-0}" -eq 1 ]]; then
+        if ssh ${SSH_OPTS} -p "${DEST_REMOTE_PORT}" "${DEST_REMOTE_USER}@${DEST_REMOTE_HOST}" "[ -e \"${DEST_REMOTE_DIR}/${target_file}\" ]" 2>/dev/null; then
+            exists_on_dest=1
+        fi
+    elif [[ "${direction}" == "download" ]]; then
+        if [[ -e "${WARDEN_ENV_PATH}/${target_file}" ]]; then
+            exists_on_dest=1
+        fi
+    else
+        # upload
+        if ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "[ -e \"${ENV_SOURCE_DIR}/${target_file}\" ]" 2>/dev/null; then
+            exists_on_dest=1
+        fi
+    fi
+
+    if [[ "${exists_on_dest}" -eq 1 ]]; then
+        # Normalize target and source paths for comparison
+        local norm_target="/${target_file}"
+        local norm_src=$(echo "/${source_path}" | sed -e 's|/\./|/|g' -e 's|/\.$||' -e 's|/\{2,\}|/|g')
+        
+        # If source ends in /, rsync's root is inside that dir
+        if [[ "${norm_src}" == */ ]]; then
+            local src_dir="${norm_src%/}"
+            if [[ "${norm_target}" == "${src_dir}"/* ]]; then
+                rel_exclude="${norm_target#$src_dir}"
+            fi
+        else
+            # If source doesn't end in /, rsync's root is its parent
+            local src_parent=$(dirname "${norm_src}")
+            [[ "${src_parent}" == "/" ]] && src_parent=""
+            if [[ "${norm_target}" == "${src_parent}"/* ]]; then
+                rel_exclude="${norm_target#$src_parent}"
+            fi
+        fi
+    fi
+
+    if [[ -n "${rel_exclude}" ]]; then
+        excludes+=( "${rel_exclude}" )
+    fi
     
     local exclude_args=()
     for item in "${excludes[@]}"; do
@@ -177,13 +223,11 @@ if [[ "${SYNC_TYPE_DB}" -eq 1 || "${SYNC_TYPE_FULL}" -eq 1 ]]; then
     sync_database
 fi
 
-# 5. Post-Sync Cache Flush
-if [[ "${SYNC_NO_FLUSH:-0}" -eq 0 && "${SYNC_DRY_RUN:-0}" -eq 0 ]]; then
-    printf "🧹 \033[1;32mFlushing Cache ...\033[0m\n"
-    if [[ "${SYNC_REMOTE_TO_REMOTE:-0}" -eq 1 ]]; then
-        ssh ${SSH_OPTS} -p "${DEST_REMOTE_PORT}" "${DEST_REMOTE_USER}@${DEST_REMOTE_HOST}" "cd \"${DEST_REMOTE_DIR}\" && php bin/magento cache:flush" || true
-    else
-        warden env exec -T php-fpm bin/magento cache:flush || true
+# 5. Post-Sync Redeploy
+if [[ "${SYNC_DRY_RUN:-0}" -eq 0 ]]; then
+    if [[ "${SYNC_REDEPLOY:-0}" -eq 1 ]]; then
+        printf "🚀 \033[1;32mTriggering redeploy on %s ...\033[0m\n" "${SYNC_DESTINATION}"
+        warden deploy -e "${SYNC_DESTINATION}"
     fi
 fi
 

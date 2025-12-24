@@ -11,9 +11,9 @@ printf "\033[33mUsage:\033[0m
   --full               Sync everything (file, media, db)
   -p, --path=PATH      Sync a specific directory or file path
   --dry-run            Show changes without performing them
-  --flush              Flush cache after sync (default: disabled)
   --delete             Delete files on destination that are not in source (rsync only)
   --include-product    Include product images when syncing media (excluded by default)
+  --redeploy           Redeploy destination after sync using deploy.cmd (default: disabled)
   -h, --help           Display this help message
 
 \033[33mExamples:\033[0m

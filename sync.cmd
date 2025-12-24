@@ -15,9 +15,9 @@ SYNC_TYPE_FULL=0
 SYNC_PATH=""
 SYNC_DRY_RUN=0
 SYNC_DELETE=0
-SYNC_NO_FLUSH=1
 SYNC_REMOTE_TO_REMOTE=0
 SYNC_INCLUDE_PRODUCT=0
+SYNC_REDEPLOY=0
 
 # Parse remaining arguments (source/destination already handled by env-variables)
 while (( "$#" )); do
@@ -74,8 +74,8 @@ while (( "$#" )); do
             SYNC_INCLUDE_PRODUCT=1
             shift
             ;;
-        --flush)
-            SYNC_NO_FLUSH=0
+        --redeploy)
+            SYNC_REDEPLOY=1
             shift
             ;;
         --) # End of all options
@@ -187,7 +187,7 @@ else
 fi
 
 # Export variables for adapter scripts
-export SYNC_SOURCE SYNC_DESTINATION SYNC_TYPE_FILE SYNC_TYPE_MEDIA SYNC_TYPE_DB SYNC_TYPE_FULL SYNC_PATH SYNC_DRY_RUN SYNC_DELETE SYNC_NO_FLUSH SYNC_REMOTE_TO_REMOTE SYNC_INCLUDE_PRODUCT DIRECTION
+export SYNC_SOURCE SYNC_DESTINATION SYNC_TYPE_FILE SYNC_TYPE_MEDIA SYNC_TYPE_DB SYNC_TYPE_FULL SYNC_PATH SYNC_DRY_RUN SYNC_DELETE SYNC_REMOTE_TO_REMOTE SYNC_INCLUDE_PRODUCT SYNC_REDEPLOY DIRECTION
 
 # Dispatch to environment-specific implementation
 ENV_CMD="${SUBCOMMAND_DIR}/env-adapters/${WARDEN_ENV_TYPE}/sync.cmd"
