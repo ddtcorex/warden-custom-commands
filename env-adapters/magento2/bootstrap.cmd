@@ -18,6 +18,8 @@ COMPOSER_INSTALL=1
 ADMIN_CREATE=1
 ENV_REQUIRED=
 FIX_DEPS=
+HYVA_INSTALL=
+HYVA_TOKEN=
 
 
 ## argument parsing
@@ -97,6 +99,11 @@ while [[ "$#" -gt 0 ]]; do
             shift
             ;;
 
+        --hyva-install)
+            HYVA_INSTALL=1
+            shift
+            ;;
+
         *)
             shift
             ;;
@@ -124,7 +131,8 @@ if [[ -n "${FIX_DEPS}" ]]; then
             
             if [[ -n "${USER_VERSION}" ]]; then
                 # Run fix-deps with specified version
-                source "${SCRIPT_DIR}/fix-deps.cmd" --version="${USER_VERSION}" 2>&1 | grep -v "\[DRY RUN\]\|Run without"
+                META_VERSION="${USER_VERSION}"
+                source "${SCRIPT_DIR}/fix-deps.cmd" --version="${META_VERSION}" 2>&1 | grep -v "\[DRY RUN\]\|Run without"
             else
                 echo "⚠ No version specified. Using default dependency versions."
                 source "${SCRIPT_DIR}/fix-deps.cmd" 2>&1 | grep -v "\[DRY RUN\]\|Run without"
@@ -338,6 +346,34 @@ if [[ ${CLEAN_INSTALL} ]] && [[ ! -f "${WARDEN_WEB_ROOT}/composer.json" ]]; then
         rm -rf /tmp/create-project
     "
 
+    if [[ "${HYVA_INSTALL:-}" ]]; then
+        :: Setting up Hyvä
+        
+        # Check Magento version compatibility (Hyvä requires 2.4.4+)
+        if [[ -n "${META_VERSION:-}" ]] && ! test $(version "${META_VERSION}") -ge "$(version 2.4.4)"; then
+            warning "Hyvä requires Magento 2.4.4 or higher (detected ${META_VERSION}). Skipping Hyvä installation."
+            HYVA_INSTALL=
+        fi
+    fi
+
+    if [[ "${HYVA_INSTALL:-}" ]]; then
+        # Use default token
+        HYVA_TOKEN="2a749843f9e64f7e5f74495baafbd7422271d23933e8d00059a3072767c0"
+        
+        # Register Hyvä repository (using Private Packagist), set credentials and install base packages
+        # We run this in a single sh -c block for consistency and to ensure credentials are found
+        warden env exec php-fpm sh -c "
+            composer config http-basic.hyva-themes.repo.packagist.com token \"${HYVA_TOKEN}\" && \
+            composer config repositories.hyva-themes composer https://hyva-themes.repo.packagist.com/app-hyva-test-dv1dgx/ && \
+            composer require -n hyva-themes/magento2-default-theme
+        "
+        
+        # Also mirror the token to the host auth.json for persistence if it exists
+        if [[ -f "${WARDEN_ENV_PATH}/auth.json" ]]; then
+            warden env exec php-fpm composer config -g http-basic.hyva-themes.repo.packagist.com token "${HYVA_TOKEN}"
+        fi
+    fi
+
     # Magento version-specific search engine configuration
     # Default to OpenSearch (Magento 2.4.8+ or unknown)
     SEARCH_ENGINE="opensearch"
@@ -378,6 +414,15 @@ if [[ ${CLEAN_INSTALL} ]] && [[ ! -f "${WARDEN_WEB_ROOT}/composer.json" ]]; then
 fi
 
 warden set-config
+
+if [[ "${CLEAN_INSTALL:-}" ]] && [[ "${HYVA_INSTALL:-}" ]]; then
+    HYVA_THEME_ID=$(warden env exec -T php-fpm mysql -u magento -pmagento -h db magento -N -s -e "SELECT theme_id FROM theme WHERE code = 'hyva/default'" 2>/dev/null || echo "")
+    if [[ -n "${HYVA_THEME_ID}" ]]; then
+        :: Activating Hyvä theme
+        warden env exec php-fpm bin/magento config:set design/theme/theme_id "${HYVA_THEME_ID}"
+        warden env exec php-fpm bin/magento cache:flush
+    fi
+fi
 
 if [[ "${CLEAN_INSTALL:-}" ]] && [[ "${INCLUDE_SAMPLE:-}" ]]; then
     :: Installing sample data

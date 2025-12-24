@@ -9,6 +9,7 @@ WARDEN_USAGE=$(cat <<EOF
   -h, --help              Display this help menu
 
   --clean-install         Perform clean installation
+  --hyva-install          Perform Hyvä installation (requires --clean-install)
 
   --meta-package=PACKAGE   Magento meta package (magento/project-community-edition, magento/project-enterprise-edition)
   --meta-version=VERSION   Magento version
