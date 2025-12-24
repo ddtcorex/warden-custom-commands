@@ -91,7 +91,7 @@ function local_db() {
 
     open_link "${DB}"
 
-    ssh -L "${LOCAL_PORT}:${DB_ENV_NAME}:${REMOTE_PORT}" -N -p 2222 -i ~/.warden/tunnel/ssh_key user@tunnel.warden.test || true
+    ssh ${SSH_OPTS} -L "${LOCAL_PORT}:${DB_ENV_NAME}:${REMOTE_PORT}" -N -p 2222 -i ~/.warden/tunnel/ssh_key user@tunnel.warden.test || true
 }
 
 function cloud_db() {
@@ -172,7 +172,7 @@ function local_elasticsearch() {
 
     open_link "${ES}"
 
-    ssh -L "${LOCAL_PORT}:${ES_ENV_NAME}:${REMOTE_PORT}" -N -p 2222 -i ~/.warden/tunnel/ssh_key user@tunnel.warden.test || true
+    ssh ${SSH_OPTS} -L "${LOCAL_PORT}:${ES_ENV_NAME}:${REMOTE_PORT}" -N -p 2222 -i ~/.warden/tunnel/ssh_key user@tunnel.warden.test || true
 }
 
 function remote_elasticsearch() {

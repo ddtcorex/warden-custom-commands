@@ -67,7 +67,7 @@ function local_db() {
 
     open_link "${DB}"
 
-    ssh -L "${LOCAL_PORT}:${DB_ENV_NAME}:${REMOTE_PORT}" -N -p 2222 -i ~/.warden/tunnel/ssh_key user@tunnel.warden.test || true
+    ssh ${SSH_OPTS} -L "${LOCAL_PORT}:${DB_ENV_NAME}:${REMOTE_PORT}" -N -p 2222 -i ~/.warden/tunnel/ssh_key user@tunnel.warden.test || true
 }
 
 function local_shell() {
