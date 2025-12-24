@@ -45,7 +45,7 @@ function get_db_info() {
 }
 
 function remote_db () {
-    local db_info=$(${SSH_COMMAND} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" 'php -r "\$a=include \"'"${ENV_SOURCE_DIR}"'/app/etc/env.php\"; var_export(\$a[\"db\"][\"connection\"][\"default\"]);"')
+    local db_info=$(ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" 'php -r "\$a=include \"'"${ENV_SOURCE_DIR}"'/app/etc/env.php\"; var_export(\$a[\"db\"][\"connection\"][\"default\"]);"')
     local db_host=$(warden env exec php-fpm php -r "\$a = ${db_info}; echo strpos(\$a['host'], ':') === false ? \$a['host'] : explode(':', \$a['host'])[0];")
     local db_port=$(warden env exec php-fpm php -r "\$a = ${db_info}; echo strpos(\$a['host'], ':') === false ? '3306' : explode(':', \$a['host'])[1];")
     local db_user=$(warden env exec php-fpm php -r "\$a = ${db_info}; echo \$a['username'];")
@@ -65,7 +65,7 @@ function remote_db () {
 
     open_link "${DB}"
 
-    ${SSH_COMMAND} -L "${LOCAL_PORT}:${db_host}:${db_port}" -N -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" || true
+    ssh ${SSH_OPTS} -L "${LOCAL_PORT}:${db_host}:${db_port}" -N -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" || true
 }
 
 function local_db() {
@@ -91,7 +91,7 @@ function local_db() {
 
     open_link "${DB}"
 
-    ssh -L "${LOCAL_PORT}:${DB_ENV_NAME}:${REMOTE_PORT}" -N -p 2222 -i ~/.warden/tunnel/ssh_key user@tunnel.warden.test || true
+    ssh ${SSH_OPTS} -L "${LOCAL_PORT}:${DB_ENV_NAME}:${REMOTE_PORT}" -N -p 2222 -i ~/.warden/tunnel/ssh_key user@tunnel.warden.test || true
 }
 
 function cloud_db() {
@@ -103,7 +103,7 @@ function local_shell() {
 }
 
 function remote_shell() {
-    ${SSH_COMMAND} -t -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "cd ${ENV_SOURCE_DIR}; bash"
+    ssh ${SSH_OPTS} -t -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "cd ${ENV_SOURCE_DIR}; bash"
 }
 
 function cloud_shell() {
@@ -134,7 +134,7 @@ function local_admin() {
 }
 
 function remote_admin() {
-    local admin_path=$(${SSH_COMMAND} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" 'php -r "\$a=include \"'"${ENV_SOURCE_DIR}"'/app/etc/env.php\"; echo \$a[\"backend\"][\"frontName\"];"')
+    local admin_path=$(ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" 'php -r "\$a=include \"'"${ENV_SOURCE_DIR}"'/app/etc/env.php\"; echo \$a[\"backend\"][\"frontName\"];"')
     printf "\033[32m%s\033[0m admin at: \033[32m%s%s\033[0m\n" "${ENV_SOURCE_VAR}" "${ENV_SOURCE_URL}" "${admin_path}"
     if [[ -n "${ENV_SOURCE_URL:-}" ]]; then
         open_link "${ENV_SOURCE_URL}${admin_path}"
@@ -172,7 +172,7 @@ function local_elasticsearch() {
 
     open_link "${ES}"
 
-    ssh -L "${LOCAL_PORT}:${ES_ENV_NAME}:${REMOTE_PORT}" -N -p 2222 -i ~/.warden/tunnel/ssh_key user@tunnel.warden.test || true
+    ssh ${SSH_OPTS} -L "${LOCAL_PORT}:${ES_ENV_NAME}:${REMOTE_PORT}" -N -p 2222 -i ~/.warden/tunnel/ssh_key user@tunnel.warden.test || true
 }
 
 function remote_elasticsearch() {

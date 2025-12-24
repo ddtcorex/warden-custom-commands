@@ -8,7 +8,7 @@ if [ -z "${ENV_SOURCE_HOST_VAR+x}" ]; then
 fi
 
 # Determine RSYNC options
-RSYNC_OPTS="-azvP"
+RSYNC_OPTS="-azvPLk"
 if [[ "${SYNC_DRY_RUN:-0}" -eq 1 ]]; then
     RSYNC_OPTS="${RSYNC_OPTS} --dry-run"
 fi
@@ -20,6 +20,10 @@ fi
 MEDIA_PATH="pub/media/"
 CODE_EXCLUDE=('/generated' '/var' '/pub/media' '/pub/static' '*.gz' '*.zip' '*.tar' '*.7z' '*.sql' '.git' '.idea' 'node_modules')
 MEDIA_EXCLUDE=('*.gz' '*.zip' '*.tar' '*.7z' '*.sql' 'tmp' 'itm' 'import' 'export' 'importexport' 'captcha' 'analytics' 'catalog/product/cache' 'catalog/product.rm' 'catalog/product/product' 'opti_image' 'webp_image' 'webp_cache' 'shoppingfeed' 'amasty/blog/cache')
+# Exclude product images by default unless --include-product is passed
+if [[ "${SYNC_INCLUDE_PRODUCT:-0}" -eq 0 ]]; then
+    MEDIA_EXCLUDE+=('catalog/product')
+fi
 
 # Function for file transfer (uses rsync)
 function transfer_files() {
@@ -27,6 +31,52 @@ function transfer_files() {
     local source_path="${2}"
     local dest_path="${3}"
     local excludes=("${@:4}")
+
+    # Path-aware env.php exclusion (only if it exists on destination)
+    local target_file="app/etc/env.php"
+    local rel_exclude=""
+    local exists_on_dest=0
+
+    # 1. Check if it exists on destination
+    if [[ "${SYNC_REMOTE_TO_REMOTE:-0}" -eq 1 ]]; then
+        if ssh ${SSH_OPTS} -p "${DEST_REMOTE_PORT}" "${DEST_REMOTE_USER}@${DEST_REMOTE_HOST}" "[ -e \"${DEST_REMOTE_DIR}/${target_file}\" ]" 2>/dev/null; then
+            exists_on_dest=1
+        fi
+    elif [[ "${direction}" == "download" ]]; then
+        if [[ -e "${WARDEN_ENV_PATH}/${target_file}" ]]; then
+            exists_on_dest=1
+        fi
+    else
+        # upload
+        if ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "[ -e \"${ENV_SOURCE_DIR}/${target_file}\" ]" 2>/dev/null; then
+            exists_on_dest=1
+        fi
+    fi
+
+    if [[ "${exists_on_dest}" -eq 1 ]]; then
+        # Normalize target and source paths for comparison
+        local norm_target="/${target_file}"
+        local norm_src=$(echo "/${source_path}" | sed -e 's|/\./|/|g' -e 's|/\.$||' -e 's|/\{2,\}|/|g')
+        
+        # If source ends in /, rsync's root is inside that dir
+        if [[ "${norm_src}" == */ ]]; then
+            local src_dir="${norm_src%/}"
+            if [[ "${norm_target}" == "${src_dir}"/* ]]; then
+                rel_exclude="${norm_target#$src_dir}"
+            fi
+        else
+            # If source doesn't end in /, rsync's root is its parent
+            local src_parent=$(dirname "${norm_src}")
+            [[ "${src_parent}" == "/" ]] && src_parent=""
+            if [[ "${norm_target}" == "${src_parent}"/* ]]; then
+                rel_exclude="${norm_target#$src_parent}"
+            fi
+        fi
+    fi
+
+    if [[ -n "${rel_exclude}" ]]; then
+        excludes+=( "${rel_exclude}" )
+    fi
     
     local exclude_args=()
     for item in "${excludes[@]}"; do
@@ -44,7 +94,7 @@ function transfer_files() {
         # 1. Check/Create Destination Parent Directory (Local -> Dest)
         # Skip this in dry-run mode or if it's just a check
         if [[ "${SYNC_DRY_RUN:-0}" -ne 1 ]]; then
-            ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -p "${DEST_REMOTE_PORT}" "${DEST_REMOTE_USER}@${DEST_REMOTE_HOST}" \
+            ssh ${SSH_OPTS} -p "${DEST_REMOTE_PORT}" "${DEST_REMOTE_USER}@${DEST_REMOTE_HOST}" \
                 "mkdir -p \"${DEST_REMOTE_DIR}/$(dirname "${dest_path}")\""
         fi
 
@@ -52,9 +102,9 @@ function transfer_files() {
         # We use strict RSH options to suppress warnings on the remote side too
         # In dry-run mode, RSYNC_OPTS contains --dry-run, so we SHOULD execute it to see the file list.
         # Added BatchMode=yes and ConnectTimeout=10 to fail fast if auth/net is broken.
-        local cmd="ssh -A -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -p \"${SOURCE_REMOTE_PORT}\" \"${SOURCE_REMOTE_USER}@${SOURCE_REMOTE_HOST}\" \
+        local cmd="ssh -A ${SSH_OPTS} -p \"${SOURCE_REMOTE_PORT}\" \"${SOURCE_REMOTE_USER}@${SOURCE_REMOTE_HOST}\" \
             \"rsync ${RSYNC_OPTS} ${rsync_excludes_str} \
-            -e 'ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -o BatchMode=yes -o ConnectTimeout=10 -p ${DEST_REMOTE_PORT}' \
+            -e 'ssh ${SSH_OPTS} -o BatchMode=yes -o ConnectTimeout=10 -p ${DEST_REMOTE_PORT}' \
             \\\"${SOURCE_REMOTE_DIR}/${source_path}\\\" \
             \\\"${DEST_REMOTE_USER}@${DEST_REMOTE_HOST}:${DEST_REMOTE_DIR}/$(dirname "${dest_path}")/\\\"\""
 
@@ -64,13 +114,13 @@ function transfer_files() {
         eval "${cmd}"
     elif [[ "${direction}" == "download" ]]; then
         printf "⌛ \033[1;32mDownloading from %s:%s to %s ...\033[0m\n" "${ENV_SOURCE_HOST}" "${source_path}" "${dest_path}"
-        warden env exec php-fpm rsync ${RSYNC_OPTS} -e "${SSH_COMMAND} -p ${ENV_SOURCE_PORT}" \
+        warden env exec php-fpm rsync ${RSYNC_OPTS} -e "ssh ${SSH_OPTS} -p ${ENV_SOURCE_PORT}" \
             "${exclude_args[@]}" \
             "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}:${ENV_SOURCE_DIR}/${source_path}" \
             "$(dirname "${dest_path}")/"
     else
         printf "⌛ \033[1;32mUploading from %s to %s:%s ...\033[0m\n" "${source_path}" "${ENV_SOURCE_HOST}" "${dest_path}"
-        warden env exec php-fpm rsync ${RSYNC_OPTS} -e "${SSH_COMMAND} -p ${ENV_SOURCE_PORT}" \
+        warden env exec php-fpm rsync ${RSYNC_OPTS} -e "ssh ${SSH_OPTS} -p ${ENV_SOURCE_PORT}" \
             "${exclude_args[@]}" \
             "${source_path}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}:${ENV_SOURCE_DIR}/$(dirname "${dest_path}")/"
     fi
@@ -88,7 +138,7 @@ function sync_database() {
         printf "⌛ \033[1;32mSyncing DB from %s to %s ...\033[0m\n" "${SYNC_SOURCE}" "${SYNC_DESTINATION}"
         
         # Source DB info
-        local src_db_info=$(ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -p "${SOURCE_REMOTE_PORT}" "${SOURCE_REMOTE_USER}@${SOURCE_REMOTE_HOST}" "php -r \"\\\$a=include \\\"${SOURCE_REMOTE_DIR}/app/etc/env.php\\\"; var_export(\\\$a['db']['connection']['default']);\"")
+        local src_db_info=$(ssh ${SSH_OPTS} -p "${SOURCE_REMOTE_PORT}" "${SOURCE_REMOTE_USER}@${SOURCE_REMOTE_HOST}" "php -r \"\\\$a=include \\\"${SOURCE_REMOTE_DIR}/app/etc/env.php\\\"; var_export(\\\$a['db']['connection']['default']);\"")
         local src_db_host=$(php -r "\$a = ${src_db_info}; echo strpos(\$a['host'], ':') === false ? \$a['host'] : explode(':', \$a['host'])[0];")
         local src_db_port=$(php -r "\$a = ${src_db_info}; echo strpos(\$a['host'], ':') === false ? '3306' : explode(':', \$a['host'])[1];")
         local src_db_user=$(php -r "\$a = ${src_db_info}; echo \$a['username'];")
@@ -96,7 +146,7 @@ function sync_database() {
         local src_db_name=$(php -r "\$a = ${src_db_info}; echo \$a['dbname'];")
 
         # Destination DB info
-        local dest_db_info=$(ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -p "${DEST_REMOTE_PORT}" "${DEST_REMOTE_USER}@${DEST_REMOTE_HOST}" "php -r \"\\\$a=include \\\"${DEST_REMOTE_DIR}/app/etc/env.php\\\"; var_export(\\\$a['db']['connection']['default']);\"")
+        local dest_db_info=$(ssh ${SSH_OPTS} -p "${DEST_REMOTE_PORT}" "${DEST_REMOTE_USER}@${DEST_REMOTE_HOST}" "php -r \"\\\$a=include \\\"${DEST_REMOTE_DIR}/app/etc/env.php\\\"; var_export(\\\$a['db']['connection']['default']);\"")
         local dest_db_host=$(php -r "\$a = ${dest_db_info}; echo strpos(\$a['host'], ':') === false ? \$a['host'] : explode(':', \$a['host'])[0];")
         local dest_db_port=$(php -r "\$a = ${dest_db_info}; echo strpos(\$a['host'], ':') === false ? '3306' : explode(':', \$a['host'])[1];")
         local dest_db_user=$(php -r "\$a = ${dest_db_info}; echo \$a['username'];")
@@ -114,10 +164,10 @@ function sync_database() {
         )
 
         printf "Streaming mysqldump from %s to %s ...\n" "${SYNC_SOURCE}" "${SYNC_DESTINATION}"
-        ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -p "${SOURCE_REMOTE_PORT}" "${SOURCE_REMOTE_USER}@${SOURCE_REMOTE_HOST}" \
+        ssh ${SSH_OPTS} -p "${SOURCE_REMOTE_PORT}" "${SOURCE_REMOTE_USER}@${SOURCE_REMOTE_HOST}" \
             "export MYSQL_PWD='${src_db_pass}'; mysqldump --single-transaction --no-tablespaces --routines -h${src_db_host} -P${src_db_port} -u${src_db_user} ${src_db_name}" \
             | sed "${SED_FILTERS[@]}" \
-            | ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -p "${DEST_REMOTE_PORT}" "${DEST_REMOTE_USER}@${DEST_REMOTE_HOST}" \
+            | ssh ${SSH_OPTS} -p "${DEST_REMOTE_PORT}" "${DEST_REMOTE_USER}@${DEST_REMOTE_HOST}" \
             "export MYSQL_PWD='${dest_db_pass}'; mysql -h${dest_db_host} -P${dest_db_port} -u${dest_db_user} ${dest_db_name}"
         return
     fi
@@ -129,7 +179,7 @@ function sync_database() {
 
     # Logic borrowed from db-import.cmd
     # Get remote DB credentials from env.php
-    local db_info=$(${SSH_COMMAND} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" 'php -r "\$a=include \"'"${ENV_SOURCE_DIR}"'/app/etc/env.php\"; var_export(\$a[\"db\"][\"connection\"][\"default\"]);"')
+    local db_info=$(ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" 'php -r "\$a=include \"'"${ENV_SOURCE_DIR}"'/app/etc/env.php\"; var_export(\$a[\"db\"][\"connection\"][\"default\"]);"')
     local db_host=$(warden env exec -T php-fpm php -r "\$a = ${db_info}; echo strpos(\$a['host'], ':') === false ? \$a['host'] : explode(':', \$a['host'])[0];")
     local db_port=$(warden env exec -T php-fpm php -r "\$a = ${db_info}; echo strpos(\$a['host'], ':') === false ? '3306' : explode(':', \$a['host'])[1];")
     local db_user=$(warden env exec -T php-fpm php -r "\$a = ${db_info}; echo \$a['username'];")
@@ -147,7 +197,7 @@ function sync_database() {
     )
 
     printf "Streaming mysqldump from %s:%s ...\n" "${ENV_SOURCE_HOST}" "${db_name}"
-    ${SSH_COMMAND} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" \
+    ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" \
         "export MYSQL_PWD='${db_pass}'; mysqldump --single-transaction --no-tablespaces --routines -h${db_host} -P${db_port} -u${db_user} ${db_name}" \
         | sed "${SED_FILTERS[@]}" \
         | warden db import --force
@@ -173,13 +223,11 @@ if [[ "${SYNC_TYPE_DB}" -eq 1 || "${SYNC_TYPE_FULL}" -eq 1 ]]; then
     sync_database
 fi
 
-# 5. Post-Sync Cache Flush
-if [[ "${SYNC_NO_FLUSH:-0}" -eq 0 && "${SYNC_DRY_RUN:-0}" -eq 0 ]]; then
-    printf "🧹 \033[1;32mFlushing Cache ...\033[0m\n"
-    if [[ "${SYNC_REMOTE_TO_REMOTE:-0}" -eq 1 ]]; then
-        ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -p "${DEST_REMOTE_PORT}" "${DEST_REMOTE_USER}@${DEST_REMOTE_HOST}" "cd \"${DEST_REMOTE_DIR}\" && php bin/magento cache:flush" || true
-    else
-        warden env exec -T php-fpm bin/magento cache:flush || true
+# 5. Post-Sync Redeploy
+if [[ "${SYNC_DRY_RUN:-0}" -eq 0 ]]; then
+    if [[ "${SYNC_REDEPLOY:-0}" -eq 1 ]]; then
+        printf "🚀 \033[1;32mTriggering redeploy on %s ...\033[0m\n" "${SYNC_DESTINATION}"
+        warden deploy -e "${SYNC_DESTINATION}"
     fi
 fi
 

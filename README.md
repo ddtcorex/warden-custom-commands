@@ -22,6 +22,7 @@ Custom commands that extend Warden's functionality for multiple framework types.
    ```
 
 3. **Mutagen** 0.11.4 or later (macOS only, for sync sessions)
+
 ```bash
 # Will be automatically installed via Homebrew if not present
 ```
@@ -225,6 +226,7 @@ The unified synchronization command for files, media, and databases.
 **Examples:**
 
 1.  **Sync Database (Remote to Local)**
+
     ```bash
     # Pull database from staging (default) to local
     warden sync --db
@@ -234,6 +236,7 @@ The unified synchronization command for files, media, and databases.
     ```
 
 2.  **Sync Media (Remote to Local)**
+
     ```bash
     # Pull media files from staging to local
     warden sync --media
@@ -243,6 +246,7 @@ The unified synchronization command for files, media, and databases.
     ```
 
 3.  **Sync Files/Code (Local to Remote)**
+
     ```bash
     # Push local changes to dev environment
     warden sync -d dev --file
@@ -252,12 +256,14 @@ The unified synchronization command for files, media, and databases.
     ```
 
 4.  **Sync Specific Path (Remote to Remote)**
+
     ```bash
     # Sync a specific log folder from prod to staging
     warden sync -s prod -d staging -p var/log/
     ```
 
 5.  **Full Synchronization**
+
     ```bash
     # Sync everything: DB, Media, Files
     warden sync --full
@@ -271,6 +277,7 @@ The unified synchronization command for files, media, and databases.
 
 > [!IMPORTANT]
 > Operations to remote environments (where neither source nor destination is `local`) use **SSH Agent Forwarding**.
+>
 > - The local machine connects to the Source.
 > - The Source connects to the Destination using **your local keys**.
 > - **Requirement:** You must have your SSH keys loaded locally (`ssh-add -l`). If empty, run `ssh-add`.
@@ -350,14 +357,14 @@ Deploy Magento application (run setup:upgrade, compile, deploy).
 
 - `-h, --help` - Display help menu
 - `-j, --jobs=<n>` - Number of parallel jobs for static content (default: 4)
-- `-s, --static-only` - Deploy static content only (skip di:compile)
+- `-o, --only-static` - Deploy static content only (skip di:compile)
 
 **Example:**
 
 ```bash
 warden deploy
 warden deploy --jobs=8
-warden deploy --static-only
+warden deploy --only-static
 ```
 
 #### Magento 2: `warden open`
@@ -394,7 +401,6 @@ Configure Magento settings (base URLs, cache, sessions, etc.).
 ```bash
 warden set-config
 ```
-
 
 #### Magento 2: `warden upgrade`
 
@@ -490,7 +496,6 @@ Open Laravel services (local or remote).
 warden open db
 warden open -e staging shell
 ```
-
 
 #### Laravel: `warden set-config`
 
@@ -595,7 +600,6 @@ Open Symfony services (local or remote).
 warden open db
 warden open -e staging shell
 ```
-
 
 #### Symfony: `warden set-config`
 

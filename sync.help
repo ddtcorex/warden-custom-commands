@@ -3,7 +3,7 @@ printf "\033[33mUsage:\033[0m
   sync [options]
 
 \033[33mOptions:\033[0m
-  -s, --source=NAME    Source environment (default: staging)
+  -s, -e, --source, --environment=NAME    Source environment (default: staging)
   -d, --destination=NAME Destination environment (default: local)
   -f, --file           Sync source code/files
   -m, --media          Sync media files
@@ -11,8 +11,9 @@ printf "\033[33mUsage:\033[0m
   --full               Sync everything (file, media, db)
   -p, --path=PATH      Sync a specific directory or file path
   --dry-run            Show changes without performing them
-  --flush              Flush cache after sync (default: disabled)
   --delete             Delete files on destination that are not in source (rsync only)
+  --include-product    Include product images when syncing media (excluded by default)
+  --redeploy           Redeploy destination after sync using deploy.cmd (default: disabled)
   -h, --help           Display this help message
 
 \033[33mExamples:\033[0m

@@ -5,6 +5,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2025-12-24
+
+**v1.5.0: Remote Deployment & Enhanced File Sync**
+
+This release adds remote deployment capabilities for Magento 2, introduces redeployment options for file synchronization, and standardizes SSH security options across all commands.
+
+### Added
+
+- **Remote Deployment (Magento 2):**
+  - Added support for deploying code to remote environments via `warden deploy -e <env>`.
+  - Supports both full deployment and static-only deployment on remote servers.
+- **Redeployment Support:**
+  - Introduced `--redeploy` flag to `warden sync` to force-sync and override protected files like `env.php`.
+- **Selective Media Sync:**
+  - Added `--include-product` flag to `warden sync` for Magento 2.
+  - Product images are now excluded by default to significantly speed up media synchronization.
+- **Improved Environment Aliases:**
+  - Added `-e` and `--environment` as official aliases for the source environment in `warden sync` and its help documentation.
+
+### Changed
+
+- **Standardized SSH Options:**
+  - Centralized SSH configuration using a new `SSH_OPTS` variable.
+  - Ensures consistent security settings (`StrictHostKeyChecking=no`, etc.) across all custom commands.
+- **Enhanced Asset Protection:**
+  - Improved `rsync` logic in `sync.cmd` to intelligently exclude `app/etc/env.php` by default.
+- **Centralized Argument Parsing:**
+  - Refactored source and destination parsing in `sync.cmd` and `deploy.cmd` to be consistent across all framework adapters.
+- **Command UX:**
+  - Renamed `warden deploy`'s `--static` option to `--only-static` for better clarity and alignment with other commands.
+
+### Fixed
+
+- **Magento Version Check:** Fixed `deploy.cmd` to correctly use `bc` for decimal version comparisons, ensuring compatibility across different environments.
+- **Rsync Reliability:** Improved `rsync` flags to better handle symlinks and directory structures during environment synchronization.
+
 ## [1.4.0] - 2025-12-23
 
 **v1.4.0: Unified Sync & Enhanced Robustness**
@@ -14,6 +50,7 @@ This release introduces a powerful, unified `sync` command, enables direct datab
 ### Added
 
 - **Unified `warden sync` Command:**
+
   - Replaces `download-files`, `upload-files`, `sync-media`, `sync-db` with a single, versatile command.
   - Supports `--file` (f), `--media` (m), `--db`, and `--full` synchronization types.
   - Supports custom paths via `-p|--path`.
@@ -29,10 +66,12 @@ This release introduces a powerful, unified `sync` command, enables direct datab
 ### Changed
 
 - **Database Import Refactor:**
+
   - All `db-import` commands (all adapters) now support the `--stream-db` flag for direct imports.
   - Logic standardized to prevent exit code leakage (fixed `exit 1` on success).
 
 - **Environment Selection Logic:**
+
   - Updated `env-variables` to explicitly support `-s|--source` flags.
   - Prevents overwriting of `ENV_SOURCE` if already set by a dispatcher, properly fixing `warden sync -s dev`.
 

@@ -78,7 +78,7 @@ if [[ "${STREAM_DB}" -eq 1 ]]; then
 
     # Streaming database from remote (direct import)
     # Fetch DB creds via SSH (using logic from db-dump.cmd)
-    db_url=$(${SSH_COMMAND} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "grep -h -E '^DATABASE_URL=' \"${ENV_SOURCE_DIR}/.env.local\" \"${ENV_SOURCE_DIR}/.env\" 2>/dev/null | head -n 1")
+    db_url=$(ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "grep -h -E '^DATABASE_URL=' \"${ENV_SOURCE_DIR}/.env.local\" \"${ENV_SOURCE_DIR}/.env\" 2>/dev/null | head -n 1")
     
     # Parse URL format: db_type://db_user:db_pass@db_host:db_port/db_name...
     db_url=${db_url#*=}
@@ -99,7 +99,7 @@ if [[ "${STREAM_DB}" -eq 1 ]]; then
     db_port=${db_port:-3306}
     
     printf "Streaming mysqldump from %s:%s ...\n" "${ENV_SOURCE_HOST}" "${db_name}"
-    ${SSH_COMMAND} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" \
+    ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" \
         "export MYSQL_PWD='${db_pass}'; mysqldump --single-transaction --no-tablespaces --routines -h${db_host} -P${db_port} -u${db_user} ${db_name}" \
         | sed "${SED_FILTERS[@]}" \
         | warden db import --force
