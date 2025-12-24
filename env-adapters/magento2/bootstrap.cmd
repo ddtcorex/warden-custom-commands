@@ -415,15 +415,6 @@ fi
 
 warden set-config
 
-if [[ "${CLEAN_INSTALL:-}" ]] && [[ "${HYVA_INSTALL:-}" ]]; then
-    HYVA_THEME_ID=$(warden env exec -T php-fpm mysql -u magento -pmagento -h db magento -N -s -e "SELECT theme_id FROM theme WHERE code = 'hyva/default'" 2>/dev/null || echo "")
-    if [[ -n "${HYVA_THEME_ID}" ]]; then
-        :: Activating Hyvä theme
-        warden env exec php-fpm bin/magento config:set design/theme/theme_id "${HYVA_THEME_ID}"
-        warden env exec php-fpm bin/magento cache:flush
-    fi
-fi
-
 if [[ "${CLEAN_INSTALL:-}" ]] && [[ "${INCLUDE_SAMPLE:-}" ]]; then
     :: Installing sample data
     # Chained execution for performance
@@ -435,8 +426,13 @@ if [[ "${CLEAN_INSTALL:-}" ]] && [[ "${INCLUDE_SAMPLE:-}" ]]; then
     "
 fi
 
-if [[ "${MEDIA_SYNC:-}" ]]; then
-    warden sync --media --source="${ENV_SOURCE}"
+if [[ "${CLEAN_INSTALL:-}" ]] && [[ "${HYVA_INSTALL:-}" ]]; then
+    HYVA_THEME_ID=$(warden env exec -T php-fpm mysql -u magento -pmagento -h db magento -N -s -e "SELECT theme_id FROM theme WHERE code = 'hyva/default'" 2>/dev/null || echo "")
+    if [[ -n "${HYVA_THEME_ID}" ]]; then
+        :: Activating Hyvä theme
+        warden env exec php-fpm bin/magento config:set design/theme/theme_id "${HYVA_THEME_ID}" || true
+        warden env exec php-fpm bin/magento cache:flush
+    fi
 fi
 
 if [[ "${ADMIN_CREATE:-}" == "1" ]]; then
@@ -447,6 +443,10 @@ if [[ "${ADMIN_CREATE:-}" == "1" ]]; then
         --admin-firstname=Admin \
         --admin-lastname=User \
         --admin-email="admin@${TRAEFIK_SUBDOMAIN}.${TRAEFIK_DOMAIN}" || true
+fi
+
+if [[ "${MEDIA_SYNC:-}" ]]; then
+    warden sync --media --source="${ENV_SOURCE}"
 fi
 
 echo "=========== THE APPLICATION HAS BEEN INSTALLED SUCCESSFULLY ==========="
