@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.0] - 2025-12-25
+
+**v1.6.0: Hyvä Theme Integration**
+
+This release adds seamless Hyvä theme installation and activation during Magento 2 clean installs.
+
+### Added
+
+- **Hyvä Theme Installation (Magento 2):**
+  - New `--hyva-install` flag for `warden bootstrap --clean-install` to automatically install and activate the Hyvä theme.
+  - Automatic Hyvä repository registration with Private Packagist.
+  - Installs `hyva-themes/magento2-default-theme` package.
+  - Automatic theme activation after installation (sets as default frontend theme).
+  - Magento version compatibility check (requires 2.4.4+).
+
+### Changed
+
+- **Improved Bootstrap Flow:**
+  - Reordered Hyvä theme activation and media sync steps for better reliability.
+  - Added `|| true` to Hyvä theme configuration command to prevent non-critical errors from stopping the bootstrap process.
+
 ## [1.5.0] - 2025-12-24
 
 **v1.5.0: Remote Deployment & Enhanced File Sync**
