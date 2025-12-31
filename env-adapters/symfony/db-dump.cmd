@@ -3,10 +3,26 @@ set -u
 
 # env-variables is already sourced by the root dispatcher
 
-if [ -z "${ENV_SOURCE_HOST_VAR+x}" ]; then
-    printf "Invalid environment '%s'\n" "${ENV_SOURCE}" >&2
+ENV_SOURCE="${ENV_SOURCE:-local}"
+if [[ "${ENV_SOURCE_DEFAULT:-0}" -eq "1" ]] || [[ "${ENV_SOURCE}" == "local" ]]; then
+    ENV_SOURCE="local"
+elif [[ -z "${!ENV_SOURCE_HOST_VAR+x}" ]]; then
+    printf "Invalid environment '%s'\n" "${ENV_SOURCE:-}" >&2
     exit 2
 fi
+
+function dump_local () {
+    DB_USER=$(warden env exec -T db printenv MYSQL_USER)
+    DB_PASS=$(warden env exec -T db printenv MYSQL_PASSWORD)
+    DB_NAME=$(warden env exec -T db printenv MYSQL_DATABASE)
+
+    printf "⌛ \033[1;32mDumping local database (\033[33m%s\033[1;32m)...\033[0m\n" "${DB_NAME}"
+
+    local db_dump="export MYSQL_PWD='${DB_PASS}'; mysqldump --no-tablespaces --single-transaction --routines -hdb -u${DB_USER} ${DB_NAME} | gzip"
+    warden env exec -T db bash -c "${db_dump}" > "${DUMP_FILENAME}"
+
+    printf "✅ \033[32mDatabase dump complete! File: %s\033[0m\n" "${DUMP_FILENAME}"
+}
 
 function dump_premise () {
     # Fetch DB creds via SSH using logic
@@ -74,4 +90,8 @@ if [[ -z "${DUMP_FILENAME}" ]]; then
     DUMP_FILENAME="var/${WARDEN_ENV_NAME}_${ENV_SOURCE}-$(date +%Y%m%dT%H%M%S).sql.gz"
 fi
 
-dump_premise
+if [[ "${ENV_SOURCE}" = "local" ]]; then
+    dump_local
+else
+    dump_premise
+fi

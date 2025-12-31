@@ -3,8 +3,11 @@ set -u
 
 # env-variables is already sourced by the root dispatcher
 
-if [ -z "${ENV_SOURCE_HOST_VAR+x}" ]; then
-    printf "Invalid environment '%s'\n" "${ENV_SOURCE}" >&2
+ENV_SOURCE="${ENV_SOURCE:-local}"
+if [[ "${ENV_SOURCE_DEFAULT:-0}" -eq "1" ]] || [[ "${ENV_SOURCE}" == "local" ]]; then
+    ENV_SOURCE="local"
+elif [[ -z "${!ENV_SOURCE_HOST_VAR+x}" ]]; then
+    printf "Invalid environment '%s'\n" "${ENV_SOURCE:-}" >&2
     exit 2
 fi
 
@@ -99,6 +102,33 @@ IGNORED_TABLES=(
     'kiwicommerce_activity_detail'
     'kiwicommerce_activity_log'
 )
+
+function get_db_info() {
+    DB_USER=$(warden env exec -T db printenv MYSQL_USER)
+    DB_PASS=$(warden env exec -T db printenv MYSQL_PASSWORD)
+    DB_NAME=$(warden env exec -T db printenv MYSQL_DATABASE)
+}
+
+function dump_local () {
+    get_db_info
+    
+    local ignored_opts=()
+    if [[ "${FULL_DUMP:-0}" -eq "0" ]]; then
+        for table in "${IGNORED_TABLES[@]}"; do
+            ignored_opts+=( --ignore-table="${DB_NAME}.${DB_PREFIX:-}${table}" )
+        done
+    fi
+
+    printf "⌛ \033[1;32mDumping local database (\033[33m%s\033[1;32m)...\033[0m\n" "${DB_NAME}"
+
+    local db_dump_metadata="export MYSQL_PWD='${DB_PASS}'; mysqldump --single-transaction --no-tablespaces --no-data --routines -hdb -u${DB_USER} ${DB_NAME} | sed -e '/999999.*enable the sandbox mode/d' -e 's/DEFINER=[^*]*\*/\*/g' -e 's/ROW_FORMAT=FIXED//g' | gzip"
+    warden env exec -T db bash -c "${db_dump_metadata}" > "${DUMP_FILENAME}"
+    
+    local db_dump_data="export MYSQL_PWD='${DB_PASS}'; mysqldump --single-transaction --no-tablespaces --skip-triggers --no-create-info ${ignored_opts[*]} -hdb -u${DB_USER} ${DB_NAME} | sed -e '/999999.*enable the sandbox mode/d' -e 's/DEFINER=[^*]*\*/\*/g' -e 's/ROW_FORMAT=FIXED//g' | gzip"
+    warden env exec -T db bash -c "${db_dump_data}" >> "${DUMP_FILENAME}"
+
+    printf "✅ \033[32mDatabase dump complete! File: %s\033[0m\n" "${DUMP_FILENAME}"
+}
 
 function dump_cloud () {
     # Determine relationship
@@ -213,7 +243,9 @@ if [[ "${FULL_DUMP}" -eq "0" && "${EXCLUDE_SENSITIVE_DATA}" -eq "1" ]]; then
     )
 fi
 
-if [[ -z "${CLOUD_PROJECT+x}" ]]; then
+if [[ "${ENV_SOURCE}" = "local" ]]; then
+    dump_local
+elif [[ -z "${CLOUD_PROJECT+x}" ]]; then
     dump_premise
 else
     dump_cloud
