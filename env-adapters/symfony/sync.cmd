@@ -17,7 +17,7 @@ if [[ "${SYNC_DELETE:-0}" -eq 1 ]]; then
 fi
 
 # Define paths and exclusions
-MEDIA_PATH="public/uploads/"
+MEDIA_PATH="public/uploads"
 CODE_EXCLUDE=('vendor' 'node_modules' 'var/cache/*' 'var/log/*' '.git' '.idea' '*.gz' '*.zip' '*.tar' '*.7z' '*.sql')
 
 # Function for file transfer (uses rsync)

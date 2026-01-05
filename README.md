@@ -65,6 +65,13 @@ chmod +x ~/.warden/commands/*.cmd
 chmod +x ~/.warden/commands/env-adapters/*/*.cmd
 ```
 
+> [!TIP]
+> **Development Workflow:** If you are contributing or modifying these commands, it is recommended to symlink your development directory to `~/.warden/commands`:
+>
+> ```bash
+> ln -s ~/path/to/your/repo ~/.warden/commands
+> ```
+
 Commands will be automatically available via `warden <command>`.
 
 ### SSH Key Setup (Local → Remote Server)
@@ -225,7 +232,7 @@ The unified synchronization command for files, media, and databases.
 
 **Examples:**
 
-1.  **Sync Database (Remote to Local)**
+1. **Sync Database (Remote to Local)**
 
     ```bash
     # Pull database from staging (default) to local
@@ -235,7 +242,7 @@ The unified synchronization command for files, media, and databases.
     warden sync -s prod --db --flush
     ```
 
-2.  **Sync Media (Remote to Local)**
+2. **Sync Media (Remote to Local)**
 
     ```bash
     # Pull media files from staging to local
@@ -245,7 +252,7 @@ The unified synchronization command for files, media, and databases.
     warden sync --media --delete
     ```
 
-3.  **Sync Files/Code (Local to Remote)**
+3. **Sync Files/Code (Local to Remote)**
 
     ```bash
     # Push local changes to dev environment
@@ -255,21 +262,22 @@ The unified synchronization command for files, media, and databases.
     warden sync -d dev -p app/etc/config.php
     ```
 
-4.  **Sync Specific Path (Remote to Remote)**
+4. **Sync Specific Path (Remote to Remote)**
 
     ```bash
     # Sync a specific log folder from prod to staging
     warden sync -s prod -d staging -p var/log/
     ```
 
-5.  **Full Synchronization**
+5. **Full Synchronization**
 
     ```bash
     # Sync everything: DB, Media, Files
     warden sync --full
     ```
 
-6.  **Dry Run**
+6. **Dry Run**
+
     ```bash
     # See what would happen without actually syncing
     warden sync --media --delete --dry-run
@@ -787,6 +795,7 @@ To add support for a new framework (e.g., Symfony):
    ```
 
 5. **Make executable:**
+
    ```bash
    chmod +x ~/.warden/commands/env-adapters/symfony/*.cmd
    ```
@@ -843,6 +852,29 @@ cat .env | grep WARDEN_ENV_TYPE
 # Fix ownership
 chown -R $(whoami):$(whoami) ~/.warden/commands
 ```
+
+## Testing
+
+This project includes a comprehensive integration testing suite based on Docker. It simulates multiple environments (Local, Dev, Staging) to verify the `warden sync` command across different frameworks.
+
+Detailed instructions can be found in [tests/integration/README.md](tests/integration/README.md).
+
+### Quick Start
+
+```bash
+# 1. Initialize environments (e.g., for Laravel)
+./tests/integration/setup-test-envs.sh --type=laravel
+
+# 2. Run the test suite
+./tests/integration/run-tests.sh --type=laravel
+```
+
+The runner will automatically:
+
+1. Detect container IPs.
+2. Isolate the SSH environment to prevent conflicts with your host's ssh-agent.
+3. Distribute safe test keys between containers.
+4. Execute all test suites (files, media, db, custom paths, R2R, error handling).
 
 ## Contributing
 
