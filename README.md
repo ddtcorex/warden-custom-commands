@@ -56,15 +56,18 @@ source ~/.zshrc
 
 ### Install Custom Commands
 
-# Make commands executable
+```bash
+# Clone this repository to ~/.warden/commands
+git clone https://github.com/KaiDo92/warden-custom-commands.git ~/.warden/commands
 
+# Make commands executable
 chmod +x ~/.warden/commands/*.cmd
 chmod +x ~/.warden/commands/env-adapters/*/*.cmd
-
 ```
 
 > [!TIP]
 > **Development Workflow:** If you are contributing or modifying these commands, it is recommended to symlink your development directory to `~/.warden/commands`:
+>
 > ```bash
 > ln -s ~/path/to/your/repo ~/.warden/commands
 > ```
