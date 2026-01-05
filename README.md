@@ -56,14 +56,18 @@ source ~/.zshrc
 
 ### Install Custom Commands
 
-```bash
-# Clone this repository to ~/.warden/commands
-git clone https://github.com/KaiDo92/warden-custom-commands.git ~/.warden/commands
-
 # Make commands executable
+
 chmod +x ~/.warden/commands/*.cmd
 chmod +x ~/.warden/commands/env-adapters/*/*.cmd
+
 ```
+
+> [!TIP]
+> **Development Workflow:** If you are contributing or modifying these commands, it is recommended to symlink your development directory to `~/.warden/commands`:
+> ```bash
+> ln -s ~/path/to/your/repo ~/.warden/commands
+> ```
 
 Commands will be automatically available via `warden <command>`.
 
@@ -751,6 +755,12 @@ Update custom commands from git repository.
 ```bash
 warden self-update
 ```
+
+## Testing
+
+This project includes a comprehensive integration testing suite based on Docker. It simulates multiple environments (Local, Dev, Staging) to verify the `warden sync` command across different frameworks.
+
+See [tests/integration/README.md](tests/integration/README.md) for details on how to set up and run the tests.
 
 ## Adding New Environment Support
 
