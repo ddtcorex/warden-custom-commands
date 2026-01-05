@@ -181,7 +181,7 @@ function sync_database() {
             "export MYSQL_PWD='${src_db_pass}'; mysqldump --single-transaction --no-tablespaces --routines -h${src_db_host} -P${src_db_port} -u${src_db_user} ${src_db_name}" \
             | sed "${SED_FILTERS[@]}" \
             | ssh ${SSH_OPTS} -o IdentityAgent=none -p "${DEST_REMOTE_PORT}" "${DEST_REMOTE_USER}@${DEST_REMOTE_HOST}" \
-            "export MYSQL_PWD='${dest_db_pass}'; mysql -h${dest_db_host} -P${dest_db_port} -u${dest_db_user} ${dest_db_name}"; then
+            "cat > /tmp/warden_r2r_db.sql && export MYSQL_PWD='${dest_db_pass}'; mysql -h${dest_db_host} -P${dest_db_port} -u${dest_db_user} ${dest_db_name} < /tmp/warden_r2r_db.sql && rm -f /tmp/warden_r2r_db.sql"; then
             printf "\033[31mError: Database sync failed during streaming.\033[0m\n" >&2
             return 1
         fi

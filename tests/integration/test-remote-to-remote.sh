@@ -13,3 +13,33 @@ test_r2r_file_sync() {
     fi
 }
 test_r2r_file_sync
+
+test_r2r_db_sync() {
+    run_db_query "${DEV_PHP}" "DROP TABLE IF EXISTS test_r2r_db;"
+    run_db_query "${DEV_PHP}" "CREATE TABLE test_r2r_db (id INT, val VARCHAR(255));"
+    run_db_query "${DEV_PHP}" "INSERT INTO test_r2r_db VALUES (1, 'r2r-db-data');"
+    setup_mock_env "${DEV_PHP}"
+    setup_mock_env "${STAGING_PHP}"
+    
+    run_db_query "${STAGING_PHP}" "DROP TABLE IF EXISTS test_r2r_db;"
+    
+    # Verify data exists on source first
+    local src_result=$(run_db_query "${DEV_PHP}" "SELECT val FROM test_r2r_db WHERE id=1;" 2>&1)
+    if [[ "${src_result}" != *"r2r-db-data"* ]]; then
+        fail "R2R DB sync" "Setup failed - data missing on source (Dev). Result: ${src_result}"
+        return 1
+    fi
+    
+    local output
+    output=$(run_sync_confirmed -s dev -d staging --db 2>&1) || true
+    
+    local result
+    result=$(run_db_query "${STAGING_PHP}" "SELECT val FROM test_r2r_db WHERE id=1;" 2>&1 | grep "r2r-db-data" | head -n 1)
+    
+    if [[ "${result}" == *"r2r-db-data"* ]]; then
+        pass "R2R DB sync - data transferred correctly"
+    else
+        fail "R2R DB sync" "Verification failed. Result: ${result}. Output: ${output}"
+    fi
+}
+test_r2r_db_sync

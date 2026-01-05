@@ -185,8 +185,24 @@ function setup_mock_env() {
 
 function setup_mock_magento_env() {
     local container="$1"
-    # Magento env setup logic here (mostly handled by env-init)
-    :
+    local db_host="${2:-db}"
+    # Create app/etc/env.php for DB extraction tests
+    docker exec --workdir / "${container}" bash -c "mkdir -p /var/www/html/app/etc && cat > /var/www/html/app/etc/env.php <<EOF
+<?php
+return [
+    'db' => [
+        'connection' => [
+            'default' => [
+                'host' => '${db_host}',
+                'dbname' => 'magento',
+                'username' => 'magento',
+                'password' => 'magento',
+                'active' => '1',
+            ]
+        ]
+    ]
+];
+EOF"
 }
 
 function setup_mock_laravel_env() {
