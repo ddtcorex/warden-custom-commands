@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Integration Test Robustness:**
   - Fixed `test-error-handling.sh` to correctly detect error messages across different terminal outputs.
   - Fixed SSH permission issues in Docker-based test runner to allow successful Remote-to-Remote (R2R) sync tests.
+  - Fixed critical data loss in `magento2/sync.cmd` regarding Remote-to-Remote DB sync by enforcing transactional persistence and splitting SSH command chains.
 
 ## [1.6.0] - 2025-12-25
 

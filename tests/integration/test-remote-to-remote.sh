@@ -18,8 +18,8 @@ test_r2r_db_sync() {
     run_db_query "${DEV_PHP}" "DROP TABLE IF EXISTS test_r2r_db;"
     run_db_query "${DEV_PHP}" "CREATE TABLE test_r2r_db (id INT, val VARCHAR(255));"
     run_db_query "${DEV_PHP}" "INSERT INTO test_r2r_db VALUES (1, 'r2r-db-data');"
-    setup_mock_env "${DEV_PHP}"
-    setup_mock_env "${STAGING_PHP}"
+    setup_mock_env "${DEV_PHP}" "${DEV_DB}"
+    setup_mock_env "${STAGING_PHP}" "${STAGING_DB}"
     
     run_db_query "${STAGING_PHP}" "DROP TABLE IF EXISTS test_r2r_db;"
     
