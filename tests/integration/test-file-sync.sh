@@ -62,6 +62,7 @@ test_file_sync_exclusions() {
         magento2) exclude_path="var/cache" ;;
         laravel)  exclude_path="storage/framework/cache/data" ;;
         symfony)  exclude_path="var/cache" ;;
+        wordpress) exclude_path="wp-content/cache" ;;
         *)        exclude_path="var/cache" ;;
     esac
     

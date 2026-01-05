@@ -119,6 +119,7 @@ echo "Step 9: Creating test directories in containers..."
 case "${ENV_TYPE}" in
     laravel) DIRS="/var/www/html/storage/app/public /var/www/html/public" ;;
     magento2) DIRS="/var/www/html/pub/media /var/www/html/app/code" ;;
+    wordpress) DIRS="/var/www/html/wp-content/uploads" ;;
     *) DIRS="/var/www/html/pub/media" ;;
 esac
 for env in project-local project-dev project-staging; do

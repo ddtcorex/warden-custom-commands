@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **WordPress Testing Support:**
+  - Expanded integration test suite to fully support WordPress environments.
+  - Added specific exclusions for WordPress caching directories in file sync tests.
+  - Implemented automated `.env` and `wp-config.php` generation for test environments.
+
+### Fixed
+
+- **Integration Test Robustness:**
+  - Fixed `test-error-handling.sh` to correctly detect error messages across different terminal outputs.
+  - Fixed SSH permission issues in Docker-based test runner to allow successful Remote-to-Remote (R2R) sync tests.
+
 ## [1.6.0] - 2025-12-25
 
 **v1.6.0: Hyvä Theme Integration**
