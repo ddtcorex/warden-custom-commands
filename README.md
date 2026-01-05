@@ -759,12 +759,6 @@ Update custom commands from git repository.
 warden self-update
 ```
 
-## Testing
-
-This project includes a comprehensive integration testing suite based on Docker. It simulates multiple environments (Local, Dev, Staging) to verify the `warden sync` command across different frameworks.
-
-See [tests/integration/README.md](tests/integration/README.md) for details on how to set up and run the tests.
-
 ## Adding New Environment Support
 
 To add support for a new framework (e.g., Symfony):
@@ -861,27 +855,18 @@ chown -R $(whoami):$(whoami) ~/.warden/commands
 
 ## Testing
 
-### Integration Tests
+This project includes a comprehensive integration testing suite based on Docker. It simulates multiple environments (Local, Dev, Staging) to verify the `warden sync` command across different frameworks.
 
-A comprehensive integration test suite is available to verify the `warden sync` command across different environment types (local, dev, staging).
+Detailed instructions can be found in [tests/integration/README.md](tests/integration/README.md).
 
-#### Prerequisites
-
-- Docker and Warden must be installed and running.
-- All three test environments must be up:
-
-  ```bash
-  cd tests/project-local && warden env up -d
-  cd tests/project-dev && warden env up -d
-  cd tests/project-staging && warden env up -d
-  ```
-
-#### Running Tests
-
-To run the full test suite:
+### Quick Start
 
 ```bash
-./tests/integration/run-tests.sh
+# 1. Initialize environments (e.g., for Laravel)
+./tests/integration/setup-test-envs.sh --type=laravel
+
+# 2. Run the test suite
+./tests/integration/run-tests.sh --type=laravel
 ```
 
 The runner will automatically:
