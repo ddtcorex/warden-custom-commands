@@ -226,28 +226,13 @@ function sync_database() {
     printf "Streaming mysqldump from %s:%s ...\n" "${ENV_SOURCE_HOST}" "${db_name}"
     local dump_cmd="export MYSQL_PWD='${db_pass}'; mysqldump --single-transaction --no-tablespaces --routines -h${db_host} -P${db_port} -u${db_user} ${db_name}"
     
-    local tmp_dump=$(mktemp)
-    
-    if ! ssh ${SSH_OPTS} -o IdentityAgent=none -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "${dump_cmd}" | sed "${SED_FILTERS[@]}" > "${tmp_dump}"; then
-        printf "\033[31mError: Failed to extract database from %s.\033[0m\n" "${ENV_SOURCE_HOST}" >&2
-        rm -f "${tmp_dump}"
+    if ! ssh ${SSH_OPTS} -o IdentityAgent=none -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "${dump_cmd}" \
+        | sed "${SED_FILTERS[@]}" \
+        | warden db import --force; then
+        printf "\033[31mError: Database sync failed during streaming.\033[0m\n" >&2
         return 1
     fi
     
-    local dump_size=$(stat -c%s "${tmp_dump}")
-    if [[ ${dump_size} -lt 100 ]]; then
-        printf "\033[31mError: Extracted database dump is suspicious small (%s bytes). Check remote database.\033[0m\n" "${dump_size}" >&2
-        rm -f "${tmp_dump}"
-        return 1
-    fi
-    
-    if ! warden db import --force < "${tmp_dump}"; then
-        printf "\033[31mError: Failed to import database locally.\033[0m\n" >&2
-        rm -f "${tmp_dump}"
-        return 1
-    fi
-    
-    rm -f "${tmp_dump}"
     return 0
 }
 
