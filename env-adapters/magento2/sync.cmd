@@ -177,32 +177,14 @@ function sync_database() {
             -e 's/utf8_unicode_520_ci/utf8_general_ci/g'
         )
 
-        local tmp_dump=$(mktemp)
-        printf "Extracting database from %s to %s ...\n" "${SYNC_SOURCE}" "${tmp_dump}"
         if ! ssh ${SSH_OPTS} -o IdentityAgent=none -p "${SOURCE_REMOTE_PORT}" "${SOURCE_REMOTE_USER}@${SOURCE_REMOTE_HOST}" \
             "export MYSQL_PWD='${src_db_pass}'; mysqldump --single-transaction --no-tablespaces --routines -h${src_db_host} -P${src_db_port} -u${src_db_user} ${src_db_name}" \
-            | sed "${SED_FILTERS[@]}" > "${tmp_dump}"; then
-            printf "\033[31mError: Failed to extract database from %s.\033[0m\n" "${SYNC_SOURCE}" >&2
-            rm -f "${tmp_dump}"
+            | sed "${SED_FILTERS[@]}" \
+            | ssh ${SSH_OPTS} -o IdentityAgent=none -p "${DEST_REMOTE_PORT}" "${DEST_REMOTE_USER}@${DEST_REMOTE_HOST}" \
+            "export MYSQL_PWD='${dest_db_pass}'; mysql -h${dest_db_host} -P${dest_db_port} -u${dest_db_user} ${dest_db_name}"; then
+            printf "\033[31mError: Database sync failed during streaming.\033[0m\n" >&2
             return 1
         fi
-
-        local dump_size=$(stat -c%s "${tmp_dump}")
-        if [[ ${dump_size} -lt 100 ]]; then
-            printf "\033[31mError: Extracted database dump is suspicious small (%s bytes). Check remote database.\033[0m\n" "${dump_size}" >&2
-            rm -f "${tmp_dump}"
-            return 1
-        fi
-
-        printf "Importing database to %s ...\n" "${SYNC_DESTINATION}"
-        if ! ssh ${SSH_OPTS} -o IdentityAgent=none -p "${DEST_REMOTE_PORT}" "${DEST_REMOTE_USER}@${DEST_REMOTE_HOST}" \
-            "export MYSQL_PWD='${dest_db_pass}'; mysql -h${dest_db_host} -P${dest_db_port} -u${dest_db_user} ${dest_db_name}" < "${tmp_dump}"; then
-            printf "\033[31mError: Failed to import database to %s.\033[0m\n" "${SYNC_DESTINATION}" >&2
-            rm -f "${tmp_dump}"
-            return 1
-        fi
-
-        rm -f "${tmp_dump}"
         return 0
     fi
 
