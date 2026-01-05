@@ -1,204 +1,222 @@
 #!/usr/bin/env bash
-# helpers.sh - Common utilities for integration tests
+# helpers.sh - Shared functions and variables for integration tests
 
 # Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
-YELLOW='\033[0;33m'
-NC='\033[0m' # No Color
+YELLOW='\033[1;33m'
+NC='\033[0m'
 
-# Test counters
-TESTS_PASSED=0
-TESTS_FAILED=0
-
-# Test environment paths
-TEST_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-PROJECT_ROOT="$(cd "${TEST_DIR}/.." && pwd)"
+# Paths
+TEST_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 LOCAL_ENV="${TEST_DIR}/project-local"
 DEV_ENV="${TEST_DIR}/project-dev"
 STAGING_ENV="${TEST_DIR}/project-staging"
 
-# Container names
+# Container Names (calculated based on environment names)
 LOCAL_PHP="project-local-php-fpm-1"
-DEV_PHP="project-dev-php-fpm-1"
-STAGING_PHP="project-staging-php-fpm-1"
-
 LOCAL_DB="project-local-db-1"
+DEV_PHP="project-dev-php-fpm-1"
 DEV_DB="project-dev-db-1"
+STAGING_PHP="project-staging-php-fpm-1"
 STAGING_DB="project-staging-db-1"
 
-# Print test result
+# Environment IPs
+# Grab the first IP address found to avoid concatenation if multiple networks exist
+DEV_IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}' project-dev-php-fpm-1 2>/dev/null | awk '{print $1}')
+
+function get_app_root() {
+    echo "/var/www/html"
+}
+
+# Check if containers are running
+function check_environments() {
+    for container in "${LOCAL_PHP}" "${DEV_PHP}" "${STAGING_PHP}"; do
+        if [[ "$(docker inspect -f '{{.State.Running}}' "${container}" 2>/dev/null)" != "true" ]]; then
+            return 1
+        fi
+    done
+    return 0
+}
+
+# Test Counters
+TESTS_PASS=0
+TESTS_FAIL=0
+
+# Formatting
+function header() {
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo -e "${YELLOW}$1${NC}"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+}
+
 function pass() {
-    echo -e "${GREEN}✓ PASS${NC}: $1"
-    ((TESTS_PASSED++))
+    echo -e "  ${GREEN}✓ PASS:${NC} $1"
+    ((TESTS_PASS++))
 }
 
 function fail() {
-    echo -e "${RED}✗ FAIL${NC}: $1"
-    echo -e "  ${YELLOW}Reason${NC}: $2"
-    ((TESTS_FAILED++))
+    echo -e "  ${RED}✗ FAIL:${NC} $1"
+    echo -e "  ${RED}Reason:${NC} $2"
+    ((TESTS_FAIL++))
 }
 
 function skip() {
-    echo -e "${YELLOW}○ SKIP${NC}: $1"
+    echo -e "  ${YELLOW}○ SKIP:${NC} $1"
 }
 
-function header() {
+function test_summary() {
+    header "TEST SUMMARY"
+    echo -e "Passed: ${GREEN}${TESTS_PASS}${NC}"
+    echo -e "Failed: ${RED}${TESTS_FAIL}${NC}"
     echo ""
-    echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "${YELLOW}$1${NC}"
-    echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-}
-
-function summary() {
-    echo ""
-    echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "${YELLOW}TEST SUMMARY${NC}"
-    echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "${GREEN}Passed${NC}: ${TESTS_PASSED}"
-    echo -e "${RED}Failed${NC}: ${TESTS_FAILED}"
-    echo ""
-    if [[ ${TESTS_FAILED} -gt 0 ]]; then
-        echo -e "${RED}Some tests failed!${NC}"
-        return 1
-    else
+    if [[ ${TESTS_FAIL} -eq 0 ]]; then
         echo -e "${GREEN}All tests passed!${NC}"
         return 0
+    else
+        echo -e "${RED}Some tests failed!${NC}"
+        return 1
     fi
 }
 
-# Execute command in container
-function exec_in_local() {
-    docker exec "${LOCAL_PHP}" bash -c "$1"
-}
-
-function exec_in_dev() {
-    docker exec "${DEV_PHP}" bash -c "$1"
-}
-
-function exec_in_staging() {
-    docker exec "${STAGING_PHP}" bash -c "$1"
-}
-
-# Create test file in container
+# File helpers
 function create_test_file() {
     local container="$1"
     local path="$2"
     local content="${3:-test content}"
-    docker exec "${container}" bash -c "mkdir -p \$(dirname '${path}') && echo '${content}' > '${path}'"
+    # Use docker exec --workdir / to avoid warden wrapper issues
+    # Added proper quoting for the inner path
+    docker exec --workdir / "${container}" bash -c "mkdir -p \"$(dirname "${path}")\" && echo \"${content}\" > \"${path}\""
 }
 
-# Check if file exists in container
 function file_exists() {
     local container="$1"
     local path="$2"
-    docker exec "${container}" test -e "${path}"
+    docker exec --workdir / "${container}" [ -f "${path}" ]
 }
 
-# Get file content from container
 function get_file_content() {
     local container="$1"
     local path="$2"
-    docker exec "${container}" cat "${path}" 2>/dev/null
+    docker exec --workdir / "${container}" cat "${path}" 2>/dev/null
 }
 
-# Remove file from container
 function remove_file() {
     local container="$1"
     local path="$2"
-    docker exec "${container}" rm -rf "${path}" 2>/dev/null || true
+    docker exec --workdir / "${container}" rm -rf "${path}" 2>/dev/null || true
 }
 
-# Clean up test artifacts from all containers
 function cleanup_test_files() {
+    local media_path=$(get_media_path)
     for container in "${LOCAL_PHP}" "${DEV_PHP}" "${STAGING_PHP}"; do
-        docker exec "${container}" bash -c "rm -rf /var/www/html/test_* /var/www/html/pub/media/test_* 2>/dev/null" || true
+        docker exec --workdir / "${container}" bash -c "rm -rf /var/www/html/test_* /var/www/html/${media_path}/test_* 2>/dev/null" || true
     done
 }
 
-# Check if environments are running
-function check_environments() {
-    local all_running=1
-    for container in "${LOCAL_PHP}" "${DEV_PHP}" "${STAGING_PHP}"; do
-        if ! docker ps --format '{{.Names}}' | grep -q "^${container}$"; then
-            echo -e "${RED}Container ${container} is not running${NC}"
-            all_running=0
-        fi
-    done
-    return $((1 - all_running))
-}
-
-# Run warden sync command in local environment
+# Run warden sync command
 function run_sync() {
-    cd "${LOCAL_ENV}" && warden sync -y "$@" 2>&1
+    (cd "${LOCAL_ENV}" && warden sync -y "$@")
 }
 
-# Run sync with auto-confirm (for upload/r2r prompts)
 function run_sync_confirmed() {
-    cd "${LOCAL_ENV}" && yes y | warden sync "$@" 2>&1
+    (cd "${LOCAL_ENV}" && yes y | warden sync "$@" 2>&1)
 }
 
-# Setup a mock Magento env.php file in a container
-# This is required because warden sync reads DB credentials from app/etc/env.php
-function setup_mock_magento_env() {
-    local container="$1"
-    local db_host="${2:-db}"
-    local db_name="${3:-magento}"
-    local db_user="${4:-magento}"
-    local db_pass="${5:-magento}"
-
-    docker exec "${container}" bash -c "mkdir -p /var/www/html/app/etc && cat > /var/www/html/app/etc/env.php <<EOF
-<?php
-return [
-    'db' => [
-        'table_prefix' => '',
-        'connection' => [
-            'default' => [
-                'host' => '${db_host}',
-                'dbname' => '${db_name}',
-                'username' => '${db_user}',
-                'password' => '${db_pass}',
-                'model' => 'mysql4',
-                'engine' => 'innodb',
-                'initStatements' => 'SET NAMES utf8;',
-                'active' => '1',
-                'driver_options' => [
-                    1014 => false
-                ]
-            ]
-        ]
-    ]
-];
-EOF
-"
+# Framework specific path/db helpers
+function get_web_root() {
+    case "${TEST_ENV_TYPE}" in
+        magento2) echo "/var/www/html/pub" ;;
+        laravel)  echo "/var/www/html/public" ;;
+        symfony)  echo "/var/www/html/public" ;;
+        wordpress) echo "/var/www/html" ;;
+        *)        echo "/var/www/html" ;;
+    esac
 }
 
-# Connect networks specifically for R2R testing
-# project-dev needs to be able to talk to project-staging
-function connect_remote_networks() {
-    docker network connect project-staging_default project-dev-php-fpm-1 2>/dev/null || true
-    docker network connect project-dev_default project-staging-php-fpm-1 2>/dev/null || true
+function get_media_path() {
+    case "${TEST_ENV_TYPE}" in
+        magento2) echo "pub/media" ;;
+        laravel)  echo "storage/app/public" ;;
+        symfony)  echo "public/uploads" ;;
+        wordpress) echo "wp-content/uploads" ;;
+        *)        echo "pub/media" ;;
+    esac
 }
 
-# Run a query in a container's database
 function run_db_query() {
     local container="$1"
     local query="$2"
-    
-    # Map PHP container to its corresponding DB container
     local db_container=""
+    
     case "${container}" in
         "${LOCAL_PHP}") db_container="${LOCAL_DB}" ;;
         "${DEV_PHP}") db_container="${DEV_DB}" ;;
         "${STAGING_PHP}") db_container="${STAGING_DB}" ;;
-        *) db_container="${container}" ;; # Fallback if passed DB container directly
+        *) db_container="${container}" ;;
     esac
 
-    # Note: we assume default Warden credentials (magento/magento/magento)
-    # Using -N (no headers), -s (silent), -r (raw) for easy parsing. 
-    # Since we are in the DB container, host is localhost.
-    # We filter out MySQL deprecation warnings to avoid poisoning results.
-    docker exec "${db_container}" mysql -h localhost -u magento -pmagento magento -N -s -r -e "${query}" 2>&1 \
-        | grep -v "Deprecated program name" | grep -v "use /usr/bin/mariadb instead"
+    local db_user="magento"
+    local db_pass="magento"
+    local db_name="magento"
+
+    if [[ "${TEST_ENV_TYPE}" == "wordpress" ]]; then
+        db_user="wordpress"; db_pass="wordpress"; db_name="wordpress"
+    elif [[ "${TEST_ENV_TYPE}" == "laravel" ]]; then
+        db_user="laravel"; db_pass="laravel"; db_name="laravel"
+    elif [[ "${TEST_ENV_TYPE}" == "symfony" ]]; then
+        db_user="symfony"; db_pass="symfony"; db_name="symfony"
+    fi
+
+    docker exec --workdir / "${db_container}" mysql -u "${db_user}" -p"${db_pass}" "${db_name}" -N -s -r -e "${query}" 2>/dev/null
 }
 
+# Mock env setups
+function setup_mock_env() {
+    local container="$1"
+    case "${TEST_ENV_TYPE}" in
+        magento2) setup_mock_magento_env "$@" ;;
+        laravel)  setup_mock_laravel_env "$@" ;;
+        symfony)  setup_mock_symfony_env "$@" ;;
+        wordpress) setup_mock_wordpress_env "$@" ;;
+    esac
+}
+
+function setup_mock_magento_env() {
+    local container="$1"
+    # Magento env setup logic here (mostly handled by env-init)
+    :
+}
+
+function setup_mock_laravel_env() {
+    local container="$1"
+    local db_host="${2:-db}"
+    docker exec --workdir / "${container}" bash -c "cat >> /var/www/html/.env <<EOF
+DB_HOST=${db_host}
+DB_DATABASE=laravel
+DB_USERNAME=laravel
+DB_PASSWORD=laravel
+EOF"
+}
+
+function setup_mock_symfony_env() {
+    local container="$1"
+    local db_host="${2:-db}"
+    docker exec --workdir / "${container}" bash -c "cat >> /var/www/html/.env <<EOF
+DATABASE_URL=\"mysql://symfony:symfony@${db_host}:3306/symfony?serverVersion=8.0\"
+EOF"
+}
+
+function setup_mock_wordpress_env() {
+    local container="$1"
+    local db_host="${2:-db}"
+    docker exec --workdir / "${container}" bash -c "cat > /var/www/html/wp-config.php <<EOF
+<?php
+define('DB_NAME', 'wordpress');
+define('DB_USER', 'wordpress');
+define('DB_PASSWORD', 'wordpress');
+define('DB_HOST', '${db_host}');
+\$table_prefix = 'wp_';
+EOF"
+}

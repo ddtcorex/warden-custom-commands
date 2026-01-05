@@ -17,7 +17,7 @@ if [[ "${SYNC_DELETE:-0}" -eq 1 ]]; then
 fi
 
 # Define paths and exclusions
-MEDIA_PATH="wp-content/uploads/"
+MEDIA_PATH="wp-content/uploads"
 CODE_EXCLUDE=('wp-content/uploads/*' 'wp-content/cache/*' '.git' '.idea' '*.gz' '*.zip' '*.tar' '*.7z' '*.sql')
 
 # Function for file transfer (uses rsync)

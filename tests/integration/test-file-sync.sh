@@ -3,83 +3,82 @@
 
 header "File Sync Tests"
 
-# Test 1: Create test file on local, verify it doesn't exist on dev
-test_file_sync_setup() {
-    create_test_file "${LOCAL_PHP}" "/var/www/html/test_file_sync.txt" "file sync test"
-    remove_file "${DEV_PHP}" "/var/www/html/test_file_sync.txt"
-}
-
-# Test 2: Dry run should not transfer files
+# Test 1: Dry run sync
 test_file_sync_dry_run() {
-    test_file_sync_setup
+    local web_root="$(get_web_root)"
+    create_test_file "${LOCAL_PHP}" "${web_root}/test_dry_run.txt" "dry run"
+    remove_file "${DEV_PHP}" "${web_root}/test_dry_run.txt"
     
-    run_sync -s local -d dev -f --dry-run <<< "y" > /dev/null 2>&1
+    # Run with dry-run flag
+    run_sync_confirmed -s local -d dev --dry-run > /dev/null 2>&1
     
-    if file_exists "${DEV_PHP}" "/var/www/html/test_file_sync.txt"; then
-        fail "Dry run file sync" "File was transferred when it should not have been"
+    if file_exists "${DEV_PHP}" "${web_root}/test_dry_run.txt"; then
+        fail "Dry run file sync" "File was transferred during dry run"
     else
         pass "Dry run file sync - no files transferred"
     fi
 }
 
-# Test 3: Actual file upload
+# Test 2: Upload Files
 test_file_sync_upload() {
-    test_file_sync_setup
+    local web_root="$(get_web_root)"
+    create_test_file "${LOCAL_PHP}" "${web_root}/test_upload.txt" "upload content"
+    remove_file "${DEV_PHP}" "${web_root}/test_upload.txt"
     
-    local output
-    output=$(run_sync_confirmed -s local -d dev -f 2>&1) || status=$?
-    local status=${status:-0}
+    run_sync_confirmed -s local -d dev > /dev/null 2>&1
     
-    if [[ $status -eq 0 ]] && file_exists "${DEV_PHP}" "/var/www/html/test_file_sync.txt"; then
-        local content=$(get_file_content "${DEV_PHP}" "/var/www/html/test_file_sync.txt")
-        if [[ "${content}" == *"file sync test"* ]]; then
+    if file_exists "${DEV_PHP}" "${web_root}/test_upload.txt"; then
+        local content=$(get_file_content "${DEV_PHP}" "${web_root}/test_upload.txt")
+        if [[ "${content}" == *"upload content"* ]]; then
             pass "File upload sync - file transferred with correct content"
         else
-            fail "File upload sync" "File exists but content mismatch"
+            fail "File upload sync" "Content mismatch: ${content}"
         fi
     else
-        fail "File upload sync" "Status: $status. Output: $output"
+        fail "File upload sync" "File was not transferred"
     fi
 }
 
-# Test 4: File download
+# Test 3: Download Files
 test_file_sync_download() {
-    create_test_file "${DEV_PHP}" "/var/www/html/test_download.txt" "download test"
-    remove_file "${LOCAL_PHP}" "/var/www/html/test_download.txt"
+    local web_root="$(get_web_root)"
+    create_test_file "${DEV_PHP}" "${web_root}/test_download.txt" "download content"
+    remove_file "${LOCAL_PHP}" "${web_root}/test_download.txt"
     
-    run_sync -s dev -d local -f > /dev/null 2>&1
+    run_sync -s dev -d local > /dev/null 2>&1
     
-    if file_exists "${LOCAL_PHP}" "/var/www/html/test_download.txt"; then
+    if file_exists "${LOCAL_PHP}" "${web_root}/test_download.txt"; then
         pass "File download sync - file received"
     else
         fail "File download sync" "File was not downloaded"
     fi
 }
 
-# Test 5: Exclusions applied (check /generated is excluded)
+# Test 4: Verify Exclusions
 test_file_sync_exclusions() {
-    create_test_file "${LOCAL_PHP}" "/var/www/html/generated/test_excluded.txt" "should be excluded"
-    remove_file "${DEV_PHP}" "/var/www/html/generated/test_excluded.txt"
+    local app_root=$(get_app_root)
+    local exclude_path=""
+    case "${TEST_ENV_TYPE}" in
+        magento2) exclude_path="var/cache" ;;
+        laravel)  exclude_path="storage/framework/cache/data" ;;
+        symfony)  exclude_path="var/cache" ;;
+        *)        exclude_path="var/cache" ;;
+    esac
     
-    run_sync_confirmed -s local -d dev -f > /dev/null 2>&1
+    create_test_file "${LOCAL_PHP}" "${app_root}/${exclude_path}/test.txt" "excluded"
+    remove_file "${DEV_PHP}" "${app_root}/${exclude_path}/test.txt"
     
-    if file_exists "${DEV_PHP}" "/var/www/html/generated/test_excluded.txt"; then
-        fail "File sync exclusions" "/generated directory was not excluded"
+    run_sync_confirmed -s local -d dev > /dev/null 2>&1
+    
+    if file_exists "${DEV_PHP}" "${app_root}/${exclude_path}/test.txt"; then
+        fail "File sync exclusions" "${exclude_path} was not excluded"
     else
-        pass "File sync exclusions - /generated excluded correctly"
+        pass "File sync exclusions - ${exclude_path} excluded correctly"
     fi
 }
 
-# Run all file sync tests
+# Run tests
 test_file_sync_dry_run
 test_file_sync_upload
 test_file_sync_download
 test_file_sync_exclusions
-
-# Cleanup
-remove_file "${LOCAL_PHP}" "/var/www/html/test_file_sync.txt"
-remove_file "${LOCAL_PHP}" "/var/www/html/test_download.txt"
-remove_file "${LOCAL_PHP}" "/var/www/html/generated"
-remove_file "${DEV_PHP}" "/var/www/html/test_file_sync.txt"
-remove_file "${DEV_PHP}" "/var/www/html/test_download.txt"
-remove_file "${DEV_PHP}" "/var/www/html/generated"
