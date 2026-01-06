@@ -23,9 +23,55 @@ CODE_EXCLUDE=('wp-content/uploads/*' 'wp-content/cache/*' '.git' '.idea' '*.gz' 
 # Function for file transfer (uses rsync)
 function transfer_files() {
     local direction="${1}"
-    local source_path="${2}"
-    local dest_path="${3}"
+    local source_path="${2%/}"
+    local dest_path="${3%/}"
     local excludes=("${@:4}")
+
+    # Path-aware wp-config.php exclusion (only if it exists on destination)
+    local target_file="wp-config.php"
+    local rel_exclude=""
+    local exists_on_dest=0
+
+    # 1. Check if it exists on destination
+    if [[ "${SYNC_REMOTE_TO_REMOTE:-0}" -eq 1 ]]; then
+        if ssh ${SSH_OPTS} -p "${DEST_REMOTE_PORT}" "${DEST_REMOTE_USER}@${DEST_REMOTE_HOST}" "[ -e \"${DEST_REMOTE_DIR}/${target_file}\" ]" ; then
+            exists_on_dest=1
+        fi
+    elif [[ "${direction}" == "download" ]]; then
+        if [[ -e "${WARDEN_ENV_PATH}/${target_file}" ]]; then
+            exists_on_dest=1
+        fi
+    else
+        # upload
+        if ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "[ -e \"${ENV_SOURCE_DIR}/${target_file}\" ]" ; then
+            exists_on_dest=1
+        fi
+    fi
+
+    if [[ "${exists_on_dest}" -eq 1 ]]; then
+        # Normalize target and source paths for comparison
+        local norm_target="/${target_file}"
+        local norm_src=$(echo "/${source_path}" | sed -e 's|/\./|/|g' -e 's|/\.$|/|' -e 's|/\{2,\}|/|g')
+        
+        # If source ends in /, rsync's root is inside that dir
+        if [[ "${norm_src}" == */ ]]; then
+            local src_dir="${norm_src%/}"
+            if [[ "${norm_target}" == "${src_dir}"/* ]]; then
+                rel_exclude="${norm_target#$src_dir}"
+            fi
+        else
+            # If source doesn't end in /, rsync's root is its parent
+            local src_parent=$(dirname "${norm_src}")
+            [[ "${src_parent}" == "/" ]] && src_parent=""
+            if [[ "${norm_target}" == "${src_parent}"/* ]]; then
+                rel_exclude="${norm_target#$src_parent}"
+            fi
+        fi
+    fi
+
+    if [[ -n "${rel_exclude}" ]]; then
+        excludes+=( "${rel_exclude}" )
+    fi
     
     local exclude_args=()
     for item in "${excludes[@]}"; do

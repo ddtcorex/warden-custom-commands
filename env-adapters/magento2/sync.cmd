@@ -56,7 +56,7 @@ function transfer_files() {
     if [[ "${exists_on_dest}" -eq 1 ]]; then
         # Normalize target and source paths for comparison
         local norm_target="/${target_file}"
-        local norm_src=$(echo "/${source_path}" | sed -e 's|/\./|/|g' -e 's|/\.$||' -e 's|/\{2,\}|/|g')
+        local norm_src=$(echo "/${source_path}" | sed -e 's|/\./|/|g' -e 's|/\.$|/|' -e 's|/\{2,\}|/|g')
         
         # If source ends in /, rsync's root is inside that dir
         if [[ "${norm_src}" == */ ]]; then
@@ -77,7 +77,6 @@ function transfer_files() {
     if [[ -n "${rel_exclude}" ]]; then
         excludes+=( "${rel_exclude}" )
     fi
-    
     local exclude_args=()
     for item in "${excludes[@]}"; do
         exclude_args+=( --exclude="${item}" )

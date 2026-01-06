@@ -78,8 +78,83 @@ test_file_sync_exclusions() {
     fi
 }
 
+# Test 5: Verify environment config file (env.php, .env, etc) is NOT overwritten if it exists on destination
+test_file_sync_config_exclusion() {
+    local config_path=""
+    case "${TEST_ENV_TYPE}" in
+        magento2)  config_path="app/etc/env.php" ;;
+        laravel)   config_path=".env" ;;
+        symfony)   config_path=".env.local" ;;
+        wordpress) config_path="wp-config.php" ;;
+    esac
+
+    # Only run if we have a config file to protect for this environment type
+    [[ -z "${config_path}" ]] && return 0
+    
+    local app_root=$(get_app_root)
+    
+    # Ensure config exists on both source (local) and destination (dev)
+    setup_mock_env "${LOCAL_PHP}"
+    setup_mock_env "${DEV_PHP}"
+    
+    # Modify config files with markers
+    modify_config_file "${LOCAL_PHP}" "${app_root}/${config_path}" "MARKER_LOCAL"
+    modify_config_file "${DEV_PHP}" "${app_root}/${config_path}" "MARKER_REMOTE"
+    
+    # 1. Test Upload (should NOT overwrite)
+    run_sync_confirmed -s local -d dev --file > /dev/null 2>&1
+    local dev_content=$(get_file_content "${DEV_PHP}" "${app_root}/${config_path}")
+    
+    if [[ "${dev_content}" == *"MARKER_REMOTE"* ]]; then
+        pass "Config file upload exclusion (${config_path}) - NOT overwritten"
+    else
+        fail "Config file upload exclusion (${config_path})" "File WAS overwritten"
+    fi
+
+    # 2. Test Download (should NOT overwrite)
+    modify_config_file "${LOCAL_PHP}" "${app_root}/${config_path}" "MARKER_LOCAL"
+    modify_config_file "${DEV_PHP}" "${app_root}/${config_path}" "MARKER_REMOTE"
+    
+    run_sync_confirmed -s dev -d local --file > /dev/null 2>&1
+    local local_content=$(get_file_content "${LOCAL_PHP}" "${app_root}/${config_path}")
+    
+    if [[ "${local_content}" == *"MARKER_LOCAL"* ]]; then
+        pass "Config file download exclusion (${config_path}) - NOT overwritten"
+    else
+        fail "Config file download exclusion (${config_path})" "File WAS overwritten"
+    fi
+
+    # 3. Test Subdirectory sync (path-aware exclusion)
+    local config_dir=$(dirname "${config_path}")
+    if [[ "${config_dir}" != "." ]]; then
+        modify_config_file "${LOCAL_PHP}" "${app_root}/${config_path}" "MARKER_LOCAL"
+        modify_config_file "${DEV_PHP}" "${app_root}/${config_path}" "MARKER_REMOTE"
+        
+        run_sync_confirmed -s local -d dev --path="${config_dir}" > /dev/null 2>&1
+        dev_content=$(get_file_content "${DEV_PHP}" "${app_root}/${config_path}")
+        
+        if [[ "${dev_content}" == *"MARKER_REMOTE"* ]]; then
+            pass "Config file exclusion with --path=${config_dir} - correctly excluded"
+        else
+            fail "Config file exclusion with --path=${config_dir}" "File WAS overwritten"
+        fi
+    fi
+
+    # 4. Test "Missing on Destination" (should NOT be excluded)
+    # BE CAREFUL: For Laravel, we must NOT delete .env on local, only on destination
+    remove_file "${DEV_PHP}" "${app_root}/${config_path}"
+    run_sync_confirmed -s local -d dev --file > /dev/null 2>&1
+    
+    if file_exists "${DEV_PHP}" "${app_root}/${config_path}"; then
+        pass "Config file sync when missing on destination - correctly uploaded"
+    else
+        fail "Config file sync when missing on destination" "File was incorrectly excluded"
+    fi
+}
+
 # Run tests
 test_file_sync_dry_run
 test_file_sync_upload
 test_file_sync_download
 test_file_sync_exclusions
+test_file_sync_config_exclusion

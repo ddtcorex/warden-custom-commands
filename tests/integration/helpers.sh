@@ -117,11 +117,11 @@ function cleanup_test_files() {
 
 # Run warden sync command
 function run_sync() {
-    (cd "${LOCAL_ENV}" && warden sync -y "$@")
+    (cd "${LOCAL_ENV}" && export SYNC_ASSUME_YES=1 && warden sync -y "$@")
 }
 
 function run_sync_confirmed() {
-    (cd "${LOCAL_ENV}" && yes y | warden sync "$@" 2>&1)
+    run_sync "$@"
 }
 
 # Framework specific path/db helpers
@@ -235,4 +235,17 @@ define('DB_PASSWORD', 'wordpress');
 define('DB_HOST', '${db_host}');
 \$table_prefix = 'wp_';
 EOF"
+}
+
+function modify_config_file() {
+    local container="$1"
+    local path="$2"
+    local content="$3"
+    
+    if [[ "${path}" == *".env"* ]]; then
+        # Append to avoid breaking Warden variables
+        docker exec "${container}" bash -c "echo '' >> ${path} && echo '${content}' >> ${path}"
+    else
+        docker exec "${container}" bash -c "echo '${content}' > ${path}"
+    fi
 }
