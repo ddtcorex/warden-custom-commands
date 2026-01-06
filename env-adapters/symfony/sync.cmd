@@ -18,7 +18,7 @@ fi
 
 # Define paths and exclusions
 MEDIA_PATH="public/uploads"
-CODE_EXCLUDE=('vendor' 'node_modules' 'var/cache/*' 'var/log/*' '.git' '.idea' '*.gz' '*.zip' '*.tar' '*.7z' '*.sql')
+CODE_EXCLUDE=('vendor' 'node_modules' 'var/cache/*' 'var/log/*' '.git' '.idea' '*.gz' '*.zip' '*.tar' '*.7z' '*.sql' '.env.local')
 
 # Function for file transfer (uses rsync)
 function transfer_files() {

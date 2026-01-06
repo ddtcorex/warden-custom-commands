@@ -177,7 +177,7 @@ if [[ "${ENV_TYPE}" == "symfony" ]]; then
         # Create empty if not exists
         touch .env.local
         
-        echo "DATABASE_URL=\"mysql://symfony:symfony@db:3306/symfony?serverVersion=8.0\"" >> .env.local
+        echo "DATABASE_URL=\"mysql://symfony:symfony@${env}-db-1:3306/symfony?serverVersion=8.0\"" >> .env.local
         echo "  ${env}: .env updated"
     done
 fi
