@@ -26,6 +26,9 @@ This release introduces a comprehensive integration testing suite for all enviro
   - Fixed `test-error-handling.sh` to correctly detect error messages across different terminal outputs.
   - Fixed SSH permission issues in Docker-based test runner to allow successful Remote-to-Remote (R2R) sync tests.
   - Fixed critical data loss in `magento2/sync.cmd` regarding Remote-to-Remote DB sync by enforcing transactional persistence and splitting SSH command chains.
+- **Sync Stability:**
+  - Added `--force` flag to `rsync` in all environment adapters to handle cases where a remote file needs to replace a local directory of the same name.
+  - Standardized `RSYNC_OPTS` to include `-azvPLk` across all frameworks for consistent symlink and directory handling.
 - **Documentation:**
   - Updated `db-dump` help messages to correctly reflect the default behavior.
 
