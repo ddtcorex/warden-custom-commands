@@ -55,18 +55,18 @@ cleanup_test_files
 echo "Done"
 
 TEST_SUITES=(
-    "test-file-sync.sh"
-    "test-media-sync.sh"
-    "test-db-sync.sh"
-    "test-full-sync.sh"
-    "test-custom-path.sh"
-    "test-remote-to-remote.sh"
-    "test-error-handling.sh"
+    "file-sync.sh"
+    "media-sync.sh"
+    "db-sync.sh"
+    "full-sync.sh"
+    "custom-path.sh"
+    "remote-to-remote.sh"
+    "error-handling.sh"
 )
 
 for suite in "${TEST_SUITES[@]}"; do
     echo "🚀 Starting suite: ${suite}"
-    source "${TEST_DIR}/integration/${suite}"
+    source "${TEST_DIR}/integration/suites/${suite}"
     echo "✅ Finished suite: ${suite}"
 done
 

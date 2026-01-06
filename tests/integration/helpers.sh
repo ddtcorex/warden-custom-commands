@@ -165,8 +165,7 @@ function run_db_query() {
         db_user="wordpress"; db_pass="wordpress"; db_name="wordpress"
     elif [[ "${TEST_ENV_TYPE}" == "laravel" ]]; then
         db_user="laravel"; db_pass="laravel"; db_name="laravel"
-    elif [[ "${TEST_ENV_TYPE}" == "symfony" ]]; then
-        db_user="symfony"; db_pass="symfony"; db_name="symfony"
+
     fi
 
     docker exec --workdir / "${db_container}" mysql -u "${db_user}" -p"${db_pass}" "${db_name}" -N -s -r -e "${query}"
@@ -220,7 +219,7 @@ function setup_mock_symfony_env() {
     local container="$1"
     local db_host="${2:-db}"
     docker exec --workdir / "${container}" bash -c "cat >> /var/www/html/.env <<EOF
-DATABASE_URL=\"mysql://symfony:symfony@${db_host}:3306/symfony?serverVersion=8.0\"
+DATABASE_URL=\"mysql://magento:magento@${db_host}:3306/magento?serverVersion=8.0\"
 EOF"
 }
 

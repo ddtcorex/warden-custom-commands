@@ -109,6 +109,12 @@ function transfer_files() {
             "$(dirname "${dest_path}")/"
     else
         printf "⌛ \033[1;32mUploading from %s to %s:%s ...\033[0m\n" "${source_path}" "${ENV_SOURCE_HOST}" "${dest_path}"
+        
+        # Ensure destination parent directory exists
+        if [[ "${SYNC_DRY_RUN:-0}" -ne 1 ]]; then
+             warden env exec php-fpm ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "mkdir -p \"${ENV_SOURCE_DIR}/$(dirname "${dest_path}")\""
+        fi
+
         warden env exec php-fpm rsync ${RSYNC_OPTS} -e "ssh ${SSH_OPTS} -p ${ENV_SOURCE_PORT}" \
             "${exclude_args[@]}" \
             "${source_path}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}:${ENV_SOURCE_DIR}/$(dirname "${dest_path}")/"
@@ -231,13 +237,18 @@ if [[ "${SYNC_TYPE_DB}" -eq 1 || "${SYNC_TYPE_FULL}" -eq 1 ]]; then
     sync_database
 fi
 
-# 5. Post-Sync Cache Flush
-if [[ "${SYNC_NO_FLUSH:-0}" -eq 0 && "${SYNC_DRY_RUN:-0}" -eq 0 ]]; then
-    printf "🧹 \033[1;32mClearing Cache ...\033[0m\n"
-    if [[ "${SYNC_REMOTE_TO_REMOTE:-0}" -eq 1 ]]; then
-        ssh ${SSH_OPTS} -p "${DEST_REMOTE_PORT}" "${DEST_REMOTE_USER}@${DEST_REMOTE_HOST}" "cd \"${DEST_REMOTE_DIR}\" && php bin/console cache:clear" || true
+# 5. Post-Sync Redeploy
+if [[ "${SYNC_DRY_RUN:-0}" -eq 0 ]]; then
+    if [[ "${SYNC_REDEPLOY:-0}" -eq 1 ]]; then
+        printf "🚀 \033[1;32mTriggering redeploy on %s ...\033[0m\n" "${SYNC_DESTINATION}"
+        if ! warden deploy -e "${SYNC_DESTINATION}"; then exit 1; fi
     else
-        warden env exec -T php-fpm bin/console cache:clear || true
+        printf "🧹 \033[1;32mClearing Cache ...\033[0m\n"
+        if [[ "${SYNC_REMOTE_TO_REMOTE:-0}" -eq 1 ]]; then
+            ssh ${SSH_OPTS} -p "${DEST_REMOTE_PORT}" "${DEST_REMOTE_USER}@${DEST_REMOTE_HOST}" "cd \"${DEST_REMOTE_DIR}\" && php bin/console cache:clear" || true
+        else
+            warden env exec -T php-fpm bin/console cache:clear || true
+        fi
     fi
 fi
 
