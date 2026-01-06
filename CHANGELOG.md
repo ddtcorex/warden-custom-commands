@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.7.0] - 2026-01-06
+
+**v1.7.0: Integration Testing Suite & Sync Stability**
+
+This release introduces a comprehensive integration testing suite for all environments, stabilizes the Remote-to-Remote synchronization, and improves the `db-dump` command usability.
+
+### Added
+
+- **WordPress Testing Support:**
+  - Expanded integration test suite to fully support WordPress environments.
+  - Added specific exclusions for WordPress caching directories in file sync tests.
+  - Implemented automated `.env` and `wp-config.php` generation for test environments.
+- **Local Source for `db-dump`:**
+  - Added support for dumping databases directly from the local environment using `warden db-dump -s local`.
+
+### Fixed
+
+- **Integration Test Robustness:**
+  - Fixed `test-error-handling.sh` to correctly detect error messages across different terminal outputs.
+  - Fixed SSH permission issues in Docker-based test runner to allow successful Remote-to-Remote (R2R) sync tests.
+  - Fixed critical data loss in `magento2/sync.cmd` regarding Remote-to-Remote DB sync by enforcing transactional persistence and splitting SSH command chains.
+- **Sync Stability:**
+  - Added `--force` flag to `rsync` in all environment adapters to handle cases where a remote file needs to replace a local directory of the same name.
+  - Standardized `RSYNC_OPTS` to include `-azvPLk` across all frameworks for consistent symlink and directory handling.
+- **Documentation:**
+  - Updated `db-dump` help messages to correctly reflect the default behavior.
+
 ## [1.6.0] - 2025-12-25
 
 **v1.6.0: Hyvä Theme Integration**

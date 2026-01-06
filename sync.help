@@ -14,6 +14,7 @@ printf "\033[33mUsage:\033[0m
   --delete             Delete files on destination that are not in source (rsync only)
   --include-product    Include product images when syncing media (excluded by default)
   --redeploy           Redeploy destination after sync using deploy.cmd (default: disabled)
+  -y, --yes            Assume 'yes' to all prompts and run non-interactively
   -h, --help           Display this help message
 
 \033[33mExamples:\033[0m

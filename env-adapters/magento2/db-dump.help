@@ -12,7 +12,7 @@ Dump remote database and download it locally.
 
 \033[33mArguments:\033[0m
   -f, --file=FILE           Output file.
-  -e, --environment=NAME    Specific environment to run a database backup from. Default: staging.
+  -e, --environment=NAME    Specific environment to run a database backup from. Default: local.
 
   --full                                        Export full database from selected environment.
 

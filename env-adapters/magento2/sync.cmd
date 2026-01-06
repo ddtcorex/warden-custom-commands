@@ -8,7 +8,7 @@ if [ -z "${ENV_SOURCE_HOST_VAR+x}" ]; then
 fi
 
 # Determine RSYNC options
-RSYNC_OPTS="-azvPLk"
+RSYNC_OPTS="-azvPLk --force"
 if [[ "${SYNC_DRY_RUN:-0}" -eq 1 ]]; then
     RSYNC_OPTS="${RSYNC_OPTS} --dry-run"
 fi
@@ -17,7 +17,7 @@ if [[ "${SYNC_DELETE:-0}" -eq 1 ]]; then
 fi
 
 # Define paths and exclusions
-MEDIA_PATH="pub/media/"
+MEDIA_PATH="pub/media"
 CODE_EXCLUDE=('/generated' '/var' '/pub/media' '/pub/static' '*.gz' '*.zip' '*.tar' '*.7z' '*.sql' '.git' '.idea' 'node_modules')
 MEDIA_EXCLUDE=('*.gz' '*.zip' '*.tar' '*.7z' '*.sql' 'tmp' 'itm' 'import' 'export' 'importexport' 'captcha' 'analytics' 'catalog/product/cache' 'catalog/product.rm' 'catalog/product/product' 'opti_image' 'webp_image' 'webp_cache' 'shoppingfeed' 'amasty/blog/cache')
 # Exclude product images by default unless --include-product is passed
@@ -28,8 +28,8 @@ fi
 # Function for file transfer (uses rsync)
 function transfer_files() {
     local direction="${1}"
-    local source_path="${2}"
-    local dest_path="${3}"
+    local source_path="${2%/}"
+    local dest_path="${3%/}"
     local excludes=("${@:4}")
 
     # Path-aware env.php exclusion (only if it exists on destination)
@@ -39,7 +39,7 @@ function transfer_files() {
 
     # 1. Check if it exists on destination
     if [[ "${SYNC_REMOTE_TO_REMOTE:-0}" -eq 1 ]]; then
-        if ssh ${SSH_OPTS} -p "${DEST_REMOTE_PORT}" "${DEST_REMOTE_USER}@${DEST_REMOTE_HOST}" "[ -e \"${DEST_REMOTE_DIR}/${target_file}\" ]" 2>/dev/null; then
+        if ssh ${SSH_OPTS} -p "${DEST_REMOTE_PORT}" "${DEST_REMOTE_USER}@${DEST_REMOTE_HOST}" "[ -e \"${DEST_REMOTE_DIR}/${target_file}\" ]" ; then
             exists_on_dest=1
         fi
     elif [[ "${direction}" == "download" ]]; then
@@ -48,7 +48,7 @@ function transfer_files() {
         fi
     else
         # upload
-        if ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "[ -e \"${ENV_SOURCE_DIR}/${target_file}\" ]" 2>/dev/null; then
+        if ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "[ -e \"${ENV_SOURCE_DIR}/${target_file}\" ]" ; then
             exists_on_dest=1
         fi
     fi
@@ -114,13 +114,13 @@ function transfer_files() {
         eval "${cmd}"
     elif [[ "${direction}" == "download" ]]; then
         printf "⌛ \033[1;32mDownloading from %s:%s to %s ...\033[0m\n" "${ENV_SOURCE_HOST}" "${source_path}" "${dest_path}"
-        warden env exec php-fpm rsync ${RSYNC_OPTS} -e "ssh ${SSH_OPTS} -p ${ENV_SOURCE_PORT}" \
+        warden env exec -T php-fpm rsync ${RSYNC_OPTS} -e "ssh ${SSH_OPTS} -p ${ENV_SOURCE_PORT}" \
             "${exclude_args[@]}" \
             "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}:${ENV_SOURCE_DIR}/${source_path}" \
             "$(dirname "${dest_path}")/"
     else
         printf "⌛ \033[1;32mUploading from %s to %s:%s ...\033[0m\n" "${source_path}" "${ENV_SOURCE_HOST}" "${dest_path}"
-        warden env exec php-fpm rsync ${RSYNC_OPTS} -e "ssh ${SSH_OPTS} -p ${ENV_SOURCE_PORT}" \
+        warden env exec -T php-fpm rsync ${RSYNC_OPTS} -e "ssh ${SSH_OPTS} -p ${ENV_SOURCE_PORT}" \
             "${exclude_args[@]}" \
             "${source_path}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}:${ENV_SOURCE_DIR}/$(dirname "${dest_path}")/"
     fi
@@ -128,30 +128,44 @@ function transfer_files() {
 
 # Function for database sync (streaming)
 function sync_database() {
+    set -o pipefail
+    
     if [[ "${SYNC_DRY_RUN}" -eq 1 ]]; then
         printf "\033[33m[Dry Run] Database sync would stream from source ...\033[0m\n"
-        return
+        return 0
     fi
 
     # Logic for remote-to-remote DB sync
     if [[ "${SYNC_REMOTE_TO_REMOTE:-0}" -eq 1 ]]; then
         printf "⌛ \033[1;32mSyncing DB from %s to %s ...\033[0m\n" "${SYNC_SOURCE}" "${SYNC_DESTINATION}"
         
-        # Source DB info
-        local src_db_info=$(ssh ${SSH_OPTS} -p "${SOURCE_REMOTE_PORT}" "${SOURCE_REMOTE_USER}@${SOURCE_REMOTE_HOST}" "php -r \"\\\$a=include \\\"${SOURCE_REMOTE_DIR}/app/etc/env.php\\\"; var_export(\\\$a['db']['connection']['default']);\"")
-        local src_db_host=$(php -r "\$a = ${src_db_info}; echo strpos(\$a['host'], ':') === false ? \$a['host'] : explode(':', \$a['host'])[0];")
-        local src_db_port=$(php -r "\$a = ${src_db_info}; echo strpos(\$a['host'], ':') === false ? '3306' : explode(':', \$a['host'])[1];")
-        local src_db_user=$(php -r "\$a = ${src_db_info}; echo \$a['username'];")
-        local src_db_pass=$(php -r "\$a = ${src_db_info}; echo \$a['password'];")
-        local src_db_name=$(php -r "\$a = ${src_db_info}; echo \$a['dbname'];")
+        # Source DB info via base64 JSON
+        local src_db_info=$(ssh ${SSH_OPTS} -o IdentityAgent=none -p "${SOURCE_REMOTE_PORT}" "${SOURCE_REMOTE_USER}@${SOURCE_REMOTE_HOST}" "php -r \"\\\$a=@include \\\"${SOURCE_REMOTE_DIR}/app/etc/env.php\\\"; echo base64_encode(json_encode(\\\$a['db']['connection']['default']));\"" 2>/dev/null)
+        
+        if [[ -z "${src_db_info}" ]]; then
+            printf "\033[31mError: Failed to retrieve source database credentials from %s.\033[0m\n" "${SOURCE_REMOTE_HOST}" >&2
+            return 1
+        fi
 
-        # Destination DB info
-        local dest_db_info=$(ssh ${SSH_OPTS} -p "${DEST_REMOTE_PORT}" "${DEST_REMOTE_USER}@${DEST_REMOTE_HOST}" "php -r \"\\\$a=include \\\"${DEST_REMOTE_DIR}/app/etc/env.php\\\"; var_export(\\\$a['db']['connection']['default']);\"")
-        local dest_db_host=$(php -r "\$a = ${dest_db_info}; echo strpos(\$a['host'], ':') === false ? \$a['host'] : explode(':', \$a['host'])[0];")
-        local dest_db_port=$(php -r "\$a = ${dest_db_info}; echo strpos(\$a['host'], ':') === false ? '3306' : explode(':', \$a['host'])[1];")
-        local dest_db_user=$(php -r "\$a = ${dest_db_info}; echo \$a['username'];")
-        local dest_db_pass=$(php -r "\$a = ${dest_db_info}; echo \$a['password'];")
-        local dest_db_name=$(php -r "\$a = ${dest_db_info}; echo \$a['dbname'];")
+        local src_db_host=$(php -r "\$a = json_decode(base64_decode(\$argv[1]), true); echo strpos(\$a['host'] ?? 'db', ':') === false ? (\$a['host'] ?? 'db') : explode(':', \$a['host'])[0];" -- "${src_db_info}")
+        local src_db_port=$(php -r "\$a = json_decode(base64_decode(\$argv[1]), true); echo strpos(\$a['host'] ?? '', ':') === false ? '3306' : explode(':', \$a['host'])[1];" -- "${src_db_info}")
+        local src_db_user=$(php -r "\$a = json_decode(base64_decode(\$argv[1]), true); echo \$a['username'] ?? '';" -- "${src_db_info}")
+        local src_db_pass=$(php -r "\$a = json_decode(base64_decode(\$argv[1]), true); echo \$a['password'] ?? '';" -- "${src_db_info}")
+        local src_db_name=$(php -r "\$a = json_decode(base64_decode(\$argv[1]), true); echo \$a['dbname'] ?? '';" -- "${src_db_info}")
+
+        # Destination DB info via base64 JSON
+        local dest_db_info=$(ssh ${SSH_OPTS} -o IdentityAgent=none -p "${DEST_REMOTE_PORT}" "${DEST_REMOTE_USER}@${DEST_REMOTE_HOST}" "php -r \"\\\$a=@include \\\"${DEST_REMOTE_DIR}/app/etc/env.php\\\"; echo base64_encode(json_encode(\\\$a['db']['connection']['default']));\"" 2>/dev/null)
+        
+        if [[ -z "${dest_db_info}" ]]; then
+            printf "\033[31mError: Failed to retrieve destination database credentials from %s.\033[0m\n" "${DEST_REMOTE_HOST}" >&2
+            return 1
+        fi
+
+        local dest_db_host=$(php -r "\$a = json_decode(base64_decode(\$argv[1]), true); echo strpos(\$a['host'] ?? 'db', ':') === false ? (\$a['host'] ?? 'db') : explode(':', \$a['host'])[0];" -- "${dest_db_info}")
+        local dest_db_port=$(php -r "\$a = json_decode(base64_decode(\$argv[1]), true); echo strpos(\$a['host'] ?? '', ':') === false ? '3306' : explode(':', \$a['host'])[1];" -- "${dest_db_info}")
+        local dest_db_user=$(php -r "\$a = json_decode(base64_decode(\$argv[1]), true); echo \$a['username'] ?? '';" -- "${dest_db_info}")
+        local dest_db_pass=$(php -r "\$a = json_decode(base64_decode(\$argv[1]), true); echo \$a['password'] ?? '';" -- "${dest_db_info}")
+        local dest_db_name=$(php -r "\$a = json_decode(base64_decode(\$argv[1]), true); echo \$a['dbname'] ?? '';" -- "${dest_db_info}")
 
         # Centralized SQL cleanup filters
         local SED_FILTERS=(
@@ -163,13 +177,34 @@ function sync_database() {
             -e 's/utf8_unicode_520_ci/utf8_general_ci/g'
         )
 
-        printf "Streaming mysqldump from %s to %s ...\n" "${SYNC_SOURCE}" "${SYNC_DESTINATION}"
-        ssh ${SSH_OPTS} -p "${SOURCE_REMOTE_PORT}" "${SOURCE_REMOTE_USER}@${SOURCE_REMOTE_HOST}" \
+        if ! ssh ${SSH_OPTS} -o IdentityAgent=none -p "${SOURCE_REMOTE_PORT}" "${SOURCE_REMOTE_USER}@${SOURCE_REMOTE_HOST}" \
             "export MYSQL_PWD='${src_db_pass}'; mysqldump --single-transaction --no-tablespaces --routines -h${src_db_host} -P${src_db_port} -u${src_db_user} ${src_db_name}" \
             | sed "${SED_FILTERS[@]}" \
-            | ssh ${SSH_OPTS} -p "${DEST_REMOTE_PORT}" "${DEST_REMOTE_USER}@${DEST_REMOTE_HOST}" \
-            "export MYSQL_PWD='${dest_db_pass}'; mysql -h${dest_db_host} -P${dest_db_port} -u${dest_db_user} ${dest_db_name}"
-        return
+            | ssh ${SSH_OPTS} -o IdentityAgent=none -p "${DEST_REMOTE_PORT}" "${DEST_REMOTE_USER}@${DEST_REMOTE_HOST}" "cat > /tmp/warden_r2r_db.sql"; then
+            printf "\033[31mError: Database dump transfer failed.\033[0m\n" >&2
+            return 1
+        fi
+            
+            ssh ${SSH_OPTS} -o IdentityAgent=none -p "${DEST_REMOTE_PORT}" "${DEST_REMOTE_USER}@${DEST_REMOTE_HOST}" \
+            "chmod 666 /tmp/warden_r2r_db.sql"
+            
+            ssh ${SSH_OPTS} -o IdentityAgent=none -p "${DEST_REMOTE_PORT}" "${DEST_REMOTE_USER}@${DEST_REMOTE_HOST}" \
+            "export MYSQL_PWD='${dest_db_pass}'; mysql -h${dest_db_host} -P${dest_db_port} -u${dest_db_user} ${dest_db_name} < /tmp/warden_r2r_db.sql"
+            
+            local import_status=$?
+
+            if [[ ${import_status} -eq 0 ]]; then
+                ssh ${SSH_OPTS} -o IdentityAgent=none -p "${DEST_REMOTE_PORT}" "${DEST_REMOTE_USER}@${DEST_REMOTE_HOST}" \
+                "export MYSQL_PWD='${dest_db_pass}'; mysql -h${dest_db_host} -P${dest_db_port} -u${dest_db_user} ${dest_db_name} -e 'COMMIT;'"
+            fi
+
+            ssh ${SSH_OPTS} -o IdentityAgent=none -p "${DEST_REMOTE_PORT}" "${DEST_REMOTE_USER}@${DEST_REMOTE_HOST}" "rm -f /tmp/warden_r2r_db.sql"
+            
+            if [[ ${import_status} -ne 0 ]]; then
+                 printf "\033[31mError: Database import failed on destination.\033[0m\n" >&2
+                 return 1
+            fi
+        return 0
     fi
 
     if [[ "${DIRECTION}" == "upload" ]]; then
@@ -178,13 +213,24 @@ function sync_database() {
     fi
 
     # Logic borrowed from db-import.cmd
-    # Get remote DB credentials from env.php
-    local db_info=$(ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" 'php -r "\$a=include \"'"${ENV_SOURCE_DIR}"'/app/etc/env.php\"; var_export(\$a[\"db\"][\"connection\"][\"default\"]);"')
-    local db_host=$(warden env exec -T php-fpm php -r "\$a = ${db_info}; echo strpos(\$a['host'], ':') === false ? \$a['host'] : explode(':', \$a['host'])[0];")
-    local db_port=$(warden env exec -T php-fpm php -r "\$a = ${db_info}; echo strpos(\$a['host'], ':') === false ? '3306' : explode(':', \$a['host'])[1];")
-    local db_user=$(warden env exec -T php-fpm php -r "\$a = ${db_info}; echo \$a['username'];")
-    local db_pass=$(warden env exec -T php-fpm php -r "\$a = ${db_info}; echo \$a['password'];")
-    local db_name=$(warden env exec -T php-fpm php -r "\$a = ${db_info}; echo \$a['dbname'];")
+    # Get remote DB credentials from env.php via base64 encoded JSON for maximum reliability
+    local db_info=$(ssh ${SSH_OPTS} -o IdentityAgent=none -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "php -r \"\\\$a=@include \\\"${ENV_SOURCE_DIR}/app/etc/env.php\\\"; echo base64_encode(json_encode(\\\$a['db']['connection']['default']));\"" 2>/dev/null)
+    
+    if [[ -z "${db_info}" ]]; then
+        printf "\033[31mError: Failed to retrieve database credentials from %s. Check SSH connectivity and app/etc/env.php.\033[0m\n" "${ENV_SOURCE_HOST}" >&2
+        return 1
+    fi
+
+    local db_host=$(warden env exec -T php-fpm php -r "\$a = json_decode(base64_decode(\$argv[1]), true); echo strpos(\$a['host'] ?? 'db', ':') === false ? (\$a['host'] ?? 'db') : explode(':', \$a['host'])[0];" -- "${db_info}")
+    local db_port=$(warden env exec -T php-fpm php -r "\$a = json_decode(base64_decode(\$argv[1]), true); echo strpos(\$a['host'] ?? '', ':') === false ? '3306' : explode(':', \$a['host'])[1];" -- "${db_info}")
+    local db_user=$(warden env exec -T php-fpm php -r "\$a = json_decode(base64_decode(\$argv[1]), true); echo \$a['username'] ?? '';" -- "${db_info}")
+    local db_pass=$(warden env exec -T php-fpm php -r "\$a = json_decode(base64_decode(\$argv[1]), true); echo \$a['password'] ?? '';" -- "${db_info}")
+    local db_name=$(warden env exec -T php-fpm php -r "\$a = json_decode(base64_decode(\$argv[1]), true); echo \$a['dbname'] ?? '';" -- "${db_info}")
+    
+    if [[ -z "${db_user}" || -z "${db_name}" ]]; then
+        printf "\033[31mError: Incomplete database credentials retrieved from %s.\033[0m\n" "${ENV_SOURCE_HOST}" >&2
+        return 1
+    fi
     
     # Centralized SQL cleanup filters
     local SED_FILTERS=(
@@ -197,37 +243,43 @@ function sync_database() {
     )
 
     printf "Streaming mysqldump from %s:%s ...\n" "${ENV_SOURCE_HOST}" "${db_name}"
-    ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" \
-        "export MYSQL_PWD='${db_pass}'; mysqldump --single-transaction --no-tablespaces --routines -h${db_host} -P${db_port} -u${db_user} ${db_name}" \
+    local dump_cmd="export MYSQL_PWD='${db_pass}'; mysqldump --single-transaction --no-tablespaces --routines -h${db_host} -P${db_port} -u${db_user} ${db_name}"
+    
+    if ! ssh ${SSH_OPTS} -o IdentityAgent=none -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "${dump_cmd}" \
         | sed "${SED_FILTERS[@]}" \
-        | warden db import --force
+        | warden db import --force; then
+        printf "\033[31mError: Database sync failed during streaming.\033[0m\n" >&2
+        return 1
+    fi
+    
+    return 0
 }
 
 # 1. Sync Files/Code
 if [[ -z "${SYNC_PATH}" ]] && [[ "${SYNC_TYPE_FILE}" -eq 1 || "${SYNC_TYPE_FULL}" -eq 1 ]]; then
-    transfer_files "${DIRECTION}" "./" "./" "${CODE_EXCLUDE[@]}"
+    if ! transfer_files "${DIRECTION}" "./" "./" "${CODE_EXCLUDE[@]}"; then exit 1; fi
 fi
 
 # 2. Sync Media
 if [[ -z "${SYNC_PATH}" ]] && [[ "${SYNC_TYPE_MEDIA}" -eq 1 || "${SYNC_TYPE_FULL}" -eq 1 ]]; then
-    transfer_files "${DIRECTION}" "${MEDIA_PATH}" "${MEDIA_PATH}" "${MEDIA_EXCLUDE[@]}"
+    if ! transfer_files "${DIRECTION}" "${MEDIA_PATH}" "${MEDIA_PATH}" "${MEDIA_EXCLUDE[@]}"; then exit 1; fi
 fi
 
 # 3. Sync Custom Path
 if [[ -n "${SYNC_PATH}" ]]; then
-    transfer_files "${DIRECTION}" "${SYNC_PATH}" "${SYNC_PATH}"
+    if ! transfer_files "${DIRECTION}" "${SYNC_PATH}" "${SYNC_PATH}"; then exit 1; fi
 fi
 
 # 4. Sync Database
 if [[ "${SYNC_TYPE_DB}" -eq 1 || "${SYNC_TYPE_FULL}" -eq 1 ]]; then
-    sync_database
+    if ! sync_database; then exit 1; fi
 fi
 
 # 5. Post-Sync Redeploy
 if [[ "${SYNC_DRY_RUN:-0}" -eq 0 ]]; then
     if [[ "${SYNC_REDEPLOY:-0}" -eq 1 ]]; then
         printf "🚀 \033[1;32mTriggering redeploy on %s ...\033[0m\n" "${SYNC_DESTINATION}"
-        warden deploy -e "${SYNC_DESTINATION}"
+        if ! warden deploy -e "${SYNC_DESTINATION}"; then exit 1; fi
     fi
 fi
 

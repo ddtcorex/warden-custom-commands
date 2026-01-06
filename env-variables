@@ -142,5 +142,14 @@ if [[ -n "${!ENV_SOURCE_HOST_VAR+x}" ]]; then
     ENV_SOURCE_DIR="${!VAR_PATH:-}"
     ENV_SOURCE_URL="${!VAR_URL:-}"
 
-    SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR"
+    SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -o BatchMode=yes"
+    if [[ "${WARDEN_SSH_IDENTITIES_ONLY:-0}" -eq 1 ]]; then
+        SSH_OPTS="${SSH_OPTS} -o IdentitiesOnly=yes"
+    fi
+    if [[ -n "${WARDEN_SSH_IDENTITY_FILE:-}" ]]; then
+        SSH_OPTS="${SSH_OPTS} -i ${WARDEN_SSH_IDENTITY_FILE}"
+    fi
+elif [[ "${ENV_SOURCE_DEFAULT:-0}" -eq 0 ]] && [[ "${ENV_SOURCE_VAR}" != "LOCAL" ]]; then
+    printf "\033[31mError: Environment details not found for '%s'. Check your .env file.\033[0m\n" "${ENV_SOURCE}" >&2
+    exit 1
 fi
