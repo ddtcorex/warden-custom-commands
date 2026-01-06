@@ -145,10 +145,18 @@ test_file_sync_config_exclusion() {
     remove_file "${DEV_PHP}" "${app_root}/${config_path}"
     run_sync_confirmed -s local -d dev --file > /dev/null 2>&1
     
-    if file_exists "${DEV_PHP}" "${app_root}/${config_path}"; then
-        pass "Config file sync when missing on destination - correctly uploaded"
+    if [[ "${TEST_ENV_TYPE}" == "symfony" ]]; then
+        if ! file_exists "${DEV_PHP}" "${app_root}/${config_path}"; then
+             pass "Config file sync when missing on destination - correctly excluded (Symfony Strict)"
+        else
+             fail "Config file sync when missing on destination" "File was synced but should be excluded (Symfony)"
+        fi
     else
-        fail "Config file sync when missing on destination" "File was incorrectly excluded"
+        if file_exists "${DEV_PHP}" "${app_root}/${config_path}"; then
+            pass "Config file sync when missing on destination - correctly uploaded"
+        else
+            fail "Config file sync when missing on destination" "File was incorrectly excluded"
+        fi
     fi
 }
 

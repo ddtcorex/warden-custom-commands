@@ -18,7 +18,7 @@ fi
 
 # Define paths and exclusions
 MEDIA_PATH="public/uploads"
-CODE_EXCLUDE=('vendor' 'node_modules' 'var/cache/*' 'var/log/*' '.git' '.idea' '*.gz' '*.zip' '*.tar' '*.7z' '*.sql')
+CODE_EXCLUDE=('vendor' 'node_modules' 'var/cache/*' 'var/log/*' '.git' '.idea' '*.gz' '*.zip' '*.tar' '*.7z' '*.sql' '.env.local')
 
 # Function for file transfer (uses rsync)
 function transfer_files() {
@@ -123,6 +123,8 @@ function transfer_files() {
 
 # Function for database sync (streaming)
 function sync_database() {
+    set -o pipefail
+    
     if [[ "${SYNC_DRY_RUN}" -eq 1 ]]; then
         printf "\033[33m[Dry Run] Database sync would stream from source ...\033[0m\n"
         return
@@ -141,6 +143,7 @@ function sync_database() {
         
         # Source DB info
         local src_db_url=$(ssh ${SSH_OPTS} -p "${SOURCE_REMOTE_PORT}" "${SOURCE_REMOTE_USER}@${SOURCE_REMOTE_HOST}" "grep -h -E '^DATABASE_URL=' \"${SOURCE_REMOTE_DIR}/.env.local\" \"${SOURCE_REMOTE_DIR}/.env\" 2>/dev/null | head -n 1")
+        
         src_db_url=${src_db_url#*=}
         src_db_url=$(printf "%s" "${src_db_url}" | tr -d '"'"'")
         src_db_url=${src_db_url#*://}
@@ -159,6 +162,7 @@ function sync_database() {
 
         # Destination DB info
         local dest_db_url=$(ssh ${SSH_OPTS} -p "${DEST_REMOTE_PORT}" "${DEST_REMOTE_USER}@${DEST_REMOTE_HOST}" "grep -h -E '^DATABASE_URL=' \"${DEST_REMOTE_DIR}/.env.local\" \"${DEST_REMOTE_DIR}/.env\" 2>/dev/null | head -n 1")
+        
         dest_db_url=${dest_db_url#*=}
         dest_db_url=$(printf "%s" "${dest_db_url}" | tr -d '"'"'")
         dest_db_url=${dest_db_url#*://}
@@ -176,17 +180,78 @@ function sync_database() {
         dest_db_port=${dest_db_port:-3306}
 
         printf "Streaming mysqldump from %s to %s ...\n" "${SYNC_SOURCE}" "${SYNC_DESTINATION}"
-        ssh ${SSH_OPTS} -p "${SOURCE_REMOTE_PORT}" "${SOURCE_REMOTE_USER}@${SOURCE_REMOTE_HOST}" \
+        if ! ssh ${SSH_OPTS} -p "${SOURCE_REMOTE_PORT}" "${SOURCE_REMOTE_USER}@${SOURCE_REMOTE_HOST}" \
             "export MYSQL_PWD='${src_db_pass}'; mysqldump --single-transaction --no-tablespaces --routines -h${src_db_host} -P${src_db_port} -u${src_db_user} ${src_db_name}" \
             | sed "${SED_FILTERS[@]}" \
-            | ssh ${SSH_OPTS} -p "${DEST_REMOTE_PORT}" "${DEST_REMOTE_USER}@${DEST_REMOTE_HOST}" \
-            "export MYSQL_PWD='${dest_db_pass}'; mysql -h${dest_db_host} -P${dest_db_port} -u${dest_db_user} ${dest_db_name}"
-        return
+            | ssh ${SSH_OPTS} -p "${DEST_REMOTE_PORT}" "${DEST_REMOTE_USER}@${DEST_REMOTE_HOST}" "cat > /tmp/warden_r2r_db.sql"; then
+            printf "\033[31mError: Database dump transfer failed.\033[0m\n" >&2
+            return 1
+        fi
+            
+        ssh ${SSH_OPTS} -p "${DEST_REMOTE_PORT}" "${DEST_REMOTE_USER}@${DEST_REMOTE_HOST}" \
+        "chmod 666 /tmp/warden_r2r_db.sql"
+        
+        printf "Importing database on %s ...\n" "${SYNC_DESTINATION}"
+        ssh ${SSH_OPTS} -p "${DEST_REMOTE_PORT}" "${DEST_REMOTE_USER}@${DEST_REMOTE_HOST}" \
+        "export MYSQL_PWD='${dest_db_pass}'; mysql -h${dest_db_host} -P${dest_db_port} -u${dest_db_user} ${dest_db_name} < /tmp/warden_r2r_db.sql"
+        
+        local import_status=$?
+
+        ssh ${SSH_OPTS} -p "${DEST_REMOTE_PORT}" "${DEST_REMOTE_USER}@${DEST_REMOTE_HOST}" "rm -f /tmp/warden_r2r_db.sql"
+        
+        if [[ ${import_status} -ne 0 ]]; then
+                printf "\033[31mError: Database import failed on destination.\033[0m\n" >&2
+                return 1
+        fi
+        return 0
     fi
 
     if [[ "${DIRECTION}" == "upload" ]]; then
-        printf "\033[31mError: Database upload is not supported via streaming yet.\033[0m\n"
-        return
+        printf "⌛ \033[1;32mSyncing DB from local to %s ...\033[0m\n" "${SYNC_DESTINATION}"
+
+        # 1. Get Destination (Remote) DB Credentials
+        local dest_db_url=$(ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "grep -h -E '^DATABASE_URL=' \"${ENV_SOURCE_DIR}/.env.local\" \"${ENV_SOURCE_DIR}/.env\" 2>/dev/null | head -n 1")
+        
+        dest_db_url=${dest_db_url#*=}
+        dest_db_url=$(printf "%s" "${dest_db_url}" | tr -d '"'"'")
+        dest_db_url=${dest_db_url#*://}
+        local dest_user_pass=${dest_db_url%%@*}
+        local dest_db_user=${dest_user_pass%%:*}
+        local dest_db_pass=${dest_user_pass#*:}
+        local dest_host_port_name=${dest_db_url#*@}
+        local dest_host_port=${dest_host_port_name%%/*}
+        local dest_db_host=${dest_host_port%%:*}
+        local dest_db_port=${dest_host_port#*:}
+        if [[ "${dest_db_host}" == "${dest_db_port}" ]]; then dest_db_port=3306; else dest_db_port=${dest_db_port%%\?*}; fi
+        local dest_name_rest=${dest_host_port_name#*/}
+        local dest_db_name=${dest_name_rest%%\?*}
+        
+        dest_db_host=${dest_db_host:-127.0.0.1}
+        dest_db_port=${dest_db_port:-3306}
+
+        # 2. Get Local (Source) DB Credentials
+        local src_db_user=$(warden env exec -T db printenv MYSQL_USER)
+        local src_db_pass=$(warden env exec -T db printenv MYSQL_PASSWORD)
+        local src_db_name=$(warden env exec -T db printenv MYSQL_DATABASE)
+        
+        src_db_user=${src_db_user:-symfony}
+        src_db_pass=${src_db_pass:-symfony}
+        src_db_name=${src_db_name:-symfony}
+        local src_db_host="db"
+        local src_db_port=3306
+
+        printf "Streaming mysqldump from local to %s ...\n" "${SYNC_DESTINATION}"
+
+        if ! warden env exec -T db bash -c "export MYSQL_PWD='${src_db_pass}'; mysqldump --single-transaction --no-tablespaces --routines -h${src_db_host} -P${src_db_port} -u${src_db_user} ${src_db_name}" \
+            | sed "${SED_FILTERS[@]}" \
+            | ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" \
+            "export MYSQL_PWD='${dest_db_pass}'; mysql -h${dest_db_host} -P${dest_db_port} -u${dest_db_user} ${dest_db_name}"; then
+            
+            printf "\033[31mError: Database upload from local failed.\033[0m\n" >&2
+            return 1
+        fi
+
+        return 0
     fi
 
     # Fetch DB creds via SSH
@@ -245,9 +310,9 @@ if [[ "${SYNC_DRY_RUN:-0}" -eq 0 ]]; then
     else
         printf "🧹 \033[1;32mClearing Cache ...\033[0m\n"
         if [[ "${SYNC_REMOTE_TO_REMOTE:-0}" -eq 1 ]]; then
-            ssh ${SSH_OPTS} -p "${DEST_REMOTE_PORT}" "${DEST_REMOTE_USER}@${DEST_REMOTE_HOST}" "cd \"${DEST_REMOTE_DIR}\" && php bin/console cache:clear" || true
+            ssh ${SSH_OPTS} -p "${DEST_REMOTE_PORT}" "${DEST_REMOTE_USER}@${DEST_REMOTE_HOST}" "cd \"${DEST_REMOTE_DIR}\" && if [ -f bin/console ]; then php bin/console cache:clear; fi" || true
         else
-            warden env exec -T php-fpm bin/console cache:clear || true
+            warden env exec -T php-fpm bash -c "[[ -f bin/console ]] && bin/console cache:clear || true"
         fi
     fi
 fi

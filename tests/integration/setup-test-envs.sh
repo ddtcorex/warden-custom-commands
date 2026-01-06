@@ -35,6 +35,7 @@ for env in project-local project-dev project-staging; do
         echo "WARDEN_ENV_NAME=${env}" >> .env
         echo "WARDEN_ENV_TYPE=${ENV_TYPE}" >> .env
     fi
+
     echo "  ${env}: Initialized"
 done
 
@@ -159,6 +160,27 @@ EOF"
     fi
 done
 echo "  Test directories created for ${ENV_TYPE}"
+
+# Step 8: Fix Symfony Configuration
+if [[ "${ENV_TYPE}" == "symfony" ]]; then
+    echo ""
+    echo "Step 8: Fixing Symfony DB Configuration..."
+    for env in project-local project-dev project-staging; do
+        cd "${TEST_DIR}/${env}"
+        # Clean up .env
+        if grep -q "^DATABASE_URL=" .env; then
+             sed -i '/^DATABASE_URL=/d' .env
+        fi
+        
+        # Recreate .env.local cleanly
+        rm -f .env.local
+        # Create empty if not exists
+        touch .env.local
+        
+        echo "DATABASE_URL=\"mysql://symfony:symfony@${env}-db-1:3306/symfony?serverVersion=8.0\"" >> .env.local
+        echo "  ${env}: .env updated"
+    done
+fi
 
 echo ""
 echo "Verifying Setup..."
