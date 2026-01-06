@@ -67,8 +67,8 @@ test_r2r_config_protection() {
     local app_root=$(get_app_root)
     
     # Ensure config exists on both
-    setup_mock_env "${DEV_PHP}" "${DEV_DB}"
-    setup_mock_env "${STAGING_PHP}" "${STAGING_DB}"
+    setup_mock_env "${DEV_PHP}" "db"
+    setup_mock_env "${STAGING_PHP}" "db"
     
     # Setup: Different configs on Dev and Staging
     modify_config_file "${DEV_PHP}" "${app_root}/${config_path}" "CONFIG_FROM_DEV"
@@ -112,8 +112,8 @@ test_r2r_db_sync() {
     run_db_query "${DEV_PHP}" "DROP TABLE IF EXISTS test_r2r_db;"
     run_db_query "${DEV_PHP}" "CREATE TABLE test_r2r_db (id INT, val VARCHAR(255));"
     run_db_query "${DEV_PHP}" "INSERT INTO test_r2r_db VALUES (1, 'r2r-db-data');"
-    setup_mock_env "${DEV_PHP}" "${DEV_DB}"
-    setup_mock_env "${STAGING_PHP}" "${STAGING_DB}"
+    setup_mock_env "${DEV_PHP}" "db"
+    setup_mock_env "${STAGING_PHP}" "db"
     
     run_db_query "${STAGING_PHP}" "DROP TABLE IF EXISTS test_r2r_db;"
     
