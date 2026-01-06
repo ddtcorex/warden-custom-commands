@@ -169,7 +169,7 @@ function run_db_query() {
         db_user="symfony"; db_pass="symfony"; db_name="symfony"
     fi
 
-    docker exec --workdir / "${db_container}" mysql -u "${db_user}" -p"${db_pass}" "${db_name}" -N -s -r -e "${query}" 2>/dev/null
+    docker exec --workdir / "${db_container}" mysql -u "${db_user}" -p"${db_pass}" "${db_name}" -N -s -r -e "${query}"
 }
 
 # Mock env setups

@@ -136,6 +136,27 @@ for env in project-local project-dev project-staging; do
     fi
     docker exec --workdir / -u root "${container}" mkdir -p ${DIRS}
     docker exec --workdir / -u root "${container}" chown -R www-data:www-data /var/www/html
+    
+    # Initialize env.php for Magento 2
+    if [[ "${ENV_TYPE}" == "magento2" ]]; then
+        DB_HOST="${env}-db-1"
+        docker exec --workdir / -u www-data "${container}" bash -c "mkdir -p /var/www/html/app/etc && cat > /var/www/html/app/etc/env.php <<EOF
+<?php
+return [
+    'db' => [
+        'connection' => [
+            'default' => [
+                'host' => '${DB_HOST}',
+                'dbname' => 'magento',
+                'username' => 'magento',
+                'password' => 'magento',
+                'active' => '1',
+            ]
+        ]
+    ]
+];
+EOF"
+    fi
 done
 echo "  Test directories created for ${ENV_TYPE}"
 

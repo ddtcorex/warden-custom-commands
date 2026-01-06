@@ -210,8 +210,53 @@ function sync_database() {
     fi
 
     if [[ "${DIRECTION}" == "upload" ]]; then
-        printf "\033[31mError: Database upload is not supported via streaming yet. Use warden db-dump and manual import instead for safety.\033[0m\n"
-        return
+        printf "⌛ \033[1;32mSyncing DB from local to %s ...\033[0m\n" "${SYNC_DESTINATION}"
+
+        # 1. Get Remote (Destination) DB Credentials
+        # Note: ENV_SOURCE_* variables point to the destination remote environment in "upload" mode
+        local dest_db_info=$(ssh ${SSH_OPTS} -o IdentityAgent=none -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "php -r \"\\\$a=@include \\\"${ENV_SOURCE_DIR}/app/etc/env.php\\\"; echo base64_encode(json_encode(\\\$a['db']['connection']['default']));\"" 2>/dev/null)
+        
+        if [[ -z "${dest_db_info}" ]]; then
+            printf "\033[31mError: Failed to retrieve database credentials from %s.\033[0m\n" "${ENV_SOURCE_HOST}" >&2
+            return 1
+        fi
+
+        local dest_db_host=$(warden env exec -T php-fpm php -r "\$a = json_decode(base64_decode(\$argv[1]), true); echo strpos(\$a['host'] ?? 'db', ':') === false ? (\$a['host'] ?? 'db') : explode(':', \$a['host'])[0];" -- "${dest_db_info}")
+        local dest_db_port=$(warden env exec -T php-fpm php -r "\$a = json_decode(base64_decode(\$argv[1]), true); echo strpos(\$a['host'] ?? '', ':') === false ? '3306' : explode(':', \$a['host'])[1];" -- "${dest_db_info}")
+        local dest_db_user=$(warden env exec -T php-fpm php -r "\$a = json_decode(base64_decode(\$argv[1]), true); echo \$a['username'] ?? '';" -- "${dest_db_info}")
+        local dest_db_pass=$(warden env exec -T php-fpm php -r "\$a = json_decode(base64_decode(\$argv[1]), true); echo \$a['password'] ?? '';" -- "${dest_db_info}")
+        local dest_db_name=$(warden env exec -T php-fpm php -r "\$a = json_decode(base64_decode(\$argv[1]), true); echo \$a['dbname'] ?? '';" -- "${dest_db_info}")
+
+        # 2. Get Local (Source) DB Credentials
+        local src_db_info=$(warden env exec -T php-fpm php -r "\$a=@include \"/var/www/html/app/etc/env.php\"; echo base64_encode(json_encode(\$a['db']['connection']['default']));" 2>/dev/null)
+        
+        local src_db_host=$(warden env exec -T php-fpm php -r "\$a = json_decode(base64_decode(\$argv[1]), true); echo strpos(\$a['host'] ?? 'db', ':') === false ? (\$a['host'] ?? 'db') : explode(':', \$a['host'])[0];" -- "${src_db_info}")
+        local src_db_port=$(warden env exec -T php-fpm php -r "\$a = json_decode(base64_decode(\$argv[1]), true); echo strpos(\$a['host'] ?? '', ':') === false ? '3306' : explode(':', \$a['host'])[1];" -- "${src_db_info}")
+        local src_db_user=$(warden env exec -T php-fpm php -r "\$a = json_decode(base64_decode(\$argv[1]), true); echo \$a['username'] ?? '';" -- "${src_db_info}")
+        local src_db_pass=$(warden env exec -T php-fpm php -r "\$a = json_decode(base64_decode(\$argv[1]), true); echo \$a['password'] ?? '';" -- "${src_db_info}")
+        local src_db_name=$(warden env exec -T php-fpm php -r "\$a = json_decode(base64_decode(\$argv[1]), true); echo \$a['dbname'] ?? '';" -- "${src_db_info}")
+
+        # 3. Stream
+        # Centralized SQL cleanup filters
+        local SED_FILTERS=(
+            -e '/999999.*sandbox/d'
+            -e 's/DEFINER=[^*]*\*/\*/g'
+            -e 's/ROW_FORMAT=FIXED//g'
+            -e 's/utf8mb4_0900_ai_ci/utf8mb4_general_ci/g'
+            -e 's/utf8mb4_unicode_520_ci/utf8mb4_general_ci/g'
+            -e 's/utf8_unicode_520_ci/utf8_general_ci/g'
+        )
+
+        if ! warden env exec -T php-fpm bash -c "export MYSQL_PWD='${src_db_pass}'; mysqldump --single-transaction --no-tablespaces --routines -h${src_db_host} -P${src_db_port} -u${src_db_user} ${src_db_name}" \
+            | sed "${SED_FILTERS[@]}" \
+            | ssh ${SSH_OPTS} -o IdentityAgent=none -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" \
+            "export MYSQL_PWD='${dest_db_pass}'; mysql -h${dest_db_host} -P${dest_db_port} -u${dest_db_user} ${dest_db_name}"; then
+            
+            printf "\033[31mError: Database upload from local failed.\033[0m\n" >&2
+            return 1
+        fi
+
+        return 0
     fi
 
     # Logic borrowed from db-import.cmd
