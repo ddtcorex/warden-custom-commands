@@ -226,6 +226,7 @@ The unified synchronization command for files, media, and databases.
 - `--db`: Sync database (streaming, no local dump file created)
 - `--full`: Sync everything (file, media, db)
 - `-p`, `--path`: Sync a specific directory or file path
+- `--include-product`: Include product/cache images in media sync (Magento 2 only)
 - `--dry-run`: Show what would happen without making changes
 - `--flush`: Flush cache after sync (default: disabled)
 - `--delete`: Delete files on destination that are not present in source
