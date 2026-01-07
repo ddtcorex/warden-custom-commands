@@ -64,7 +64,7 @@ setup_mocks() {
 
 assert_command_called() {
     local cmd="$1"
-    if ! grep -q "$cmd" "$MOCK_LOG"; then
+    if ! grep -F -- "$cmd" "$MOCK_LOG"; then
         echo "Expected command not called: $cmd"
         echo "Log content:"
         cat "$MOCK_LOG"
