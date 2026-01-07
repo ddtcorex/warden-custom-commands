@@ -27,10 +27,6 @@ while (( "$#" )); do
     esac
 done
 
-if [[ -z "${DUMP_FILENAME}" ]] && [[ -n "${WARDEN_PARAMS[0]+1}" ]]; then
-    DUMP_FILENAME="${WARDEN_PARAMS[0]}"
-fi
-
 if [[ -z "${DUMP_FILENAME}" ]] && [[ "${STREAM_DB}" -eq 0 ]]; then
     printf "😮 \033[31mPlease specify a dump file or use --stream-db\033[0m\n" >&2
     exit 1
@@ -55,15 +51,15 @@ if [[ -z "${DB_CONTAINER_ID}" ]]; then
 fi
 
 printf "⌛ \033[1;32mDropping and initializing database...\033[0m\n"
-DB_USER=$(warden env exec db printenv MYSQL_USER)
-DB_PASS=$(warden env exec db printenv MYSQL_PASSWORD)
-DB_NAME=$(warden env exec db printenv MYSQL_DATABASE)
+DB_USER=$(warden env exec -T db printenv MYSQL_USER)
+DB_PASS=$(warden env exec -T db printenv MYSQL_PASSWORD)
+DB_NAME=$(warden env exec -T db printenv MYSQL_DATABASE)
 
 DB_USER=${DB_USER:-laravel}
 DB_PASS=${DB_PASS:-laravel}
 DB_NAME=${DB_NAME:-laravel}
 
-warden env exec db mysql -u "${DB_USER}" -p"${DB_PASS}" -e "drop database if exists ${DB_NAME}; create database ${DB_NAME} character set = \"utf8mb4\" collate = \"utf8mb4_unicode_ci\";"
+warden env exec -T db mysql -u "${DB_USER}" -p"${DB_PASS}" -e "drop database if exists ${DB_NAME}; create database ${DB_NAME} character set = \"utf8mb4\" collate = \"utf8mb4_unicode_ci\";"
 
 # Standard SQL cleanup filters (definers and common collation fixes)
 SED_FILTERS=(
@@ -82,16 +78,23 @@ if [[ "${STREAM_DB}" -eq 1 ]]; then
 
     # Streaming database from remote (direct import)
     # Fetch DB creds via SSH (using logic from db-dump.cmd)
-    db_info=$(ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "grep -E '^DB_(HOST|PORT|DATABASE|USERNAME|PASSWORD)=' \"${ENV_SOURCE_DIR}/.env\"")
-    db_host=$(printf "%s" "${db_info}" | grep DB_HOST | cut -d= -f2 | tr -d '"'"'")
-    db_port=$(printf "%s" "${db_info}" | grep DB_PORT | cut -d= -f2 | tr -d '"'"'")
-    db_name=$(printf "%s" "${db_info}" | grep DB_DATABASE | cut -d= -f2 | tr -d '"'"'")
-    db_user=$(printf "%s" "${db_info}" | grep DB_USERNAME | cut -d= -f2 | tr -d '"'"'")
-    db_pass=$(printf "%s" "${db_info}" | grep DB_PASSWORD | cut -d= -f2 | tr -d '"'"'")
+    local remote_cmd="grep -h -E '^(DB_HOST|DB_PORT|DB_DATABASE|DB_USERNAME|DB_PASSWORD)=' \"${ENV_SOURCE_DIR}/.env\" 2>/dev/null"
+    local db_vars=$(ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "${remote_cmd}")
+    
+    local db_host=$(echo "${db_vars}" | grep "^DB_HOST=" | cut -d= -f2- | tr -d '"'"'")
+    local db_port=$(echo "${db_vars}" | grep "^DB_PORT=" | cut -d= -f2- | tr -d '"'"'")
+    local db_name=$(echo "${db_vars}" | grep "^DB_DATABASE=" | cut -d= -f2- | tr -d '"'"'")
+    local db_user=$(echo "${db_vars}" | grep "^DB_USERNAME=" | cut -d= -f2- | tr -d '"'"'")
+    local db_pass=$(echo "${db_vars}" | grep "^DB_PASSWORD=" | cut -d= -f2- | tr -d '"'"'")
 
     db_host=${db_host:-127.0.0.1}
     db_port=${db_port:-3306}
     
+    if [[ -z "${db_name}" ]]; then
+      printf "❌ \033[31mCould not detect DB_DATABASE from remote .env\033[0m\n" >&2
+      exit 1
+    fi
+
     printf "Streaming mysqldump from %s:%s ...\n" "${ENV_SOURCE_HOST}" "${db_name}"
     ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" \
         "export MYSQL_PWD='${db_pass}'; mysqldump --single-transaction --no-tablespaces --routines -h${db_host} -P${db_port} -u${db_user} ${db_name}" \
