@@ -9,21 +9,31 @@ NC='\033[0m'
 
 # Paths
 TEST_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-LOCAL_ENV="${TEST_DIR}/project-local"
-DEV_ENV="${TEST_DIR}/project-dev"
-STAGING_ENV="${TEST_DIR}/project-staging"
 
-# Container Names (calculated based on environment names)
-LOCAL_PHP="project-local-php-fpm-1"
-LOCAL_DB="project-local-db-1"
-DEV_PHP="project-dev-php-fpm-1"
-DEV_DB="project-dev-db-1"
-STAGING_PHP="project-staging-php-fpm-1"
-STAGING_DB="project-staging-db-1"
+# Configuration Function
+function configure_test_envs() {
+    local type="${1:-magento2}"
+    TEST_ENV_TYPE="$type"
+    
+    LOCAL_ENV="${TEST_DIR}/${type}-local"
+    DEV_ENV="${TEST_DIR}/${type}-dev"
+    STAGING_ENV="${TEST_DIR}/${type}-staging"
 
-# Environment IPs
-# Grab the first IP address found to avoid concatenation if multiple networks exist
-DEV_IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}' project-dev-php-fpm-1 2>/dev/null | awk '{print $1}')
+    # Container Names (calculated based on environment names)
+    LOCAL_PHP="${type}-local-php-fpm-1"
+    LOCAL_DB="${type}-local-db-1"
+    DEV_PHP="${type}-dev-php-fpm-1"
+    DEV_DB="${type}-dev-db-1"
+    STAGING_PHP="${type}-staging-php-fpm-1"
+    STAGING_DB="${type}-staging-db-1"
+    
+    # Environment IPs
+    # Grab the first IP address found to avoid concatenation if multiple networks exist
+    DEV_IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}' "${DEV_PHP}" 2>/dev/null | awk '{print $1}')
+}
+
+# Defaults (can be overridden by calling configure_test_envs)
+configure_test_envs "magento2"
 
 function get_app_root() {
     echo "/var/www/html"

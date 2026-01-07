@@ -12,6 +12,9 @@ for i in "$@"; do
     esac
 done
 
+# Configure Environment Variables based on Type
+configure_test_envs "$TEST_ENV_TYPE"
+
 echo ""
 echo "Running tests for environment type: ${TEST_ENV_TYPE}"
 
@@ -71,13 +74,15 @@ export WARDEN_SSH_IDENTITY_FILE='~/.ssh/id_rsa'
 unset WARDEN_SSH_IDENTITIES_ONLY
 
 # Remove env overrides from .env
-sed -i "/WARDEN_SSH_IDENTITY_FILE/d" "${TEST_DIR}/project-local/.env"
-sed -i "/WARDEN_SSH_OPTS/d" "${TEST_DIR}/project-local/.env"
-sed -i "/WARDEN_SSH_IDENTITIES_ONLY/d" "${TEST_DIR}/project-local/.env"
+# We use LOCAL_ENV which is set by configure_test_envs
+sed -i "/WARDEN_SSH_IDENTITY_FILE/d" "${LOCAL_ENV}/.env"
+sed -i "/WARDEN_SSH_OPTS/d" "${LOCAL_ENV}/.env"
+sed -i "/WARDEN_SSH_IDENTITIES_ONLY/d" "${LOCAL_ENV}/.env"
 
 header "Verifying Host SSH Connectivity"
 # Grab the first IP address found to avoid concatenation if multiple networks exist
-DEV_IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}' project-dev-php-fpm-1 | awk '{print $1}')
+# DEV_PHP is set by configure_test_envs
+DEV_IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}' "${DEV_PHP}" | awk '{print $1}')
 if ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o BatchMode=yes -p 22 "www-data@${DEV_IP}" echo "OK" 2>/dev/null; then
     echo "✓ Host -> Dev (${DEV_IP}): OK"
 else

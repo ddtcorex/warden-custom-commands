@@ -21,7 +21,7 @@ test_db_sync_download
 test_db_sync_upload() {
     # 1. Setup Data on Local
     # Ensure env.php is valid on Local (restoring from potential file sync test overwrites)
-    setup_mock_env "${LOCAL_PHP}" "project-local-db-1"
+    setup_mock_env "${LOCAL_PHP}" "${LOCAL_DB}"
     
     run_db_query "${LOCAL_PHP}" "DROP TABLE IF EXISTS test_upload_table;"
     run_db_query "${LOCAL_PHP}" "CREATE TABLE test_upload_table (id INT, val VARCHAR(255));"

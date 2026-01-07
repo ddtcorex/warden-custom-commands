@@ -100,7 +100,7 @@ if [[ "$UNIT_ONLY" -eq 0 ]]; then
         if [[ "$ENV_TYPE" == "all" ]]; then
             # Run integration tests for all environment types
             for env in magento2 symfony laravel wordpress; do
-                if [[ -d "$SCRIPT_DIR/../tests/project-${env}" ]] || [[ "$env" == "magento2" ]]; then
+                if [[ -d "$SCRIPT_DIR/${env}-local" ]] || [[ "$env" == "magento2" ]]; then
                     echo -e "${CYAN}▸ Integration tests for ${env}${NC}"
                     "$SCRIPT_DIR/integration/run-tests.sh" --type="$env" || INTEGRATION_PASSED=$?
                 fi

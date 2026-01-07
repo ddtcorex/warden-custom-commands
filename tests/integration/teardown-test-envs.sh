@@ -4,16 +4,24 @@
 TEST_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 
 echo "Stopping test environments..."
-for env in project-local project-dev project-staging; do
-    if [[ -d "${TEST_DIR}/${env}" ]]; then
-        cd "${TEST_DIR}/${env}"
-        warden env down -v > /dev/null 2>&1
-        echo "  ${env}: Stopped"
+# Find all directories in tests/ that end with -local, -dev, or -staging
+# Using nullglob to handle case where no files match
+shopt -s nullglob
+for env_dir in "${TEST_DIR}"/*-local "${TEST_DIR}"/*-dev "${TEST_DIR}"/*-staging; do
+    if [[ -d "${env_dir}" ]]; then
+        env_name=$(basename "${env_dir}")
+        echo "  Stopping ${env_name}..."
+        (
+            cd "${env_dir}"
+            warden env down -v > /dev/null 2>&1
+        )
+        echo "  ${env_name}: Stopped"
     fi
 done
+shopt -u nullglob
 
 echo ""
 echo "All test environments stopped."
 echo ""
 echo "To remove environment directories completely, run:"
-echo "  rm -rf tests/project-local tests/project-dev tests/project-staging"
+echo "  rm -rf tests/*-local tests/*-dev tests/*-staging"

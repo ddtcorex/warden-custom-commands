@@ -10,28 +10,31 @@ This repository contains two levels of testing to ensure the reliability of cust
 To run the complete test suite (Unit + Integration) for a specific environment type:
 
 ```bash
-# Example: Test Laravel commands
-./tests/integration/run-tests.sh --type=laravel
+# Run all tests for Magento 2
+./tests/run-tests.sh magento2
 
-# Example: Test Magento 2 commands
-./tests/integration/run-tests.sh --type=magento2
+# Run all tests for Laravel
+./tests/run-tests.sh laravel
+
+# Run only unit tests (skip integration)
+./tests/run-tests.sh magento2 --unit-only
 ```
 
 ## 🧪 Unit Tests (BATS)
 
-Located in `tests/adapters/<framework>/bootstrap.bats`.
+Located in `tests/adapters/<framework>/`.
 
-These tests use the [Bash Automated Testing System](https://github.com/bats-core/bats-core) to verify the `bootstrap.cmd` scripts. They mock the `warden` and `docker` commands to ensure that the logic constructs the correct commands and handles flags properly.
+These tests use the [Bash Automated Testing System](https://github.com/bats-core/bats-core) to verify command scripts. They mock the `warden` and `docker` commands to ensure that the logic constructs the correct commands and handles flags properly.
 
 ### Running Unit Tests Individually
 
 You can run BATS tests directly if you have `bats` installed or via `npx`:
 
 ```bash
-# Run all unit tests
-npx -y bats tests/adapters/*/bootstrap.bats
+# Run all unit tests for a framework
+npx -y bats tests/adapters/magento2/*.bats
 
-# Run specific framework tests
+# Run specific test file
 npx -y bats tests/adapters/magento2/bootstrap.bats
 ```
 
@@ -47,11 +50,11 @@ Shared mocks are located in `tests/libs/mocks.bash`. These are used to simulate:
 
 Located in `tests/integration/`.
 
-The test suite simulates a real-world multi-environment setup using Docker containers:
+The test suite simulates a real-world multi-environment setup using Docker containers. Environments are named based on the framework type:
 
-* **project-local**: Your simulated local development environment.
-* **project-dev**: A simulated remote development server.
-* **project-staging**: A simulated staging server.
+* **{type}-local**: Your simulated local development environment (e.g., `magento2-local`)
+* **{type}-dev**: A simulated remote development server (e.g., `magento2-dev`)
+* **{type}-staging**: A simulated staging server (e.g., `magento2-staging`)
 
 The tests verify:
 
@@ -74,22 +77,37 @@ The tests verify:
 Before running tests, you must initialize the test environments for a specific framework type.
 
 ```bash
-# Setup for Laravel
-./tests/integration/setup-test-envs.sh --type=laravel
-
 # Setup for Magento 2
 ./tests/integration/setup-test-envs.sh --type=magento2
 
+# Setup for Laravel
+./tests/integration/setup-test-envs.sh --type=laravel
+
 # Setup for Symfony
 ./tests/integration/setup-test-envs.sh --type=symfony
+
+# Setup for WordPress
+./tests/integration/setup-test-envs.sh --type=wordpress
 ```
 
 The setup script will:
 
-1. Create temporary directories in `tests/project-*`.
+1. Create directories in `tests/{type}-local`, `tests/{type}-dev`, `tests/{type}-staging`.
 2. Initialize and start Warden environments.
 3. Configure SSH servers and distribute keys between containers.
 4. Establish Docker network connectivity between environments.
+
+### Running Tests
+
+After setup, run the tests:
+
+```bash
+# Run integration tests
+./tests/integration/run-tests.sh --type=magento2
+
+# Or use the unified runner (includes unit tests)
+./tests/run-tests.sh magento2
+```
 
 ### Cleanup
 
@@ -99,8 +117,8 @@ To stop and remove all test environments:
 ./tests/integration/teardown-test-envs.sh
 
 # To completely remove data volumes and directories:
-rm -rf tests/project-*
-docker volume rm $(docker volume ls -q | grep project-)
+rm -rf tests/*-local tests/*-dev tests/*-staging
+docker volume rm $(docker volume ls -q | grep -E "(magento2|laravel|symfony|wordpress)-(local|dev|staging)")
 ```
 
 ### Structure
@@ -108,7 +126,8 @@ docker volume rm $(docker volume ls -q | grep project-)
 * `setup-test-envs.sh`: Orchestrates container initialization and networking.
 * `run-tests.sh`: Main test runner that sources individual test suites.
 * `helpers.sh`: Shared functions for file creation, DB queries, and assertions.
-* `test-*.sh`: Individual test suites for specific features.
+  * `configure_test_envs(type)`: Sets up dynamic container/path variables.
+* `suites/*.sh`: Individual test suites for specific features.
 
 ## 💡 Development Tip
 
