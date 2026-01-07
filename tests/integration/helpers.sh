@@ -9,21 +9,31 @@ NC='\033[0m'
 
 # Paths
 TEST_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-LOCAL_ENV="${TEST_DIR}/project-local"
-DEV_ENV="${TEST_DIR}/project-dev"
-STAGING_ENV="${TEST_DIR}/project-staging"
 
-# Container Names (calculated based on environment names)
-LOCAL_PHP="project-local-php-fpm-1"
-LOCAL_DB="project-local-db-1"
-DEV_PHP="project-dev-php-fpm-1"
-DEV_DB="project-dev-db-1"
-STAGING_PHP="project-staging-php-fpm-1"
-STAGING_DB="project-staging-db-1"
+# Configuration Function
+function configure_test_envs() {
+    local type="${1:-magento2}"
+    TEST_ENV_TYPE="$type"
+    
+    LOCAL_ENV="${TEST_DIR}/${type}-local"
+    DEV_ENV="${TEST_DIR}/${type}-dev"
+    STAGING_ENV="${TEST_DIR}/${type}-staging"
 
-# Environment IPs
-# Grab the first IP address found to avoid concatenation if multiple networks exist
-DEV_IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}' project-dev-php-fpm-1 2>/dev/null | awk '{print $1}')
+    # Container Names (calculated based on environment names)
+    LOCAL_PHP="${type}-local-php-fpm-1"
+    LOCAL_DB="${type}-local-db-1"
+    DEV_PHP="${type}-dev-php-fpm-1"
+    DEV_DB="${type}-dev-db-1"
+    STAGING_PHP="${type}-staging-php-fpm-1"
+    STAGING_DB="${type}-staging-db-1"
+    
+    # Environment IPs
+    # Grab the first IP address found to avoid concatenation if multiple networks exist
+    DEV_IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}' "${DEV_PHP}" 2>/dev/null | awk '{print $1}')
+}
+
+# Defaults (can be overridden by calling configure_test_envs)
+configure_test_envs "magento2"
 
 function get_app_root() {
     echo "/var/www/html"
@@ -117,11 +127,11 @@ function cleanup_test_files() {
 
 # Run warden sync command
 function run_sync() {
-    (cd "${LOCAL_ENV}" && warden sync -y "$@")
+    (cd "${LOCAL_ENV}" && export SYNC_ASSUME_YES=1 && warden sync -y "$@")
 }
 
 function run_sync_confirmed() {
-    (cd "${LOCAL_ENV}" && yes y | warden sync "$@" 2>&1)
+    run_sync "$@"
 }
 
 # Framework specific path/db helpers
@@ -169,7 +179,7 @@ function run_db_query() {
         db_user="symfony"; db_pass="symfony"; db_name="symfony"
     fi
 
-    docker exec --workdir / "${db_container}" mysql -u "${db_user}" -p"${db_pass}" "${db_name}" -N -s -r -e "${query}" 2>/dev/null
+    docker exec --workdir / "${db_container}" mysql -u "${db_user}" -p"${db_pass}" "${db_name}" -N -s -r -e "${query}"
 }
 
 # Mock env setups
@@ -187,7 +197,7 @@ function setup_mock_magento_env() {
     local container="$1"
     local db_host="${2:-db}"
     # Create app/etc/env.php for DB extraction tests
-    docker exec --workdir / "${container}" bash -c "mkdir -p /var/www/html/app/etc && cat > /var/www/html/app/etc/env.php <<EOF
+    docker exec --workdir / "${container}" bash -c "mkdir -p /var/www/html/app/etc && cat > /var/www/html/app/etc/env.php <<'EOF'
 <?php
 return [
     'db' => [
@@ -208,7 +218,7 @@ EOF"
 function setup_mock_laravel_env() {
     local container="$1"
     local db_host="${2:-db}"
-    docker exec --workdir / "${container}" bash -c "cat >> /var/www/html/.env <<EOF
+    docker exec --workdir / "${container}" bash -c "cat >> /var/www/html/.env <<'EOF'
 DB_HOST=${db_host}
 DB_DATABASE=laravel
 DB_USERNAME=laravel
@@ -219,7 +229,7 @@ EOF"
 function setup_mock_symfony_env() {
     local container="$1"
     local db_host="${2:-db}"
-    docker exec --workdir / "${container}" bash -c "cat >> /var/www/html/.env <<EOF
+    docker exec --workdir / "${container}" bash -c "cat > /var/www/html/.env.local <<'EOF'
 DATABASE_URL=\"mysql://symfony:symfony@${db_host}:3306/symfony?serverVersion=8.0\"
 EOF"
 }
@@ -227,7 +237,7 @@ EOF"
 function setup_mock_wordpress_env() {
     local container="$1"
     local db_host="${2:-db}"
-    docker exec --workdir / "${container}" bash -c "cat > /var/www/html/wp-config.php <<EOF
+    docker exec --workdir / "${container}" bash -c "cat > /var/www/html/wp-config.php <<'EOF'
 <?php
 define('DB_NAME', 'wordpress');
 define('DB_USER', 'wordpress');
@@ -235,4 +245,17 @@ define('DB_PASSWORD', 'wordpress');
 define('DB_HOST', '${db_host}');
 \$table_prefix = 'wp_';
 EOF"
+}
+
+function modify_config_file() {
+    local container="$1"
+    local path="$2"
+    local content="$3"
+    
+    if [[ "${path}" == *".env"* ]]; then
+        # Append to avoid breaking Warden variables
+        docker exec "${container}" bash -c "echo '' >> ${path} && echo '${content}' >> ${path}"
+    else
+        docker exec "${container}" bash -c "echo '${content}' > ${path}"
+    fi
 }

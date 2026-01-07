@@ -23,9 +23,55 @@ CODE_EXCLUDE=('wp-content/uploads/*' 'wp-content/cache/*' '.git' '.idea' '*.gz' 
 # Function for file transfer (uses rsync)
 function transfer_files() {
     local direction="${1}"
-    local source_path="${2}"
-    local dest_path="${3}"
+    local source_path="${2%/}"
+    local dest_path="${3%/}"
     local excludes=("${@:4}")
+
+    # Path-aware wp-config.php exclusion (only if it exists on destination)
+    local target_file="wp-config.php"
+    local rel_exclude=""
+    local exists_on_dest=0
+
+    # 1. Check if it exists on destination
+    if [[ "${SYNC_REMOTE_TO_REMOTE:-0}" -eq 1 ]]; then
+        if ssh ${SSH_OPTS} -p "${DEST_REMOTE_PORT}" "${DEST_REMOTE_USER}@${DEST_REMOTE_HOST}" "[ -e \"${DEST_REMOTE_DIR}/${target_file}\" ]" ; then
+            exists_on_dest=1
+        fi
+    elif [[ "${direction}" == "download" ]]; then
+        if [[ -e "${WARDEN_ENV_PATH}/${target_file}" ]]; then
+            exists_on_dest=1
+        fi
+    else
+        # upload
+        if ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "[ -e \"${ENV_SOURCE_DIR}/${target_file}\" ]" ; then
+            exists_on_dest=1
+        fi
+    fi
+
+    if [[ "${exists_on_dest}" -eq 1 ]]; then
+        # Normalize target and source paths for comparison
+        local norm_target="/${target_file}"
+        local norm_src=$(echo "/${source_path}" | sed -e 's|/\./|/|g' -e 's|/\.$|/|' -e 's|/\{2,\}|/|g')
+        
+        # If source ends in /, rsync's root is inside that dir
+        if [[ "${norm_src}" == */ ]]; then
+            local src_dir="${norm_src%/}"
+            if [[ "${norm_target}" == "${src_dir}"/* ]]; then
+                rel_exclude="${norm_target#$src_dir}"
+            fi
+        else
+            # If source doesn't end in /, rsync's root is its parent
+            local src_parent=$(dirname "${norm_src}")
+            [[ "${src_parent}" == "/" ]] && src_parent=""
+            if [[ "${norm_target}" == "${src_parent}"/* ]]; then
+                rel_exclude="${norm_target#$src_parent}"
+            fi
+        fi
+    fi
+
+    if [[ -n "${rel_exclude}" ]]; then
+        excludes+=( "${rel_exclude}" )
+    fi
     
     local exclude_args=()
     for item in "${excludes[@]}"; do
@@ -88,11 +134,11 @@ function sync_database() {
         printf "⌛ \033[1;32mSyncing DB from %s to %s ...\033[0m\n" "${SYNC_SOURCE}" "${SYNC_DESTINATION}"
 
         # Source DB info
-        local src_db_config=$(ssh ${SSH_OPTS} -p "${SOURCE_REMOTE_PORT}" "${SOURCE_REMOTE_USER}@${SOURCE_REMOTE_HOST}" "grep -E \"define\\s*\\(.*DB_(NAME|USER|PASSWORD|HOST)\" \"${SOURCE_REMOTE_DIR}/wp-config.php\"")
-        local src_db_name=$(printf "%s" "${src_db_config}" | grep "DB_NAME" | sed -E "s/.*['\"]DB_NAME['\"]\s*,\s*['\"](.*)['\"].*/\1/")
-        local src_db_user=$(printf "%s" "${src_db_config}" | grep "DB_USER" | sed -E "s/.*['\"]DB_USER['\"]\s*,\s*['\"](.*)['\"].*/\1/")
-        local src_db_pass=$(printf "%s" "${src_db_config}" | grep "DB_PASSWORD" | sed -E "s/.*['\"]DB_PASSWORD['\"]\s*,\s*['\"](.*)['\"].*/\1/")
-        local src_db_host_raw=$(printf "%s" "${src_db_config}" | grep "DB_HOST" | sed -E "s/.*['\"]DB_HOST['\"]\s*,\s*['\"](.*)['\"].*/\1/")
+        local src_db_config=$(ssh ${SSH_OPTS} -p "${SOURCE_REMOTE_PORT}" "${SOURCE_REMOTE_USER}@${SOURCE_REMOTE_HOST}" "grep -E \"^\s*define\s*\(\s*['\\\"]DB_(NAME|USER|PASSWORD|HOST)\" \"${SOURCE_REMOTE_DIR}/wp-config.php\"")
+        local src_db_name=$(printf "%s" "${src_db_config}" | grep "DB_NAME" | head -n 1 | sed -E "s/.*['\"]DB_NAME['\"]\s*,\s*['\"](.*)['\"].*/\1/")
+        local src_db_user=$(printf "%s" "${src_db_config}" | grep "DB_USER" | head -n 1 | sed -E "s/.*['\"]DB_USER['\"]\s*,\s*['\"](.*)['\"].*/\1/")
+        local src_db_pass=$(printf "%s" "${src_db_config}" | grep "DB_PASSWORD" | head -n 1 | sed -E "s/.*['\"]DB_PASSWORD['\"]\s*,\s*['\"](.*)['\"].*/\1/")
+        local src_db_host_raw=$(printf "%s" "${src_db_config}" | grep "DB_HOST" | head -n 1 | sed -E "s/.*['\"]DB_HOST['\"]\s*,\s*['\"](.*)['\"].*/\1/")
         local src_db_host=${src_db_host_raw%%:*}
         local src_db_port=${src_db_host_raw#*:}
         if [[ "${src_db_host}" == "${src_db_port}" ]]; then src_db_port=3306; fi
@@ -101,11 +147,11 @@ function sync_database() {
         src_db_port=${src_db_port:-3306}
 
         # Destination DB info
-        local dest_db_config=$(ssh ${SSH_OPTS} -p "${DEST_REMOTE_PORT}" "${DEST_REMOTE_USER}@${DEST_REMOTE_HOST}" "grep -E \"define\\s*\\(.*DB_(NAME|USER|PASSWORD|HOST)\" \"${DEST_REMOTE_DIR}/wp-config.php\"")
-        local dest_db_name=$(printf "%s" "${dest_db_config}" | grep "DB_NAME" | sed -E "s/.*['\"]DB_NAME['\"]\s*,\s*['\"](.*)['\"].*/\1/")
-        local dest_db_user=$(printf "%s" "${dest_db_config}" | grep "DB_USER" | sed -E "s/.*['\"]DB_USER['\"]\s*,\s*['\"](.*)['\"].*/\1/")
-        local dest_db_pass=$(printf "%s" "${dest_db_config}" | grep "DB_PASSWORD" | sed -E "s/.*['\"]DB_PASSWORD['\"]\s*,\s*['\"](.*)['\"].*/\1/")
-        local dest_db_host_raw=$(printf "%s" "${dest_db_config}" | grep "DB_HOST" | sed -E "s/.*['\"]DB_HOST['\"]\s*,\s*['\"](.*)['\"].*/\1/")
+        local dest_db_config=$(ssh ${SSH_OPTS} -p "${DEST_REMOTE_PORT}" "${DEST_REMOTE_USER}@${DEST_REMOTE_HOST}" "grep -E \"^\s*define\s*\(\s*['\\\"]DB_(NAME|USER|PASSWORD|HOST)\" \"${DEST_REMOTE_DIR}/wp-config.php\"")
+        local dest_db_name=$(printf "%s" "${dest_db_config}" | grep "DB_NAME" | head -n 1 | sed -E "s/.*['\"]DB_NAME['\"]\s*,\s*['\"](.*)['\"].*/\1/")
+        local dest_db_user=$(printf "%s" "${dest_db_config}" | grep "DB_USER" | head -n 1 | sed -E "s/.*['\"]DB_USER['\"]\s*,\s*['\"](.*)['\"].*/\1/")
+        local dest_db_pass=$(printf "%s" "${dest_db_config}" | grep "DB_PASSWORD" | head -n 1 | sed -E "s/.*['\"]DB_PASSWORD['\"]\s*,\s*['\"](.*)['\"].*/\1/")
+        local dest_db_host_raw=$(printf "%s" "${dest_db_config}" | grep "DB_HOST" | head -n 1 | sed -E "s/.*['\"]DB_HOST['\"]\s*,\s*['\"](.*)['\"].*/\1/")
         local dest_db_host=${dest_db_host_raw%%:*}
         local dest_db_port=${dest_db_host_raw#*:}
         if [[ "${dest_db_host}" == "${dest_db_port}" ]]; then dest_db_port=3306; fi
@@ -123,18 +169,54 @@ function sync_database() {
     fi
 
     if [[ "${DIRECTION}" == "upload" ]]; then
-        printf "\033[31mError: Database upload is not supported via streaming yet.\033[0m\n"
-        return
+        printf "⌛ \033[1;32mSyncing DB from local to %s ...\033[0m\n" "${SYNC_DESTINATION}"
+
+        # 1. Get Destination (Remote) DB Credentials
+        local dest_db_config=$(ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "grep -E \"^\s*define\s*\(\s*['\\\"]DB_(NAME|USER|PASSWORD|HOST)\" \"${ENV_SOURCE_DIR}/wp-config.php\"")
+        local dest_db_name=$(printf "%s" "${dest_db_config}" | grep "DB_NAME" | head -n 1 | sed -E "s/.*['\"]DB_NAME['\"]\s*,\s*['\"](.*)['\"].*/\1/")
+        local dest_db_user=$(printf "%s" "${dest_db_config}" | grep "DB_USER" | head -n 1 | sed -E "s/.*['\"]DB_USER['\"]\s*,\s*['\"](.*)['\"].*/\1/")
+        local dest_db_pass=$(printf "%s" "${dest_db_config}" | grep "DB_PASSWORD" | head -n 1 | sed -E "s/.*['\"]DB_PASSWORD['\"]\s*,\s*['\"](.*)['\"].*/\1/")
+        local dest_db_host_raw=$(printf "%s" "${dest_db_config}" | grep "DB_HOST" | head -n 1 | sed -E "s/.*['\"]DB_HOST['\"]\s*,\s*['\"](.*)['\"].*/\1/")
+        local dest_db_host=${dest_db_host_raw%%:*}
+        local dest_db_port=${dest_db_host_raw#*:}
+        if [[ "${dest_db_host}" == "${dest_db_port}" ]]; then dest_db_port=3306; fi
+        if [[ "${dest_db_host}" == "localhost" ]]; then dest_db_host="127.0.0.1"; fi
+        dest_db_host=${dest_db_host:-127.0.0.1}
+        dest_db_port=${dest_db_port:-3306}
+        
+        # 2. Get Local (Source) DB Credentials
+        local src_db_user=$(warden env exec -T db printenv MYSQL_USER)
+        local src_db_pass=$(warden env exec -T db printenv MYSQL_PASSWORD)
+        local src_db_name=$(warden env exec -T db printenv MYSQL_DATABASE)
+        
+        src_db_user=${src_db_user:-wordpress}
+        src_db_pass=${src_db_pass:-wordpress}
+        src_db_name=${src_db_name:-wordpress}
+        local src_db_host="db"
+        local src_db_port=3306
+
+        printf "Streaming mysqldump from local to %s ...\n" "${SYNC_DESTINATION}"
+
+        if ! warden env exec -T db bash -c "export MYSQL_PWD='${src_db_pass}'; mysqldump --single-transaction --no-tablespaces --routines -h${src_db_host} -P${src_db_port} -u${src_db_user} ${src_db_name}" \
+            | sed "${SED_FILTERS[@]}" \
+            | ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" \
+            "export MYSQL_PWD='${dest_db_pass}'; mysql -h${dest_db_host} -P${dest_db_port} -u${dest_db_user} ${dest_db_name}"; then
+            
+            printf "\033[31mError: Database upload from local failed.\033[0m\n" >&2
+            return 1
+        fi
+
+        return 0
     fi
 
     # Fetch DB config via SSH
-    local db_config=$(ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "grep -E \"define\s*\(.*DB_(NAME|USER|PASSWORD|HOST)\" \"${ENV_SOURCE_DIR}/wp-config.php\"")
+    local db_config=$(ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "grep -E \"^\s*define\s*\(\s*['\\\"]DB_(NAME|USER|PASSWORD|HOST)\" \"${ENV_SOURCE_DIR}/wp-config.php\"")
     
     # Parse values
-    local db_name=$(printf "%s" "${db_config}" | grep "DB_NAME" | sed -E "s/.*['\"]DB_NAME['\"]\s*,\s*['\"](.*)['\"].*/\1/")
-    local db_user=$(printf "%s" "${db_config}" | grep "DB_USER" | sed -E "s/.*['\"]DB_USER['\"]\s*,\s*['\"](.*)['\"].*/\1/")
-    local db_pass=$(printf "%s" "${db_config}" | grep "DB_PASSWORD" | sed -E "s/.*['\"]DB_PASSWORD['\"]\s*,\s*['\"](.*)['\"].*/\1/")
-    local db_host_raw=$(printf "%s" "${db_config}" | grep "DB_HOST" | sed -E "s/.*['\"]DB_HOST['\"]\s*,\s*['\"](.*)['\"].*/\1/")
+    local db_name=$(printf "%s" "${db_config}" | grep "DB_NAME" | head -n 1 | sed -E "s/.*['\"]DB_NAME['\"]\s*,\s*['\"](.*)['\"].*/\1/")
+    local db_user=$(printf "%s" "${db_config}" | grep "DB_USER" | head -n 1 | sed -E "s/.*['\"]DB_USER['\"]\s*,\s*['\"](.*)['\"].*/\1/")
+    local db_pass=$(printf "%s" "${db_config}" | grep "DB_PASSWORD" | head -n 1 | sed -E "s/.*['\"]DB_PASSWORD['\"]\s*,\s*['\"](.*)['\"].*/\1/")
+    local db_host_raw=$(printf "%s" "${db_config}" | grep "DB_HOST" | head -n 1 | sed -E "s/.*['\"]DB_HOST['\"]\s*,\s*['\"](.*)['\"].*/\1/")
 
     local db_host=${db_host_raw%%:*}
     local db_port=${db_host_raw#*:}

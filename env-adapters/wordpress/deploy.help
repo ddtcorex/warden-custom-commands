@@ -1,0 +1,6 @@
+Deploy the application to the specified environment
+Usage: warden deploy [-e <environment>] [--only-static|-o]
+
+Options:
+  -e, --env <environment>   Target environment (local, dev, stage, prod, etc.)
+  -o, --only-static         Deploy only static assets (flush cache) and run hooks

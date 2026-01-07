@@ -5,6 +5,44 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.8.0] - 2026-01-07
+
+**v1.8.0: Unified Testing & Full Framework Parity**
+
+This major release introduces a comprehensive BATS-based unit testing framework, achieves full command parity across all supported frameworks (Laravel, Symfony, WordPress), and refactors the integration testing infrastructure for better scalability.
+
+### Added
+
+- **BATS Unit Testing Framework:**
+  - Comprehensive coverage for all environment adapters (Magento 2, Laravel, Symfony, WordPress).
+  - Tests for `bootstrap`, `db-dump`, `db-import`, `fix-deps`, and `upgrade` logic using robust mock-based verification.
+- **Full Framework Parity:**
+  - **Laravel:** Added `deploy.cmd` and finalized `sync.cmd`, `db-dump.cmd`, and `db-import.cmd`.
+  - **Symfony:** Added `deploy.cmd` and standardized `sync.cmd` behavior.
+  - **WordPress:** Added `deploy.cmd` and updated `sync.cmd` structure.
+- **Modular Integration Testing:**
+  - Refactored integration tests into specialized suites in `tests/integration/suites/`.
+  - Support for dynamic environment naming (`{type}-local`, `{type}-dev`, `{type}-staging`).
+  - New unified runner `./tests/run-tests.sh` that executes both unit and integration tests.
+
+### Changed
+
+- **Testing Infrastructure:**
+  - Integration tests now run in dynamic directories to prevent cross-framework conflicts.
+  - Updated `setup-test-envs.sh` to handle automated SSH key distribution and network bridging for all framework types.
+- **Documentation:**
+  - Consolidated all testing documentation into a comprehensive `tests/README.md`.
+  - Updated root `README.md` with new testing workflows.
+
+### Fixed
+
+- **Integration Testing:**
+  - Fixed swallowed shell variables (like `$table_prefix` in WordPress) in mock configuration files by using quoted heredoc markers.
+  - Resolved `mysqldump` connection failures in test environments by using dynamic host variables.
+  - Fixed character encoding and DEFINER stripping in streaming DB imports.
+- **SSH Isolation:**
+  - Improved SSH agent isolation in test containers to prevent host-level leakage during integration runs.
+
 ## [1.7.0] - 2026-01-06
 
 **v1.7.0: Integration Testing Suite & Sync Stability**

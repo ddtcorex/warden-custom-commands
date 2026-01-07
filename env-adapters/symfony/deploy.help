@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+[[ ! ${WARDEN_DIR} ]] && >&2 echo -e "\033[31mThis script is not intended to be run directly!\033[0m" && exit 1
+
+WARDEN_USAGE=$(cat <<EOF
+Deploy Symfony locally. By default, runs a full deployment.
+
+\033[33mUsage:\033[0m
+  deploy [-h|--help] [-e|--environment=<env>] [-o|--only-static]
+
+\033[33mOptions:\033[0m
+  -h, --help                Display this help menu
+
+\033[33mArguments:\033[0m
+  -e, --environment=<env>   Remote environment to deploy to (e.g. staging, prod). Default: local
+
+  -o, --only-static         Deploy assets only (skip composer, migrations)
+
+EOF
+)

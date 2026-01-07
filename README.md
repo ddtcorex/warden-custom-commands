@@ -226,6 +226,7 @@ The unified synchronization command for files, media, and databases.
 - `--db`: Sync database (streaming, no local dump file created)
 - `--full`: Sync everything (file, media, db)
 - `-p`, `--path`: Sync a specific directory or file path
+- `--include-product`: Include product/cache images in media sync (Magento 2 only)
 - `--dry-run`: Show what would happen without making changes
 - `--flush`: Flush cache after sync (default: disabled)
 - `--delete`: Delete files on destination that are not present in source
@@ -855,23 +856,23 @@ chown -R $(whoami):$(whoami) ~/.warden/commands
 
 ## Testing
 
-This project includes a comprehensive integration testing suite based on Docker. It simulates multiple environments (Local, Dev, Staging) to verify the `warden sync` command across different frameworks.
+This project includes a comprehensive testing suite (Unit & Integration) based on Docker. It simulates multiple environments (`-local`, `-dev`, `-staging`) to verify the `warden` custom commands across different frameworks.
 
-Detailed instructions can be found in [tests/integration/README.md](tests/integration/README.md).
+Detailed instructions can be found in [tests/README.md](tests/README.md).
 
 ### Quick Start
 
 ```bash
-# 1. Initialize environments (e.g., for Laravel)
-./tests/integration/setup-test-envs.sh --type=laravel
+# Run all tests for Magento 2 (Unit + Integration)
+./tests/run-tests.sh magento2
 
-# 2. Run the test suite
-./tests/integration/run-tests.sh --type=laravel
+# Run only unit tests
+./tests/run-tests.sh magento2 --unit-only
 ```
 
 The runner will automatically:
 
-1. Detect container IPs.
+1. Detect container IPs for dynamic environments.
 2. Isolate the SSH environment to prevent conflicts with your host's ssh-agent.
 3. Distribute safe test keys between containers.
 4. Execute all test suites (files, media, db, custom paths, R2R, error handling).
