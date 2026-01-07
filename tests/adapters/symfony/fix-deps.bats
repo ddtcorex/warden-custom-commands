@@ -7,7 +7,7 @@ setup() {
     export WARDEN_DIR="/tmp/warden"
     
     # Copy script
-    export TEST_SCRIPT_DIR="${BATS_TMPDIR}/symfony-fix-deps"
+    export TEST_SCRIPT_DIR="${TEST_TMP_DIR}/symfony-fix-deps"
     mkdir -p "${TEST_SCRIPT_DIR}"
     cp "${BATS_TEST_DIRNAME}/../../../env-adapters/symfony/fix-deps.cmd" "${TEST_SCRIPT_DIR}/fix-deps.cmd"
     chmod +x "${TEST_SCRIPT_DIR}/fix-deps.cmd"

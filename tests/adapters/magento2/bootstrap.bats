@@ -13,7 +13,7 @@ setup() {
     export WARDEN_ENV_NAME="test-env"
     
     # Copy bootstrap to temp location to allow safe mocking of siblings
-    export TEST_SCRIPT_DIR="${BATS_TMPDIR}/magento2-adapter"
+    export TEST_SCRIPT_DIR="${TEST_TMP_DIR}/magento2-adapter"
     mkdir -p "${TEST_SCRIPT_DIR}"
     cp "${BATS_TEST_DIRNAME}/../../../env-adapters/magento2/bootstrap.cmd" "${TEST_SCRIPT_DIR}/bootstrap.cmd"
     chmod +x "${TEST_SCRIPT_DIR}/bootstrap.cmd"

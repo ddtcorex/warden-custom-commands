@@ -17,7 +17,7 @@ setup() {
     echo "WARDEN_TEST=1" > ".env"
     
     # Copy bootstrap to temp location
-    export TEST_SCRIPT_DIR="${BATS_TMPDIR}/symfony-adapter"
+    export TEST_SCRIPT_DIR="${TEST_TMP_DIR}/symfony-adapter"
     mkdir -p "${TEST_SCRIPT_DIR}"
     cp "${BATS_TEST_DIRNAME}/../../../env-adapters/symfony/bootstrap.cmd" "${TEST_SCRIPT_DIR}/bootstrap.cmd"
     chmod +x "${TEST_SCRIPT_DIR}/bootstrap.cmd"

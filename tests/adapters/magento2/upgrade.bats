@@ -11,7 +11,7 @@ setup() {
     export ENV_SOURCE="local"
     
     # Copy script to temp location
-    export TEST_SCRIPT_DIR="${BATS_TMPDIR}/magento2-upgrade"
+    export TEST_SCRIPT_DIR="${TEST_TMP_DIR}/magento2-upgrade"
     mkdir -p "${TEST_SCRIPT_DIR}"
     cp "${BATS_TEST_DIRNAME}/../../../env-adapters/magento2/upgrade.cmd" "${TEST_SCRIPT_DIR}/upgrade.cmd"
     chmod +x "${TEST_SCRIPT_DIR}/upgrade.cmd"

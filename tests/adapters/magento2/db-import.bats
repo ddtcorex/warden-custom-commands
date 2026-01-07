@@ -6,7 +6,7 @@ setup() {
     setup_mocks
     export WARDEN_DIR="/tmp/warden"
     
-    export TEST_SCRIPT_DIR="${BATS_TMPDIR}/magento2-db-import"
+    export TEST_SCRIPT_DIR="${TEST_TMP_DIR}/magento2-db-import"
     mkdir -p "${TEST_SCRIPT_DIR}"
     cp "${BATS_TEST_DIRNAME}/../../../env-adapters/magento2/db-import.cmd" "${TEST_SCRIPT_DIR}/db-import.cmd"
     chmod +x "${TEST_SCRIPT_DIR}/db-import.cmd"

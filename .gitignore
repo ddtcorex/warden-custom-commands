@@ -22,14 +22,8 @@ tests/integration/test_id_rsa
 tests/integration/test_id_rsa.pub
 
 # BATS test artifacts (generated during test runs)
-tests/.env
-tests/*.sql.gz
-tests/dump.sql.gz
-tests/composer.json
-tests/**/dump.sql.gz
-tests/**/.env
+tests/.tmp/
 
-# Root-level test artifacts (should not be created, but just in case)
+# NPX generated files
 /composer.json
 /.env
-/dump.sql.gz

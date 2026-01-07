@@ -11,7 +11,7 @@ setup() {
     export TRAEFIK_DOMAIN="test.localhost"
 
     # Copy script
-    export TEST_SCRIPT_DIR="${BATS_TMPDIR}/laravel-adapter"
+    export TEST_SCRIPT_DIR="${TEST_TMP_DIR}/laravel-adapter"
     mkdir -p "${TEST_SCRIPT_DIR}"
     cp "${BATS_TEST_DIRNAME}/../../../env-adapters/laravel/bootstrap.cmd" "${TEST_SCRIPT_DIR}/bootstrap.cmd"
     chmod +x "${TEST_SCRIPT_DIR}/bootstrap.cmd"

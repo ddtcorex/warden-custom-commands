@@ -6,7 +6,7 @@ setup() {
     setup_mocks
     
     # Copy script
-    export TEST_SCRIPT_DIR="${BATS_TMPDIR}/symfony-db-import"
+    export TEST_SCRIPT_DIR="${TEST_TMP_DIR}/symfony-db-import"
     mkdir -p "${TEST_SCRIPT_DIR}"
     cp "${BATS_TEST_DIRNAME}/../../../env-adapters/symfony/db-import.cmd" "${TEST_SCRIPT_DIR}/db-import.cmd"
     chmod +x "${TEST_SCRIPT_DIR}/db-import.cmd"

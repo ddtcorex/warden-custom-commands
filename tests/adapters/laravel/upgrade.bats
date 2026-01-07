@@ -6,7 +6,7 @@ setup() {
     setup_mocks
     
     export WARDEN_DIR="/tmp/warden"
-    export TEST_SCRIPT_DIR="${BATS_TMPDIR}/laravel-upgrade"
+    export TEST_SCRIPT_DIR="${TEST_TMP_DIR}/laravel-upgrade"
     mkdir -p "${TEST_SCRIPT_DIR}"
     cp "${BATS_TEST_DIRNAME}/../../../env-adapters/laravel/upgrade.cmd" "${TEST_SCRIPT_DIR}/upgrade.cmd"
     chmod +x "${TEST_SCRIPT_DIR}/upgrade.cmd"

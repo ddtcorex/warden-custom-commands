@@ -11,7 +11,7 @@ setup() {
     export TRAEFIK_DOMAIN="test.localhost"
     
     # Copy script
-    export TEST_SCRIPT_DIR="${BATS_TMPDIR}/wordpress-adapter"
+    export TEST_SCRIPT_DIR="${TEST_TMP_DIR}/wordpress-adapter"
     mkdir -p "${TEST_SCRIPT_DIR}"
     cp "${BATS_TEST_DIRNAME}/../../../env-adapters/wordpress/bootstrap.cmd" "${TEST_SCRIPT_DIR}/bootstrap.cmd"
     chmod +x "${TEST_SCRIPT_DIR}/bootstrap.cmd"

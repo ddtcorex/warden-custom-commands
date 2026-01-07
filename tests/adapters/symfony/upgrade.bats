@@ -9,7 +9,7 @@ setup() {
     export WARDEN_DIR="/tmp/warden"
     
     # Copy script to temp location
-    export TEST_SCRIPT_DIR="${BATS_TMPDIR}/symfony-upgrade"
+    export TEST_SCRIPT_DIR="${TEST_TMP_DIR}/symfony-upgrade"
     mkdir -p "${TEST_SCRIPT_DIR}"
     cp "${BATS_TEST_DIRNAME}/../../../env-adapters/symfony/upgrade.cmd" "${TEST_SCRIPT_DIR}/upgrade.cmd"
     chmod +x "${TEST_SCRIPT_DIR}/upgrade.cmd"

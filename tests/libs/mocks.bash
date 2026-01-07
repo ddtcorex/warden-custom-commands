@@ -1,14 +1,18 @@
 # tests/libs/mocks.bash
 
+# Define test temp directory within tests folder
+export TEST_TMP_DIR="${BATS_TEST_DIRNAME}/../../.tmp"
+mkdir -p "${TEST_TMP_DIR}"
+
 # Define where we capture commands
-export MOCK_LOG="${BATS_TMPDIR}/mock_log"
+export MOCK_LOG="${TEST_TMP_DIR}/mock_log"
 
 setup_mocks() {
-    export WARDEN_ENV_PATH="${BATS_TMPDIR}/warden-env"
-    export WARDEN_HOME_DIR="${BATS_TMPDIR}/warden-home"
+    export WARDEN_ENV_PATH="${TEST_TMP_DIR}/warden-env"
+    export WARDEN_HOME_DIR="${TEST_TMP_DIR}/warden-home"
     export TRAEFIK_DOMAIN="test.localhost"
     export TRAEFIK_SUBDOMAIN="app"
-    export WARDEN_WEB_ROOT="${BATS_TMPDIR}/warden-web-root"
+    export WARDEN_WEB_ROOT="${TEST_TMP_DIR}/warden-web-root"
     
     mkdir -p "$WARDEN_ENV_PATH"
     mkdir -p "$WARDEN_HOME_DIR"

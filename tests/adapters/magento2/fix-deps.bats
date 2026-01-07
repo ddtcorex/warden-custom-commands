@@ -6,7 +6,7 @@ setup() {
     setup_mocks
     export WARDEN_DIR="/tmp/warden"
     
-    export TEST_SCRIPT_DIR="${BATS_TMPDIR}/magento2-fix-deps"
+    export TEST_SCRIPT_DIR="${TEST_TMP_DIR}/magento2-fix-deps"
     mkdir -p "${TEST_SCRIPT_DIR}"
     cp "${BATS_TEST_DIRNAME}/../../../env-adapters/magento2/fix-deps.cmd" "${TEST_SCRIPT_DIR}/fix-deps.cmd"
     chmod +x "${TEST_SCRIPT_DIR}/fix-deps.cmd"
