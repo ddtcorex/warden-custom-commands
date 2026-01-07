@@ -12,6 +12,7 @@ The test suite simulates a real-world multi-environment setup using Docker conta
 
 The tests verify:
 
+- **Bootstrap Command Logic (Unit tests)**
 - File synchronization (Upload/Download)
 - Media synchronization
 - Database synchronization (streaming)
@@ -49,10 +50,11 @@ The setup script will:
 
 ## Running Tests
 
-Once setup is complete, run the main test entry point:
+Once setup is complete, run the main test entry point.
+**Note**: This command now automatically runs the relevant Unit Tests (BATS) before starting the integration suite.
 
 ```bash
-# Run tests for the current initialized type
+# Run ALL tests (Unit + Integration) for the current initialized type
 ./tests/integration/run-tests.sh --type=laravel
 ```
 
