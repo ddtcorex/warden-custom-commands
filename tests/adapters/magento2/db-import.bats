@@ -13,6 +13,8 @@ setup() {
     
     BOOTSTRAP_CMD="${TEST_SCRIPT_DIR}/db-import.cmd"
     
+    # Create test artifacts in test directory
+    cd "${TEST_SCRIPT_DIR}"
     touch "dump.sql.gz"
     
     # Simple mock that always returns running container

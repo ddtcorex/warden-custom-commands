@@ -23,6 +23,8 @@ setup() {
     }
     export -f warden
     
+    # Create test artifacts in test directory
+    cd "${TEST_SCRIPT_DIR}"
     touch "dump.sql.gz"
 }
 

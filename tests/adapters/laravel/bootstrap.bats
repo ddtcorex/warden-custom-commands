@@ -9,10 +9,6 @@ setup() {
     export ENV_SOURCE="laravel"
     export WARDEN_ENV_NAME="laravel-test"
     export TRAEFIK_DOMAIN="test.localhost"
-    
-    # Mock .env for duplicate check
-    touch ".env"
-    echo "WARDEN_TEST=1" > ".env"
 
     # Copy script
     export TEST_SCRIPT_DIR="${BATS_TMPDIR}/laravel-adapter"
@@ -23,6 +19,11 @@ setup() {
     BOOTSTRAP_CMD="${TEST_SCRIPT_DIR}/bootstrap.cmd"
     
     echo "# mock fix-deps" > "${TEST_SCRIPT_DIR}/fix-deps.cmd"
+    
+    # Create test artifacts in test directory
+    cd "${TEST_SCRIPT_DIR}"
+    touch ".env"
+    echo "WARDEN_TEST=1" > ".env"
 }
 
 @test "Laravel: --clean-install performs project creation" {
