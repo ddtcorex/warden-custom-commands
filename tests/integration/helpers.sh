@@ -197,7 +197,7 @@ function setup_mock_magento_env() {
     local container="$1"
     local db_host="${2:-db}"
     # Create app/etc/env.php for DB extraction tests
-    docker exec --workdir / "${container}" bash -c "mkdir -p /var/www/html/app/etc && cat > /var/www/html/app/etc/env.php <<EOF
+    docker exec --workdir / "${container}" bash -c "mkdir -p /var/www/html/app/etc && cat > /var/www/html/app/etc/env.php <<'EOF'
 <?php
 return [
     'db' => [
@@ -218,7 +218,7 @@ EOF"
 function setup_mock_laravel_env() {
     local container="$1"
     local db_host="${2:-db}"
-    docker exec --workdir / "${container}" bash -c "cat >> /var/www/html/.env <<EOF
+    docker exec --workdir / "${container}" bash -c "cat >> /var/www/html/.env <<'EOF'
 DB_HOST=${db_host}
 DB_DATABASE=laravel
 DB_USERNAME=laravel
@@ -229,7 +229,7 @@ EOF"
 function setup_mock_symfony_env() {
     local container="$1"
     local db_host="${2:-db}"
-    docker exec --workdir / "${container}" bash -c "cat > /var/www/html/.env.local <<EOF
+    docker exec --workdir / "${container}" bash -c "cat > /var/www/html/.env.local <<'EOF'
 DATABASE_URL=\"mysql://symfony:symfony@${db_host}:3306/symfony?serverVersion=8.0\"
 EOF"
 }
@@ -237,7 +237,7 @@ EOF"
 function setup_mock_wordpress_env() {
     local container="$1"
     local db_host="${2:-db}"
-    docker exec --workdir / "${container}" bash -c "cat > /var/www/html/wp-config.php <<EOF
+    docker exec --workdir / "${container}" bash -c "cat > /var/www/html/wp-config.php <<'EOF'
 <?php
 define('DB_NAME', 'wordpress');
 define('DB_USER', 'wordpress');
