@@ -25,24 +25,30 @@ function dump_local () {
 }
 
 function dump_premise () {
-    # Fetch DB creds via SSH using grep/sed logic
-    local db_info=$(ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "grep -E '^DB_(HOST|PORT|DATABASE|USERNAME|PASSWORD)=' \"${ENV_SOURCE_DIR}/.env\"")
+    # Fetch DB creds via SSH
+    # We use grep with anchor ^ to ensure we match the exact variable name at start of line
+    local remote_cmd="grep -h -E '^(DB_HOST|DB_PORT|DB_DATABASE|DB_USERNAME|DB_PASSWORD)=' \"${ENV_SOURCE_DIR}/.env\" 2>/dev/null"
+    local db_vars=$(ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "${remote_cmd}")
+    
+    # Parse the output
+    local db_host=$(echo "${db_vars}" | grep "^DB_HOST=" | tail -n 1 | cut -d= -f2- | tr -d '"'"'")
+    local db_port=$(echo "${db_vars}" | grep "^DB_PORT=" | tail -n 1 | cut -d= -f2- | tr -d '"'"'")
+    local db_name=$(echo "${db_vars}" | grep "^DB_DATABASE=" | tail -n 1 | cut -d= -f2- | tr -d '"'"'")
+    local db_user=$(echo "${db_vars}" | grep "^DB_USERNAME=" | tail -n 1 | cut -d= -f2- | tr -d '"'"'")
+    local db_pass=$(echo "${db_vars}" | grep "^DB_PASSWORD=" | tail -n 1 | cut -d= -f2- | tr -d '"'"'")
 
-    local db_host=$(printf "%s" "${db_info}" | grep DB_HOST | cut -d= -f2 | tr -d '"'"'")
-    local db_port=$(printf "%s" "${db_info}" | grep DB_PORT | cut -d= -f2 | tr -d '"'"'")
-    local db_name=$(printf "%s" "${db_info}" | grep DB_DATABASE | cut -d= -f2 | tr -d '"'"'")
-    local db_user=$(printf "%s" "${db_info}" | grep DB_USERNAME | cut -d= -f2 | tr -d '"'"'")
-    local db_pass=$(printf "%s" "${db_info}" | grep DB_PASSWORD | cut -d= -f2 | tr -d '"'"'")
-
-    # Defaults
+    # Fallbacks / Defaults
     db_host=${db_host:-127.0.0.1}
     db_port=${db_port:-3306}
+    
+    if [[ -z "${db_name}" ]]; then
+      printf "❌ \033[31mCould not detect DB_DATABASE from remote .env\033[0m\n" >&2
+      exit 1
+    fi
 
     printf "⌛ \033[1;32mDumping \033[33m%s\033[1;32m database from \033[33m%s\033[1;32m...\033[0m\n" "${db_name}" "${ENV_SOURCE_HOST}"
 
-    # mysqldump command
     local db_dump="export MYSQL_PWD='${db_pass}'; mysqldump --no-tablespaces --single-transaction --routines -h${db_host} -P${db_port} -u${db_user} ${db_name} | gzip"
-    
     ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "set -o pipefail; ${db_dump}" > "${DUMP_FILENAME}"
 
     printf "✅ \033[32mDatabase dump complete! File: %s\033[0m\n" "${DUMP_FILENAME}"
