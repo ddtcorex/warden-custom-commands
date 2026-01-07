@@ -82,13 +82,13 @@ if [[ "${STREAM_DB}" -eq 1 ]]; then
 
     # Streaming database from remote (direct import)
     # Fetch DB config via SSH (using logic from db-dump.cmd)
-    db_config=$(ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "grep -E \"define\s*\(.*DB_(NAME|USER|PASSWORD|HOST)\" \"${ENV_SOURCE_DIR}/wp-config.php\"")
+    db_config=$(ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "grep -E \"^\s*define\s*\(\s*['\\\"]DB_(NAME|USER|PASSWORD|HOST)\" \"${ENV_SOURCE_DIR}/wp-config.php\"")
     
     # Parse values
-    db_name=$(printf "%s" "${db_config}" | grep "DB_NAME" | sed -E "s/.*['\"]DB_NAME['\"]\s*,\s*['\"](.*)['\"].*/\1/")
-    db_user=$(printf "%s" "${db_config}" | grep "DB_USER" | sed -E "s/.*['\"]DB_USER['\"]\s*,\s*['\"](.*)['\"].*/\1/")
-    db_pass=$(printf "%s" "${db_config}" | grep "DB_PASSWORD" | sed -E "s/.*['\"]DB_PASSWORD['\"]\s*,\s*['\"](.*)['\"].*/\1/")
-    db_host_raw=$(printf "%s" "${db_config}" | grep "DB_HOST" | sed -E "s/.*['\"]DB_HOST['\"]\s*,\s*['\"](.*)['\"].*/\1/")
+    db_name=$(printf "%s" "${db_config}" | grep "DB_NAME" | head -n 1 | sed -E "s/.*['\"]DB_NAME['\"]\s*,\s*['\"](.*)['\"].*/\1/")
+    db_user=$(printf "%s" "${db_config}" | grep "DB_USER" | head -n 1 | sed -E "s/.*['\"]DB_USER['\"]\s*,\s*['\"](.*)['\"].*/\1/")
+    db_pass=$(printf "%s" "${db_config}" | grep "DB_PASSWORD" | head -n 1 | sed -E "s/.*['\"]DB_PASSWORD['\"]\s*,\s*['\"](.*)['\"].*/\1/")
+    db_host_raw=$(printf "%s" "${db_config}" | grep "DB_HOST" | head -n 1 | sed -E "s/.*['\"]DB_HOST['\"]\s*,\s*['\"](.*)['\"].*/\1/")
 
     db_host=${db_host_raw%%:*}
     db_port=${db_host_raw#*:}
