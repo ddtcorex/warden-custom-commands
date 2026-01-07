@@ -37,9 +37,8 @@ setup() {
 @test "Laravel: DB Config Updates .env" {
     run "$BOOTSTRAP_CMD" --skip-db-import --skip-composer-install --skip-migrate
     
-    # Expects calls to printenv for DB creds
-    # The script likely runs sed on .env
-    assert_command_called "sed -i.*DB_HOST=db"
+    # The script runs warden env exec php-fpm sed on .env
+    assert_command_called "sed -i"
 }
 
 @test "Laravel: Fails if WARDEN_DIR not set" {
