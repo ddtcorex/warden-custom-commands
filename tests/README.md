@@ -47,16 +47,73 @@ Shared mocks are located in `tests/libs/mocks.bash`. These are used to simulate:
 
 Located in `tests/integration/`.
 
-These tests provision real Docker environments (`project-local`, `project-dev`, `project-staging`) to test the actual data transfer and command execution results.
+The test suite simulates a real-world multi-environment setup using Docker containers:
+
+* **project-local**: Your simulated local development environment.
+* **project-dev**: A simulated remote development server.
+* **project-staging**: A simulated staging server.
+
+The tests verify:
+
+* **Bootstrap Command Logic (Unit tests)**
+* File synchronization (Upload/Download)
+* Media synchronization
+* Database synchronization (streaming)
+* Remote-to-Remote synchronization
+* Custom path excludes and includes
+* Error handling
+
+### Prerequisites
+
+* **Warden** installed and configured.
+* **Docker** and **docker-compose** version 2+.
+* SSH keys generated locally (`~/.ssh/id_rsa.pub` must exist).
 
 ### Setup
 
-Before running integration tests for the first time or when switching types:
+Before running tests, you must initialize the test environments for a specific framework type.
 
 ```bash
-./tests/integration/setup-test-envs.sh --type=<magento2|laravel|symfony|wordpress>
+# Setup for Laravel
+./tests/integration/setup-test-envs.sh --type=laravel
+
+# Setup for Magento 2
+./tests/integration/setup-test-envs.sh --type=magento2
+
+# Setup for Symfony
+./tests/integration/setup-test-envs.sh --type=symfony
 ```
 
-### Details
+The setup script will:
 
-For more detailed information on the integration test architecture, see [tests/integration/README.md](tests/integration/README.md).
+1. Create temporary directories in `tests/project-*`.
+2. Initialize and start Warden environments.
+3. Configure SSH servers and distribute keys between containers.
+4. Establish Docker network connectivity between environments.
+
+### Cleanup
+
+To stop and remove all test environments:
+
+```bash
+./tests/integration/teardown-test-envs.sh
+
+# To completely remove data volumes and directories:
+rm -rf tests/project-*
+docker volume rm $(docker volume ls -q | grep project-)
+```
+
+### Structure
+
+* `setup-test-envs.sh`: Orchestrates container initialization and networking.
+* `run-tests.sh`: Main test runner that sources individual test suites.
+* `helpers.sh`: Shared functions for file creation, DB queries, and assertions.
+* `test-*.sh`: Individual test suites for specific features.
+
+## 💡 Development Tip
+
+If you are modifying the sync command, ensure your repository is symlinked to `~/.warden/commands` so the tests use your latest changes:
+
+```bash
+ln -s $(pwd) ~/.warden/commands
+```
