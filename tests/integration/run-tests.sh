@@ -17,6 +17,40 @@ echo "Running tests for environment type: ${TEST_ENV_TYPE}"
 
 header "Warden Sync Integration Tests"
 
+# Step 0: Run Unit Tests (BATS)
+header "Running Bootstrap Unit Tests"
+BATS_CMD=""
+if command -v bats &> /dev/null; then
+    BATS_CMD="bats"
+elif command -v npx &> /dev/null; then
+    BATS_CMD="npx -y bats"
+else
+    echo "Warning: neither 'bats' nor 'npx' found. Skipping Unit Tests."
+fi
+
+if [[ -n "$BATS_CMD" ]]; then
+    # Resolve absolute path to tests root
+    TESTS_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+    BATS_FILE="${TESTS_ROOT}/adapters/${TEST_ENV_TYPE}/bootstrap.bats"
+    
+    if [[ -f "$BATS_FILE" ]]; then
+        echo "🧪 Executing: $BATS_CMD $BATS_FILE"
+        $BATS_CMD "$BATS_FILE"
+        UNIT_STATUS=$?
+        
+        if [[ $UNIT_STATUS -ne 0 ]]; then
+            echo ""
+            echo "❌ Unit Tests Failed (Exit Code: $UNIT_STATUS)"
+            echo "Stopping integration tests due to unit test failure."
+            exit 1
+        else
+            echo "✅ Unit Tests Passed"
+        fi
+    else
+        echo "ℹ️  No BATS tests found for ${TEST_ENV_TYPE} (looked at: ${BATS_FILE})"
+    fi
+fi
+
 # Step 1: Verify code is linked to Warden commands directory
 echo "Verifying ~/.warden/commands link..."
 if [[ -L ~/.warden/commands ]]; then
