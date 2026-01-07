@@ -94,8 +94,8 @@ test_file_sync_config_exclusion() {
     local app_root=$(get_app_root)
     
     # Ensure config exists on both source (local) and destination (dev)
-    setup_mock_env "${LOCAL_PHP}" "project-local-db-1"
-    setup_mock_env "${DEV_PHP}" "project-dev-db-1"
+    setup_mock_env "${LOCAL_PHP}" "${LOCAL_DB}"
+    setup_mock_env "${DEV_PHP}" "${DEV_DB}"
     
     # Modify config files with markers
     modify_config_file "${LOCAL_PHP}" "${app_root}/${config_path}" "MARKER_LOCAL"
