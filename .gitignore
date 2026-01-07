@@ -27,3 +27,5 @@ tests/.tmp/
 # NPX generated files
 /composer.json
 /.env
+tests/.env
+tests/composer.json
