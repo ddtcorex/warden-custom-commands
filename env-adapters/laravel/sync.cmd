@@ -18,7 +18,7 @@ fi
 
 # Define paths and exclusions
 MEDIA_PATH="storage/app/public"
-CODE_EXCLUDE=('vendor' 'node_modules' 'storage/logs/*' 'storage/framework/cache/*' 'storage/framework/sessions/*' 'storage/framework/views/*' '.git' '.idea' '*.gz' '*.zip' '*.tar' '*.7z' '*.sql' '.env')
+CODE_EXCLUDE=('vendor' 'node_modules' 'storage/logs/*' 'storage/framework/cache/*' 'storage/framework/sessions/*' 'storage/framework/views/*' '.git' '.idea' '*.gz' '*.zip' '*.tar' '*.7z' '*.sql')
 
 # Function for file transfer (uses rsync)
 function transfer_files() {
@@ -143,21 +143,21 @@ function sync_database() {
 
         # Source DB info
         local src_db_info=$(ssh ${SSH_OPTS} -p "${SOURCE_REMOTE_PORT}" "${SOURCE_REMOTE_USER}@${SOURCE_REMOTE_HOST}" "grep -h -E '^(DB_HOST|DB_PORT|DB_DATABASE|DB_USERNAME|DB_PASSWORD)=' \"${SOURCE_REMOTE_DIR}/.env\"")
-        local src_db_host=$(printf "%s" "${src_db_info}" | grep "^DB_HOST=" | cut -d= -f2- | tr -d '"'"'")
-        local src_db_port=$(printf "%s" "${src_db_info}" | grep "^DB_PORT=" | cut -d= -f2- | tr -d '"'"'")
-        local src_db_name=$(printf "%s" "${src_db_info}" | grep "^DB_DATABASE=" | cut -d= -f2- | tr -d '"'"'")
-        local src_db_user=$(printf "%s" "${src_db_info}" | grep "^DB_USERNAME=" | cut -d= -f2- | tr -d '"'"'")
-        local src_db_pass=$(printf "%s" "${src_db_info}" | grep "^DB_PASSWORD=" | cut -d= -f2- | tr -d '"'"'")
+        local src_db_host=$(printf "%s" "${src_db_info}" | grep "^DB_HOST=" | tail -n 1 | cut -d= -f2- | tr -d '"'"'")
+        local src_db_port=$(printf "%s" "${src_db_info}" | grep "^DB_PORT=" | tail -n 1 | cut -d= -f2- | tr -d '"'"'")
+        local src_db_name=$(printf "%s" "${src_db_info}" | grep "^DB_DATABASE=" | tail -n 1 | cut -d= -f2- | tr -d '"'"'")
+        local src_db_user=$(printf "%s" "${src_db_info}" | grep "^DB_USERNAME=" | tail -n 1 | cut -d= -f2- | tr -d '"'"'")
+        local src_db_pass=$(printf "%s" "${src_db_info}" | grep "^DB_PASSWORD=" | tail -n 1 | cut -d= -f2- | tr -d '"'"'")
         src_db_host=${src_db_host:-127.0.0.1}
         src_db_port=${src_db_port:-3306}
 
         # Destination DB info
         local dest_db_info=$(ssh ${SSH_OPTS} -p "${DEST_REMOTE_PORT}" "${DEST_REMOTE_USER}@${DEST_REMOTE_HOST}" "grep -h -E '^(DB_HOST|DB_PORT|DB_DATABASE|DB_USERNAME|DB_PASSWORD)=' \"${DEST_REMOTE_DIR}/.env\"")
-        local dest_db_host=$(printf "%s" "${dest_db_info}" | grep "^DB_HOST=" | cut -d= -f2- | tr -d '"'"'")
-        local dest_db_port=$(printf "%s" "${dest_db_info}" | grep "^DB_PORT=" | cut -d= -f2- | tr -d '"'"'")
-        local dest_db_name=$(printf "%s" "${dest_db_info}" | grep "^DB_DATABASE=" | cut -d= -f2- | tr -d '"'"'")
-        local dest_db_user=$(printf "%s" "${dest_db_info}" | grep "^DB_USERNAME=" | cut -d= -f2- | tr -d '"'"'")
-        local dest_db_pass=$(printf "%s" "${dest_db_info}" | grep "^DB_PASSWORD=" | cut -d= -f2- | tr -d '"'"'")
+        local dest_db_host=$(printf "%s" "${dest_db_info}" | grep "^DB_HOST=" | tail -n 1 | cut -d= -f2- | tr -d '"'"'")
+        local dest_db_port=$(printf "%s" "${dest_db_info}" | grep "^DB_PORT=" | tail -n 1 | cut -d= -f2- | tr -d '"'"'")
+        local dest_db_name=$(printf "%s" "${dest_db_info}" | grep "^DB_DATABASE=" | tail -n 1 | cut -d= -f2- | tr -d '"'"'")
+        local dest_db_user=$(printf "%s" "${dest_db_info}" | grep "^DB_USERNAME=" | tail -n 1 | cut -d= -f2- | tr -d '"'"'")
+        local dest_db_pass=$(printf "%s" "${dest_db_info}" | grep "^DB_PASSWORD=" | tail -n 1 | cut -d= -f2- | tr -d '"'"'")
         dest_db_host=${dest_db_host:-127.0.0.1}
         dest_db_port=${dest_db_port:-3306}
 
@@ -193,11 +193,11 @@ function sync_database() {
 
         # 1. Get Destination (Remote) DB Credentials
         local dest_db_info=$(ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "grep -h -E '^(DB_HOST|DB_PORT|DB_DATABASE|DB_USERNAME|DB_PASSWORD)=' \"${ENV_SOURCE_DIR}/.env\"")
-        local dest_db_host=$(printf "%s" "${dest_db_info}" | grep "^DB_HOST=" | cut -d= -f2- | tr -d '"'"'")
-        local dest_db_port=$(printf "%s" "${dest_db_info}" | grep "^DB_PORT=" | cut -d= -f2- | tr -d '"'"'")
-        local dest_db_name=$(printf "%s" "${dest_db_info}" | grep "^DB_DATABASE=" | cut -d= -f2- | tr -d '"'"'")
-        local dest_db_user=$(printf "%s" "${dest_db_info}" | grep "^DB_USERNAME=" | cut -d= -f2- | tr -d '"'"'")
-        local dest_db_pass=$(printf "%s" "${dest_db_info}" | grep "^DB_PASSWORD=" | cut -d= -f2- | tr -d '"'"'")
+        local dest_db_host=$(printf "%s" "${dest_db_info}" | grep "^DB_HOST=" | tail -n 1 | cut -d= -f2- | tr -d '"'"'")
+        local dest_db_port=$(printf "%s" "${dest_db_info}" | grep "^DB_PORT=" | tail -n 1 | cut -d= -f2- | tr -d '"'"'")
+        local dest_db_name=$(printf "%s" "${dest_db_info}" | grep "^DB_DATABASE=" | tail -n 1 | cut -d= -f2- | tr -d '"'"'")
+        local dest_db_user=$(printf "%s" "${dest_db_info}" | grep "^DB_USERNAME=" | tail -n 1 | cut -d= -f2- | tr -d '"'"'")
+        local dest_db_pass=$(printf "%s" "${dest_db_info}" | grep "^DB_PASSWORD=" | tail -n 1 | cut -d= -f2- | tr -d '"'"'")
         
         dest_db_host=${dest_db_host:-127.0.0.1}
         dest_db_port=${dest_db_port:-3306}
@@ -229,11 +229,11 @@ function sync_database() {
 
     # Fetch DB creds via SSH
     local db_info=$(ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "grep -h -E '^(DB_HOST|DB_PORT|DB_DATABASE|DB_USERNAME|DB_PASSWORD)=' \"${ENV_SOURCE_DIR}/.env\"")
-    local db_host=$(printf "%s" "${db_info}" | grep "^DB_HOST=" | cut -d= -f2- | tr -d '"'"'")
-    local db_port=$(printf "%s" "${db_info}" | grep "^DB_PORT=" | cut -d= -f2- | tr -d '"'"'")
-    local db_name=$(printf "%s" "${db_info}" | grep "^DB_DATABASE=" | cut -d= -f2- | tr -d '"'"'")
-    local db_user=$(printf "%s" "${db_info}" | grep "^DB_USERNAME=" | cut -d= -f2- | tr -d '"'"'")
-    local db_pass=$(printf "%s" "${db_info}" | grep "^DB_PASSWORD=" | cut -d= -f2- | tr -d '"'"'")
+    local db_host=$(printf "%s" "${db_info}" | grep "^DB_HOST=" | tail -n 1 | cut -d= -f2- | tr -d '"'"'")
+    local db_port=$(printf "%s" "${db_info}" | grep "^DB_PORT=" | tail -n 1 | cut -d= -f2- | tr -d '"'"'")
+    local db_name=$(printf "%s" "${db_info}" | grep "^DB_DATABASE=" | tail -n 1 | cut -d= -f2- | tr -d '"'"'")
+    local db_user=$(printf "%s" "${db_info}" | grep "^DB_USERNAME=" | tail -n 1 | cut -d= -f2- | tr -d '"'"'")
+    local db_pass=$(printf "%s" "${db_info}" | grep "^DB_PASSWORD=" | tail -n 1 | cut -d= -f2- | tr -d '"'"'")
 
     db_host=${db_host:-127.0.0.1}
     db_port=${db_port:-3306}
