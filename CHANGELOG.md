@@ -36,8 +36,8 @@ This major release introduces a comprehensive BATS-based unit testing framework,
 
 ### Fixed
 
-- **Sync Reliability:**
-  - Fixed Remote-to-Remote (R2R) database synchronization persistence issues.
+- **Integration Testing:**
+  - Fixed swallowed shell variables (like `$table_prefix` in WordPress) in mock configuration files by using quoted heredoc markers.
   - Resolved `mysqldump` connection failures in test environments by using dynamic host variables.
   - Fixed character encoding and DEFINER stripping in streaming DB imports.
 - **SSH Isolation:**
