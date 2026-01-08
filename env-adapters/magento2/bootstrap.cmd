@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 set -u
+[[ ! "${WARDEN_DIR:-}" ]] && >&2 printf "\033[31mThis script is not intended to be run directly!\033[0m\n" && exit 1
+
 START_TIME=$(date +%s)
 
 # env-variables is already sourced by the root dispatcher
@@ -266,6 +268,20 @@ else
     ENCRYPT_KEY="$WARDEN_ENCRYPT_KEY"
 fi
 
+# Get actual database credentials from the db container
+DB_USER=$(warden env exec -T db printenv MYSQL_USER 2>/dev/null)
+DB_PASS=$(warden env exec -T db printenv MYSQL_PASSWORD 2>/dev/null)
+DB_NAME=$(warden env exec -T db printenv MYSQL_DATABASE 2>/dev/null)
+DB_HOST_NAME="db"
+if [[ -n "${WARDEN_ENV_NAME:-}" ]]; then
+    DB_HOST_NAME="${WARDEN_ENV_NAME}-db-1"
+fi
+
+# Use defaults if not available
+DB_USER=${DB_USER:-magento}
+DB_PASS=${DB_PASS:-magento}
+DB_NAME=${DB_NAME:-magento}
+
 if [ ! -f "${WARDEN_ENV_PATH}/app/etc/env.php" ] && [ ! $CLEAN_INSTALL ]; then
     :: Configuring environment variables
     printf "WARDEN_ENV_PATH: %s\n" "${WARDEN_ENV_PATH}"
@@ -286,17 +302,17 @@ return [
         'table_prefix' => '${DB_PREFIX:-}',
         'connection' => [
             'default' => [
-                'host' => 'db',
-                'dbname' => 'magento',
-                'username' => 'magento',
-                'password' => 'magento',
+                'host' => '${DB_HOST_NAME}',
+                'dbname' => '${DB_NAME}',
+                'username' => '${DB_USER}',
+                'password' => '${DB_PASS}',
                 'active' => '1'
             ],
              'indexer' => [
-                 'host' => 'db',
-                 'dbname' => 'magento',
-                 'username' => 'magento',
-                 'password' => 'magento',
+                 'host' => '${DB_HOST_NAME}',
+                 'dbname' => '${DB_NAME}',
+                 'username' => '${DB_USER}',
+                 'password' => '${DB_PASS}',
              ]
         ]
     ],
@@ -400,10 +416,10 @@ if [[ ${CLEAN_INSTALL} ]] && [[ ! -f "${WARDEN_WEB_ROOT}/composer.json" ]]; then
 
     warden env exec php-fpm bin/magento setup:install \
         --backend-frontname=admin \
-        --db-host=db \
-        --db-name=magento \
-        --db-user=magento \
-        --db-password=magento \
+        --db-host=${DB_HOST_NAME} \
+        --db-name=${DB_NAME} \
+        --db-user=${DB_USER} \
+        --db-password=${DB_PASS} \
         --db-prefix=${DB_PREFIX:-} \
         --search-engine=${SEARCH_ENGINE} \
         --${SEARCH_COMMAND}-host=${SEARCH_HOST} \
@@ -427,7 +443,7 @@ if [[ "${CLEAN_INSTALL:-}" ]] && [[ "${INCLUDE_SAMPLE:-}" ]]; then
 fi
 
 if [[ "${CLEAN_INSTALL:-}" ]] && [[ "${HYVA_INSTALL:-}" ]]; then
-    HYVA_THEME_ID=$(warden env exec -T php-fpm mysql -u magento -pmagento -h db magento -N -s -e "SELECT theme_id FROM theme WHERE code = 'hyva/default'" 2>/dev/null || echo "")
+    HYVA_THEME_ID=$(warden env exec -T php-fpm mysql -u "${DB_USER}" -p"${DB_PASS}" -h "${DB_HOST_NAME}" "${DB_NAME}" -N -s -e "SELECT theme_id FROM theme WHERE code = 'hyva/default'" 2>/dev/null || echo "")
     if [[ -n "${HYVA_THEME_ID}" ]]; then
         :: Activating Hyvä theme
         warden env exec php-fpm bin/magento config:set design/theme/theme_id "${HYVA_THEME_ID}" || true

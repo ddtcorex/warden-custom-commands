@@ -98,7 +98,9 @@ echo "Done"
 TEST_SUITES=()
 
 # Add environment-specific bootstrap tests
-if [[ "${TEST_ENV_TYPE}" == "laravel" ]]; then
+if [[ "${TEST_ENV_TYPE}" == "magento2" ]]; then
+    TEST_SUITES+=("bootstrap-magento2.sh")
+elif [[ "${TEST_ENV_TYPE}" == "laravel" ]]; then
     TEST_SUITES+=("bootstrap-laravel.sh")
 elif [[ "${TEST_ENV_TYPE}" == "wordpress" ]]; then
     TEST_SUITES+=("bootstrap-wordpress.sh")
