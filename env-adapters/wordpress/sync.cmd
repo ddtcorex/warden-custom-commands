@@ -18,7 +18,7 @@ fi
 
 # Define paths and exclusions
 MEDIA_PATH="wp-content/uploads"
-CODE_EXCLUDE=('wp-content/uploads/*' 'wp-content/cache/*' '.git' '.idea' '*.gz' '*.zip' '*.tar' '*.7z' '*.sql')
+CODE_EXCLUDE=('wp-config.php' 'wp-content/uploads/*' 'wp-content/cache/*' '.git' '.idea' '*.gz' '*.zip' '*.tar' '*.7z' '*.sql' '.env')
 
 # Function for file transfer (uses rsync)
 function transfer_files() {

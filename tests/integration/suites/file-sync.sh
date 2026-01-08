@@ -94,8 +94,8 @@ test_file_sync_config_exclusion() {
     local app_root=$(get_app_root)
     
     # Ensure config exists on both source (local) and destination (dev)
-    setup_mock_env "${LOCAL_PHP}" "${LOCAL_DB}"
-    setup_mock_env "${DEV_PHP}" "${DEV_DB}"
+    setup_mock_env "${LOCAL_PHP}"
+    setup_mock_env "${DEV_PHP}"
     
     # Modify config files with markers
     modify_config_file "${LOCAL_PHP}" "${app_root}/${config_path}" "MARKER_LOCAL"
@@ -145,7 +145,7 @@ test_file_sync_config_exclusion() {
     remove_file "${DEV_PHP}" "${app_root}/${config_path}"
     run_sync_confirmed -s local -d dev --file > /dev/null 2>&1
     
-    if [[ "${TEST_ENV_TYPE}" == "symfony" ]]; then
+    if [[ "${TEST_ENV_TYPE}" == "symfony" || "${TEST_ENV_TYPE}" == "wordpress" ]]; then
         if ! file_exists "${DEV_PHP}" "${app_root}/${config_path}"; then
              pass "Config file sync when missing on destination - correctly excluded (Symfony Strict)"
         else

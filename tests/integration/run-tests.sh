@@ -71,6 +71,7 @@ fi
 echo "All environments running"
 
 export WARDEN_SSH_IDENTITY_FILE='~/.ssh/id_rsa'
+export WARDEN_SSH_OPTS='-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
 unset WARDEN_SSH_IDENTITIES_ONLY
 
 # Remove env overrides from .env
@@ -93,7 +94,18 @@ header "Cleaning Up Test Artifacts"
 cleanup_test_files
 echo "Done"
 
-TEST_SUITES=(
+# Define Base Suites
+TEST_SUITES=()
+
+# Add environment-specific bootstrap tests
+if [[ "${TEST_ENV_TYPE}" == "laravel" ]]; then
+    TEST_SUITES+=("bootstrap-laravel.sh")
+elif [[ "${TEST_ENV_TYPE}" == "wordpress" ]]; then
+    TEST_SUITES+=("bootstrap-wordpress.sh")
+fi
+
+# Add Generic Sync Suites
+TEST_SUITES+=(
     "file-sync.sh"
     "media-sync.sh"
     "db-sync.sh"

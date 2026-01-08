@@ -25,31 +25,36 @@ for context in local dev staging; do
     echo "  Created: tests/${env}/"
 done
 
-# Step 2: Initialize
+# Step 2 & 3: Initialize and Start
 echo ""
-echo "Step 2: Initializing Warden environments (${ENV_TYPE})..."
+echo "Step 2 & 3: Initializing and Starting environments..."
+
+# Cleanup function to ensure clean slate
 for context in local dev staging; do
     env="${ENV_TYPE}-${context}"
     cd "${TEST_DIR}/${env}"
     rm -f .env
     yes | warden env-init "${env}" "${ENV_TYPE}" > /dev/null 2>&1
+    
+    # Configure ENV for Speed (Disable heavy services)
     if ! grep -q "WARDEN_ENV_NAME" .env; then
         echo "WARDEN_ENV_NAME=${env}" >> .env
         echo "WARDEN_ENV_TYPE=${ENV_TYPE}" >> .env
     fi
-
-    echo "  ${env}: Initialized"
-done
-
-# Step 3: Start
-echo ""
-echo "Step 3: Starting environments..."
-for context in local dev staging; do
-    env="${ENV_TYPE}-${context}"
-    cd "${TEST_DIR}/${env}"
+    
+    # Force disable heavy services
+    sed -i 's/^PHP_XDEBUG_3=.*/PHP_XDEBUG_3=0/' .env || echo "PHP_XDEBUG_3=0" >> .env
+    sed -i 's/^WARDEN_ELASTICSEARCH=.*/WARDEN_ELASTICSEARCH=0/' .env || echo "WARDEN_ELASTICSEARCH=0" >> .env
+    sed -i 's/^WARDEN_VARNISH=.*/WARDEN_VARNISH=0/' .env || echo "WARDEN_VARNISH=0" >> .env
+    sed -i 's/^WARDEN_REDIS=.*/WARDEN_REDIS=0/' .env || echo "WARDEN_REDIS=0" >> .env
+    
+    # Wipe Clean (Down + Volumes) using the generated .env context
+    warden env down -v > /dev/null 2>&1 || true
+    
     warden env up -d > /dev/null 2>&1
-    echo "  ${env}: Started"
+    echo "  ${env}: Initialized and Started (Lightweight + Clean)"
 done
+echo "  All environments started."
 
 # Step 4: REMOTE vars
 echo ""
@@ -60,9 +65,9 @@ LOCAL_CONTAINER="${ENV_TYPE}-local-php-fpm-1"
 DEV_CONTAINER="${ENV_TYPE}-dev-php-fpm-1"
 STAGING_CONTAINER="${ENV_TYPE}-staging-php-fpm-1"
 
-# Wait for containers to be up before inspecting
+# Wait for containers to be ready
 echo "  Waiting for containers to be ready..."
-sleep 15
+sleep 5
 
 DEV_IP_DETECTED=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}' "${DEV_CONTAINER}" | awk '{print $1}')
 STAGING_IP_DETECTED=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}' "${STAGING_CONTAINER}" | awk '{print $1}')
@@ -72,7 +77,7 @@ cat >> "${TEST_DIR}/${ENV_TYPE}-local/.env" << EOF
 
 # Remote Environments for Sync Testing
 WARDEN_SSH_IDENTITIES_ONLY=1
-WARDEN_SSH_OPTS="-o IdentityAgent=none"
+WARDEN_SSH_OPTS="-o IdentityAgent=none -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
 
 REMOTE_DEV_HOST=${DEV_IP_DETECTED}
 REMOTE_DEV_USER=www-data
@@ -87,22 +92,32 @@ EOF
 echo "  ${ENV_TYPE}-local: Added REMOTE_* variables (Dev IP: ${DEV_IP_DETECTED}, Staging IP: ${STAGING_IP_DETECTED})"
 
 
-# Step 5: SSH Server
+# Step 5: SSH Server (Parallel)
 echo ""
 echo "Step 5: Installing SSH server on dev/staging..."
+pids=""
 for container in "${DEV_CONTAINER}" "${STAGING_CONTAINER}"; do
-    docker exec --workdir / -u root "${container}" bash -c "dnf install -y openssh-server > /dev/null 2>&1 && ssh-keygen -A > /dev/null 2>&1 && mkdir -p /run/sshd && /usr/sbin/sshd" 2>/dev/null || true
-    echo "  ${container}: SSH server installed and started"
+    (
+        docker exec --workdir / -u root "${container}" bash -c "dnf install -y openssh-server > /dev/null 2>&1 && ssh-keygen -A > /dev/null 2>&1 && mkdir -p /run/sshd && /usr/sbin/sshd" 2>/dev/null || true
+        echo "  ${container}: SSH server installed and started"
+    ) &
+    pids="$pids $!"
 done
+wait $pids
 
 # Step 6: Keys
 echo ""
 echo "Step 6: Configuring SSH keys..."
+pids=""
 for container in "${LOCAL_CONTAINER}" "${DEV_CONTAINER}" "${STAGING_CONTAINER}"; do
-    docker exec --workdir / -u www-data "${container}" bash -c "[ -f ~/.ssh/id_rsa ] || ssh-keygen -t rsa -N '' -f ~/.ssh/id_rsa > /dev/null 2>&1"
-    docker exec --workdir / -u www-data "${container}" bash -c "echo 'Host *' > ~/.ssh/config && echo '    IdentityAgent none' >> ~/.ssh/config && echo '    StrictHostKeyChecking no' >> ~/.ssh/config && chmod 600 ~/.ssh/config"
-    echo "  ${container}: SSH key generated and configured"
+    (
+        docker exec --workdir / -u www-data "${container}" bash -c "[ -f ~/.ssh/id_rsa ] || ssh-keygen -t rsa -N '' -f ~/.ssh/id_rsa > /dev/null 2>&1"
+        docker exec --workdir / -u www-data "${container}" bash -c "echo 'Host *' > ~/.ssh/config && echo '    IdentityAgent none' >> ~/.ssh/config && echo '    StrictHostKeyChecking no' >> ~/.ssh/config && chmod 600 ~/.ssh/config"
+        echo "  ${container}: SSH key generated and configured"
+    ) &
+    pids="$pids $!"
 done
+wait $pids
 
 LOCAL_PUBKEY=$(docker exec --workdir / "${LOCAL_CONTAINER}" cat /home/www-data/.ssh/id_rsa.pub)
 DEV_PUBKEY=$(docker exec --workdir / "${DEV_CONTAINER}" cat /home/www-data/.ssh/id_rsa.pub)
@@ -117,10 +132,21 @@ echo "  All environments: Public keys distributed"
 # Step 7: Networks
 echo ""
 echo "Step 7: Connecting Docker networks..."
-docker network connect "${ENV_TYPE}-dev_default" "${LOCAL_CONTAINER}" 2>/dev/null || true
-docker network connect "${ENV_TYPE}-staging_default" "${LOCAL_CONTAINER}" 2>/dev/null || true
-docker network connect "${ENV_TYPE}-staging_default" "${DEV_CONTAINER}" 2>/dev/null || true
-docker network connect "${ENV_TYPE}-dev_default" "${STAGING_CONTAINER}" 2>/dev/null || true
+docker network connect "${ENV_TYPE}-dev_default" "${LOCAL_CONTAINER}" 2>/dev/null || echo "Warning: Could not connect ${LOCAL_CONTAINER} to ${ENV_TYPE}-dev_default"
+docker network connect "${ENV_TYPE}-staging_default" "${LOCAL_CONTAINER}" 2>/dev/null || echo "Warning: Could not connect ${LOCAL_CONTAINER} to ${ENV_TYPE}-staging_default"
+docker network connect "${ENV_TYPE}-staging_default" "${DEV_CONTAINER}" 2>/dev/null || echo "Warning: Could not connect ${DEV_CONTAINER} to ${ENV_TYPE}-staging_default"
+docker network connect "${ENV_TYPE}-dev_default" "${STAGING_CONTAINER}" 2>/dev/null || echo "Warning: Could not connect ${STAGING_CONTAINER} to ${ENV_TYPE}-dev_default"
+
+# Verify connectivity
+if ! docker exec "${LOCAL_CONTAINER}" ping -c 1 -W 2 "${DEV_CONTAINER}" >/dev/null 2>&1; then
+     # Try one more time with explicit IP just in case DNS is slow
+     DEV_IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}' "${DEV_CONTAINER}" | awk '{print $1}')
+     if ! docker exec "${LOCAL_CONTAINER}" ping -c 1 -W 2 "${DEV_IP}" >/dev/null 2>&1; then
+         echo "Error: Network connection failed between local and dev containers."
+         # Force reconnect?
+     fi
+fi
+
 echo "  Networks connected"
 
 # Step 9: Test Dirs
@@ -151,14 +177,13 @@ for context in local dev staging; do
     
     # Initialize env.php for Magento 2
     if [[ "${ENV_TYPE}" == "magento2" ]]; then
-        DB_HOST="${env}-db-1"
         docker exec --workdir / -u www-data "${container}" bash -c "mkdir -p /var/www/html/app/etc && cat > /var/www/html/app/etc/env.php <<EOF
 <?php
 return [
     'db' => [
         'connection' => [
             'default' => [
-                'host' => '${DB_HOST}',
+                'host' => 'db',
                 'dbname' => 'magento',
                 'username' => 'magento',
                 'password' => 'magento',
