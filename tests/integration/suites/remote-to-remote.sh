@@ -16,6 +16,7 @@ test_r2r_file_sync() {
     # Clean setup
     create_test_file "${DEV_PHP}" "${test_dir}/r2r_sync.log" "r2r data"
     create_test_file "${DEV_PHP}" "${test_dir}/r2r_exclude.txt" "should exclude"
+    remove_file "${DEV_PHP}" "${test_dir}/r2r_stale.log"
     remove_file "${STAGING_PHP}" "${test_dir}/r2r_sync.log"
     remove_file "${STAGING_PHP}" "${test_dir}/r2r_exclude.txt"
     create_test_file "${STAGING_PHP}" "${test_dir}/r2r_stale.log" "stale data"

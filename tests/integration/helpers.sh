@@ -216,8 +216,10 @@ EOF"
 
 function setup_mock_laravel_env() {
     local container="$1"
-    docker exec --workdir / "${container}" bash -c "cat >> /var/www/html/.env <<'EOF'
-DB_HOST=db
+    local db_host="$(echo "${container}" | sed 's/-php-fpm-1$/-db-1/')"
+
+    docker exec -i --workdir / "${container}" bash -c "cat >> /var/www/html/.env <<EOF
+DB_HOST=${db_host}
 DB_DATABASE=laravel
 DB_USERNAME=laravel
 DB_PASSWORD=laravel
@@ -226,8 +228,10 @@ EOF"
 
 function setup_mock_symfony_env() {
     local container="$1"
-    docker exec --workdir / "${container}" bash -c "cat > /var/www/html/.env.local <<'EOF'
-DATABASE_URL=\"mysql://symfony:symfony@db:3306/symfony?serverVersion=8.0\"
+    local db_host="$(echo "${container}" | sed 's/-php-fpm-1$/-db-1/')"
+
+    docker exec -i --workdir / "${container}" bash -c "cat > /var/www/html/.env.local <<EOF
+DATABASE_URL=\"mysql://symfony:symfony@${db_host}:3306/symfony?serverVersion=8.0\"
 EOF"
 }
 

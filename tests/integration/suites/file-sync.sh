@@ -145,7 +145,7 @@ test_file_sync_config_exclusion() {
     remove_file "${DEV_PHP}" "${app_root}/${config_path}"
     run_sync_confirmed -s local -d dev --file > /dev/null 2>&1
     
-    if [[ "${TEST_ENV_TYPE}" == "symfony" || "${TEST_ENV_TYPE}" == "wordpress" ]]; then
+    if [[ "${TEST_ENV_TYPE}" == "symfony" || "${TEST_ENV_TYPE}" == "wordpress" || "${TEST_ENV_TYPE}" == "laravel" ]]; then
         if ! file_exists "${DEV_PHP}" "${app_root}/${config_path}"; then
              pass "Config file sync when missing on destination - correctly excluded (Symfony Strict)"
         else

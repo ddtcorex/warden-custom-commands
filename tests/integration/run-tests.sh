@@ -71,8 +71,8 @@ fi
 echo "All environments running"
 
 export WARDEN_SSH_IDENTITY_FILE='~/.ssh/id_rsa'
-export WARDEN_SSH_OPTS='-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
-unset WARDEN_SSH_IDENTITIES_ONLY
+export WARDEN_SSH_OPTS='-o IdentityAgent=none -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o IdentitiesOnly=yes'
+export WARDEN_SSH_IDENTITIES_ONLY=1
 
 # Remove env overrides from .env
 # We use LOCAL_ENV which is set by configure_test_envs
@@ -102,6 +102,8 @@ if [[ "${TEST_ENV_TYPE}" == "laravel" ]]; then
     TEST_SUITES+=("bootstrap-laravel.sh")
 elif [[ "${TEST_ENV_TYPE}" == "wordpress" ]]; then
     TEST_SUITES+=("bootstrap-wordpress.sh")
+elif [[ "${TEST_ENV_TYPE}" == "symfony" ]]; then
+    TEST_SUITES+=("bootstrap-symfony.sh")
 fi
 
 # Add Generic Sync Suites

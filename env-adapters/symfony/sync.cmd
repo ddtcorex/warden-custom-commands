@@ -6,6 +6,9 @@ if [ -z "${ENV_SOURCE_HOST_VAR+x}" ]; then
     printf "Invalid environment '%s'\n" "${ENV_SOURCE}" >&2
     exit 2
 fi
+# Ensure SSH_OPTS is set (fallback to WARDEN_SSH_OPTS)
+SSH_OPTS=${SSH_OPTS:-${WARDEN_SSH_OPTS:-}}
+
 
 # Determine RSYNC options
 RSYNC_OPTS="-azvPLk --force"
@@ -18,7 +21,7 @@ fi
 
 # Define paths and exclusions
 MEDIA_PATH="public/uploads"
-CODE_EXCLUDE=('vendor' 'node_modules' 'var/cache/*' 'var/log/*' '.git' '.idea' '*.gz' '*.zip' '*.tar' '*.7z' '*.sql' '.env.local')
+CODE_EXCLUDE=('vendor' 'node_modules' 'var/cache/*' 'var/log/*' '.git' '.idea' '*.gz' '*.zip' '*.tar' '*.7z' '*.sql' '.env' '.env.local')
 
 # Function for file transfer (uses rsync)
 function transfer_files() {
@@ -294,7 +297,7 @@ fi
 
 # 3. Sync Custom Path
 if [[ -n "${SYNC_PATH}" ]]; then
-    transfer_files "${DIRECTION}" "${SYNC_PATH}" "${SYNC_PATH}"
+    transfer_files "${DIRECTION}" "${SYNC_PATH}" "${SYNC_PATH}" "${CODE_EXCLUDE[@]}"
 fi
 
 # 4. Sync Database

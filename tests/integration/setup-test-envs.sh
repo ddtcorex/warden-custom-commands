@@ -138,10 +138,10 @@ docker network connect "${ENV_TYPE}-staging_default" "${DEV_CONTAINER}" 2>/dev/n
 docker network connect "${ENV_TYPE}-dev_default" "${STAGING_CONTAINER}" 2>/dev/null || echo "Warning: Could not connect ${STAGING_CONTAINER} to ${ENV_TYPE}-dev_default"
 
 # Verify connectivity
-if ! docker exec "${LOCAL_CONTAINER}" ping -c 1 -W 2 "${DEV_CONTAINER}" >/dev/null 2>&1; then
+if ! docker exec "${LOCAL_CONTAINER}" nc -z -w 2 "${DEV_CONTAINER}" 22 >/dev/null 2>&1; then
      # Try one more time with explicit IP just in case DNS is slow
      DEV_IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}' "${DEV_CONTAINER}" | awk '{print $1}')
-     if ! docker exec "${LOCAL_CONTAINER}" ping -c 1 -W 2 "${DEV_IP}" >/dev/null 2>&1; then
+     if ! docker exec "${LOCAL_CONTAINER}" nc -z -w 2 "${DEV_IP}" 22 >/dev/null 2>&1; then
          echo "Error: Network connection failed between local and dev containers."
          # Force reconnect?
      fi

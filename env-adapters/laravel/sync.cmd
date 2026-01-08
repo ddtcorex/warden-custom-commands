@@ -6,6 +6,8 @@ if [ -z "${ENV_SOURCE_HOST_VAR+x}" ]; then
     printf "Invalid environment '%s'\n" "${ENV_SOURCE}" >&2
     exit 2
 fi
+# Ensure SSH_OPTS is set (fallback to WARDEN_SSH_OPTS)
+SSH_OPTS=${SSH_OPTS:-${WARDEN_SSH_OPTS:-}}
 
 # Determine RSYNC options
 RSYNC_OPTS="-azvPLk --force"
@@ -18,7 +20,7 @@ fi
 
 # Define paths and exclusions
 MEDIA_PATH="storage/app/public"
-CODE_EXCLUDE=('vendor' 'node_modules' 'storage/logs/*' 'storage/framework/cache/*' 'storage/framework/sessions/*' 'storage/framework/views/*' '.git' '.idea' '*.gz' '*.zip' '*.tar' '*.7z' '*.sql')
+CODE_EXCLUDE=('vendor' 'node_modules' 'storage/logs/*' 'storage/framework/cache/*' 'storage/framework/sessions/*' 'storage/framework/views/*' '.git' '.idea' '*.gz' '*.zip' '*.tar' '*.7z' '*.sql' '.env')
 
 # Function for file transfer (uses rsync)
 function transfer_files() {
