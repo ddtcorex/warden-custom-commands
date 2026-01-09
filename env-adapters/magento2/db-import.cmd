@@ -67,6 +67,9 @@ SED_FILTERS=(
     -e 's/utf8_unicode_520_ci/utf8_general_ci/g'
 )
 
+SCRIPT_DIR=$(dirname "${BASH_SOURCE[0]}")
+source "${SCRIPT_DIR}/utils.sh"
+
 if [[ "${STREAM_DB}" -eq 1 ]]; then
     if [[ "${ENV_SOURCE}" == "local" ]] || [[ -z "${ENV_SOURCE_HOST+x}" ]]; then
         printf "😮 \033[31mStreaming requires a remote environment. Specify one with -e (e.g. -e staging)\033[0m\n" >&2
@@ -74,13 +77,13 @@ if [[ "${STREAM_DB}" -eq 1 ]]; then
     fi
 
     # Streaming database from remote (direct import)
-    # Get remote DB credentials from env.php
-    db_info=$(ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" 'php -r "\$a=include \"'"${ENV_SOURCE_DIR}"'/app/etc/env.php\"; var_export(\$a[\"db\"][\"connection\"][\"default\"]);"')
-    db_host=$(warden env exec -T php-fpm php -r "\$a = ${db_info}; echo strpos(\$a['host'], ':') === false ? \$a['host'] : explode(':', \$a['host'])[0];")
-    db_port=$(warden env exec -T php-fpm php -r "\$a = ${db_info}; echo strpos(\$a['host'], ':') === false ? '3306' : explode(':', \$a['host'])[1];")
-    db_user=$(warden env exec -T php-fpm php -r "\$a = ${db_info}; echo \$a['username'];")
-    db_pass=$(warden env exec -T php-fpm php -r "\$a = ${db_info}; echo \$a['password'];")
-    db_name=$(warden env exec -T php-fpm php -r "\$a = ${db_info}; echo \$a['dbname'];")
+    # Get remote DB credentials from env.php via helper
+    db_info=$(get_remote_db_info "${ENV_SOURCE_HOST}" "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}" "${ENV_SOURCE_DIR}")
+    db_host=$(echo "${db_info}" | grep "^DB_HOST=" | cut -d= -f2-)
+    db_port=$(echo "${db_info}" | grep "^DB_PORT=" | cut -d= -f2-)
+    db_user=$(echo "${db_info}" | grep "^DB_USERNAME=" | cut -d= -f2-)
+    db_pass=$(echo "${db_info}" | grep "^DB_PASSWORD=" | cut -d= -f2-)
+    db_name=$(echo "${db_info}" | grep "^DB_DATABASE=" | cut -d= -f2-)
     
     printf "Streaming mysqldump from %s:%s ...\n" "${ENV_SOURCE_HOST}" "${db_name}"
     ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" \

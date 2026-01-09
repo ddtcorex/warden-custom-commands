@@ -3,6 +3,9 @@ set -u
 
 # env-variables is already sourced by the root dispatcher
 
+SCRIPT_DIR=$(dirname "${BASH_SOURCE[0]}")
+source "${SCRIPT_DIR}/utils.sh"
+
 function open_link() {
     if [[ "${OPEN_CL:-0}" -eq "1" ]]; then
         local OPEN=$(command -v xdg-open || command -v open || command -v start || true)
@@ -110,43 +113,15 @@ function local_elasticsearch() {
     ssh ${SSH_OPTS} -L "${LOCAL_PORT}:${ES_ENV_NAME}:${REMOTE_PORT}" -N -p 2222 -i ~/.warden/tunnel/ssh_key user@tunnel.warden.test || true
 }
 
-# Remote stubs
 function remote_db() {
-    # Symfony uses .env for DB config (usually DATABASE_URL). We fetch it via SSH.
-    # Check .env.local first (overrides), then .env
-    local db_url=$(ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "grep -h -E '^DATABASE_URL=' \"${ENV_SOURCE_DIR}/.env.local\" \"${ENV_SOURCE_DIR}/.env\" 2>/dev/null | head -n 1")
+    # Symfony uses .env for DB config (usually DATABASE_URL). We fetch it via helper.
+    local db_info=$(get_remote_db_info "${ENV_SOURCE_HOST}" "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}" "${ENV_SOURCE_DIR}")
     
-    # Parse standard URL format: db_type://db_user:db_pass@db_host:db_port/db_name...
-    # Strip prefix
-    db_url=${db_url#*=}
-    # Strip quotes if present (both single and double)
-    db_url=$(printf "%s" "${db_url}" | tr -d '"'"'")
-    
-    # Remove prefix
-    db_url=${db_url#*://}
-    
-    local db_user_pass=${db_url%%@*}
-    local db_user=${db_user_pass%%:*}
-    local db_pass=${db_user_pass#*:}
-    
-    local db_host_port_name=${db_url#*@}
-    local db_host_port=${db_host_port_name%%/*}
-    local db_host=${db_host_port%%:*}
-    local db_port=${db_host_port#*:}
-    # Handle port if missing (if no colon)
-    if [[ "${db_host}" == "${db_port}" ]]; then
-        db_port=3306
-    else
-        # db_port might contain query parameters start, strip them
-        db_port=${db_port%%\?*}
-    fi
-    
-    local db_name_rest=${db_host_port_name#*/}
-    local db_name=${db_name_rest%%\?*}
-
-    # Defaults/Fallbacks
-    db_host=${db_host:-127.0.0.1}
-    db_port=${db_port:-3306}
+    local db_host=$(echo "${db_info}" | grep "^DB_HOST=" | cut -d= -f2-)
+    local db_port=$(echo "${db_info}" | grep "^DB_PORT=" | cut -d= -f2-)
+    local db_user=$(echo "${db_info}" | grep "^DB_USERNAME=" | cut -d= -f2-)
+    local db_pass=$(echo "${db_info}" | grep "^DB_PASSWORD=" | cut -d= -f2-)
+    local db_name=$(echo "${db_info}" | grep "^DB_DATABASE=" | cut -d= -f2-)
 
     find_local_port "${db_port}"
 

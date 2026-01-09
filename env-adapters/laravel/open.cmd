@@ -111,10 +111,12 @@ function local_elasticsearch() {
     ssh ${SSH_OPTS} -L "${LOCAL_PORT}:${ES_ENV_NAME}:${REMOTE_PORT}" -N -p 2222 -i ~/.warden/tunnel/ssh_key user@tunnel.warden.test || true
 }
 
-# Remote stubs
+SCRIPT_DIR=$(dirname "${BASH_SOURCE[0]}")
+source "${SCRIPT_DIR}/utils.sh"
+
 function remote_db() {
     # Laravel uses .env for DB config. We fetch it via SSH.
-    local db_info=$(ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "grep -E '^DB_(HOST|PORT|DATABASE|USERNAME|PASSWORD)=' \"${ENV_SOURCE_DIR}/.env\"" 2>/dev/null)
+    local db_info=$(get_remote_db_info "${ENV_SOURCE_HOST}" "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}" "${ENV_SOURCE_DIR}")
 
     # Parse variables from the grep output
     local db_host=$(printf "%s" "${db_info}" | grep DB_HOST | cut -d= -f2 | tr -d '"'"'")
@@ -122,21 +124,6 @@ function remote_db() {
     local db_name=$(printf "%s" "${db_info}" | grep DB_DATABASE | cut -d= -f2 | tr -d '"'"'")
     local db_user=$(printf "%s" "${db_info}" | grep DB_USERNAME | cut -d= -f2 | tr -d '"'"'")
     local db_pass=$(printf "%s" "${db_info}" | grep DB_PASSWORD | cut -d= -f2 | tr -d '"'"'")
-
-    # Fallback to .env.php for Laravel 4+ legacy projects
-    if [[ -z "${db_name}" ]]; then
-        local php_code="\$f=\"${ENV_SOURCE_DIR}/.env.php\"; if(file_exists(\$f)) { \$c=include \$f; if(is_array(\$c)) { echo \"DB_HOST=\" . (\$c[\"DB_HOST\"]??\$c[\"DATABASE_HOST\"]??\"127.0.0.1\") . PHP_EOL; echo \"DB_PORT=\" . (\$c[\"DB_PORT\"]??\$c[\"DATABASE_PORT\"]??\"3306\") . PHP_EOL; echo \"DB_DATABASE=\" . (\$c[\"DB_DATABASE\"]??\$c[\"DATABASE_NAME\"]??\"\") . PHP_EOL; echo \"DB_USERNAME=\" . (\$c[\"DB_USERNAME\"]??\$c[\"DATABASE_USER\"]??\"\") . PHP_EOL; echo \"DB_PASSWORD=\" . (\$c[\"DB_PASSWORD\"]??\$c[\"DATABASE_PASSWORD\"]??\"\") . PHP_EOL; } }"
-        
-        db_info=$(ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "php -r '${php_code}'")
-        
-        if [[ -n "${db_info}" ]]; then
-            db_host=$(printf "%s" "${db_info}" | grep "^DB_HOST=" | cut -d= -f2-)
-            db_port=$(printf "%s" "${db_info}" | grep "^DB_PORT=" | cut -d= -f2-)
-            db_name=$(printf "%s" "${db_info}" | grep "^DB_DATABASE=" | cut -d= -f2-)
-            db_user=$(printf "%s" "${db_info}" | grep "^DB_USERNAME=" | cut -d= -f2-)
-            db_pass=$(printf "%s" "${db_info}" | grep "^DB_PASSWORD=" | cut -d= -f2-)
-        fi
-    fi
 
     # Defaults if not found
     db_host=${db_host:-127.0.0.1}

@@ -12,6 +12,7 @@ setup() {
     export TEST_SCRIPT_DIR="${TEST_TMP_DIR}/wordpress-db-dump"
     mkdir -p "${TEST_SCRIPT_DIR}"
     cp "${BATS_TEST_DIRNAME}/../../../../env-adapters/wordpress/db-dump.cmd" "${TEST_SCRIPT_DIR}/db-dump.cmd"
+    cp "${BATS_TEST_DIRNAME}/../../../../env-adapters/wordpress/utils.sh" "${TEST_SCRIPT_DIR}/utils.sh"
     chmod +x "${TEST_SCRIPT_DIR}/db-dump.cmd"
     
     BOOTSTRAP_CMD="${TEST_SCRIPT_DIR}/db-dump.cmd"

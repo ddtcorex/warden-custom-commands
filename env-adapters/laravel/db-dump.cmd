@@ -11,6 +11,9 @@ elif [[ -z "${!ENV_SOURCE_HOST_VAR+x}" ]]; then
     exit 2
 fi
 
+SCRIPT_DIR=$(dirname "${BASH_SOURCE[0]}")
+source "${SCRIPT_DIR}/utils.sh"
+
 function dump_local () {
     DB_USER=$(warden env exec -T db printenv MYSQL_USER)
     DB_PASS=$(warden env exec -T db printenv MYSQL_PASSWORD)
@@ -26,9 +29,7 @@ function dump_local () {
 
 function dump_premise () {
     # Fetch DB creds via SSH
-    # We use grep with anchor ^ to ensure we match the exact variable name at start of line
-    local remote_cmd="grep -h -E '^(DB_HOST|DB_PORT|DB_DATABASE|DB_USERNAME|DB_PASSWORD)=' \"${ENV_SOURCE_DIR}/.env\" 2>/dev/null"
-    local db_vars=$(ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "${remote_cmd}")
+    local db_vars=$(get_remote_db_info "${ENV_SOURCE_HOST}" "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}" "${ENV_SOURCE_DIR}")
     
     # Parse the output
     local db_host=$(echo "${db_vars}" | grep "^DB_HOST=" | tail -n 1 | cut -d= -f2- | tr -d '"'"'")
@@ -40,24 +41,6 @@ function dump_premise () {
     # Fallbacks / Defaults
     db_host=${db_host:-127.0.0.1}
     db_port=${db_port:-3306}
-    
-    # Fallback to .env.php for Laravel 4 if DB_DATABASE is missing
-    if [[ -z "${db_name}" ]]; then
-        printf "⚠️  \033[33m.env not found or missing DB config, checking .env.php...\033[0m\n"
-        
-        local php_code="\$f=\"${ENV_SOURCE_DIR}/.env.php\"; if(file_exists(\$f)) { \$c=include \$f; if(is_array(\$c)) { echo \"DB_HOST=\" . (\$c[\"DB_HOST\"]??\$c[\"DATABASE_HOST\"]??\"127.0.0.1\") . PHP_EOL; echo \"DB_PORT=\" . (\$c[\"DB_PORT\"]??\$c[\"DATABASE_PORT\"]??\"3306\") . PHP_EOL; echo \"DB_DATABASE=\" . (\$c[\"DB_DATABASE\"]??\$c[\"DATABASE_NAME\"]??\"\") . PHP_EOL; echo \"DB_USERNAME=\" . (\$c[\"DB_USERNAME\"]??\$c[\"DATABASE_USER\"]??\"\") . PHP_EOL; echo \"DB_PASSWORD=\" . (\$c[\"DB_PASSWORD\"]??\$c[\"DATABASE_PASSWORD\"]??\"\") . PHP_EOL; } }"
-        
-        local legacy_vars=$(ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "php -r '${php_code}'")
-        
-        if [[ -n "${legacy_vars}" ]]; then
-            db_vars="${legacy_vars}"
-            db_host=$(echo "${db_vars}" | grep "^DB_HOST=" | tail -n 1 | cut -d= -f2-)
-            db_port=$(echo "${db_vars}" | grep "^DB_PORT=" | tail -n 1 | cut -d= -f2-)
-            db_name=$(echo "${db_vars}" | grep "^DB_DATABASE=" | tail -n 1 | cut -d= -f2-)
-            db_user=$(echo "${db_vars}" | grep "^DB_USERNAME=" | tail -n 1 | cut -d= -f2-)
-            db_pass=$(echo "${db_vars}" | grep "^DB_PASSWORD=" | tail -n 1 | cut -d= -f2-)
-        fi
-    fi
 
     if [[ -z "${db_name}" ]]; then
       printf "❌ \033[31mCould not detect DB_DATABASE from remote .env or .env.php\033[0m\n" >&2

@@ -11,6 +11,9 @@ elif [[ -z "${!ENV_SOURCE_HOST_VAR+x}" ]]; then
     exit 2
 fi
 
+SCRIPT_DIR=$(dirname "${BASH_SOURCE[0]}")
+source "${SCRIPT_DIR}/utils.sh"
+
 IGNORED_TABLES=(
     'admin_system_messages'
     'admin_user_expiration'
@@ -156,12 +159,12 @@ function dump_cloud () {
 }
 
 function dump_premise () {
-    local db_info=$(ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" 'php -r "\$a=include \"'"${ENV_SOURCE_DIR}"'/app/etc/env.php\"; var_export(\$a[\"db\"][\"connection\"][\"default\"]);"')
-    local db_host=$(warden env exec php-fpm php -r "\$a = ${db_info}; echo strpos(\$a['host'], ':') === false ? \$a['host'] : explode(':', \$a['host'])[0];")
-    local db_port=$(warden env exec php-fpm php -r "\$a = ${db_info}; echo strpos(\$a['host'], ':') === false ? '3306' : explode(':', \$a['host'])[1];")
-    local db_user=$(warden env exec php-fpm php -r "\$a = ${db_info}; echo \$a['username'];")
-    local db_pass=$(warden env exec php-fpm php -r "\$a = ${db_info}; echo \$a['password'];")
-    local db_name=$(warden env exec php-fpm php -r "\$a = ${db_info}; echo \$a['dbname'];")
+    local db_info=$(get_remote_db_info "${ENV_SOURCE_HOST}" "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}" "${ENV_SOURCE_DIR}")
+    local db_host=$(echo "${db_info}" | grep "^DB_HOST=" | cut -d= -f2-)
+    local db_port=$(echo "${db_info}" | grep "^DB_PORT=" | cut -d= -f2-)
+    local db_user=$(echo "${db_info}" | grep "^DB_USERNAME=" | cut -d= -f2-)
+    local db_pass=$(echo "${db_info}" | grep "^DB_PASSWORD=" | cut -d= -f2-)
+    local db_name=$(echo "${db_info}" | grep "^DB_DATABASE=" | cut -d= -f2-)
 
     local ignored_opts=()
     if [[ "${FULL_DUMP:-0}" -eq "0" ]]; then

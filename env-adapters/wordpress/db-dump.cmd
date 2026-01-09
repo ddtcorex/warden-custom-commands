@@ -11,6 +11,9 @@ elif [[ -z "${!ENV_SOURCE_HOST_VAR+x}" ]]; then
     exit 2
 fi
 
+SCRIPT_DIR=$(dirname "${BASH_SOURCE[0]}")
+source "${SCRIPT_DIR}/utils.sh"
+
 function dump_local () {
     DB_USER=$(warden env exec -T db printenv MYSQL_USER)
     DB_PASS=$(warden env exec -T db printenv MYSQL_PASSWORD)
@@ -25,22 +28,14 @@ function dump_local () {
 }
 
 function dump_premise () {
-    # Fetch DB creds via SSH using logic
-    local db_config=$(ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "grep -E \"^\s*define\s*\(\s*['\\\"]DB_(NAME|USER|PASSWORD|HOST)\" \"${ENV_SOURCE_DIR}/wp-config.php\"")
-
-    local db_name=$(printf "%s" "${db_config}" | grep "DB_NAME" | head -n 1 | sed -E "s/.*['\"]DB_NAME['\"]\s*,\s*['\"](.*)['\"].*/\1/")
-    local db_user=$(printf "%s" "${db_config}" | grep "DB_USER" | head -n 1 | sed -E "s/.*['\"]DB_USER['\"]\s*,\s*['\"](.*)['\"].*/\1/")
-    local db_pass=$(printf "%s" "${db_config}" | grep "DB_PASSWORD" | head -n 1 | sed -E "s/.*['\"]DB_PASSWORD['\"]\s*,\s*['\"](.*)['\"].*/\1/")
-    local db_host_raw=$(printf "%s" "${db_config}" | grep "DB_HOST" | head -n 1 | sed -E "s/.*['\"]DB_HOST['\"]\s*,\s*['\"](.*)['\"].*/\1/")
-
-    local db_host=${db_host_raw%%:*}
-    local db_port=${db_host_raw#*:}
-    if [[ "${db_host}" == "${db_port}" ]]; then
-        db_port=3306
-    fi
-    if [[ "${db_host}" == "localhost" ]]; then
-        db_host="127.0.0.1"
-    fi
+    # Fetch DB creds via SSH using helper
+    local db_info=$(get_remote_db_info "${ENV_SOURCE_HOST}" "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}" "${ENV_SOURCE_DIR}")
+    
+    local db_host=$(echo "${db_info}" | grep "^DB_HOST=" | cut -d= -f2-)
+    local db_port=$(echo "${db_info}" | grep "^DB_PORT=" | cut -d= -f2-)
+    local db_user=$(echo "${db_info}" | grep "^DB_USERNAME=" | cut -d= -f2-)
+    local db_pass=$(echo "${db_info}" | grep "^DB_PASSWORD=" | cut -d= -f2-)
+    local db_name=$(echo "${db_info}" | grep "^DB_DATABASE=" | cut -d= -f2-)
 
     printf "⌛ \033[1;32mDumping \033[33m%s\033[1;32m database from \033[33m%s\033[1;32m...\033[0m\n" "${db_name}" "${ENV_SOURCE_HOST}"
 

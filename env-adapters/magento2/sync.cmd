@@ -28,6 +28,9 @@ else
     MEDIA_EXCLUDE+=('catalog/product/cache')
 fi
 
+SCRIPT_DIR=$(dirname "${BASH_SOURCE[0]}")
+source "${SCRIPT_DIR}/utils.sh"
+
 # Function for file transfer (uses rsync)
 function transfer_files() {
     local direction="${1}"
@@ -140,33 +143,31 @@ function sync_database() {
     if [[ "${SYNC_REMOTE_TO_REMOTE:-0}" -eq 1 ]]; then
         printf "⌛ \033[1;32mSyncing DB from %s to %s ...\033[0m\n" "${SYNC_SOURCE}" "${SYNC_DESTINATION}"
         
-        # Source DB info via base64 JSON
-        local src_db_info=$(ssh ${SSH_OPTS} -o IdentityAgent=none -p "${SOURCE_REMOTE_PORT}" "${SOURCE_REMOTE_USER}@${SOURCE_REMOTE_HOST}" "php -r \"\\\$a=@include \\\"${SOURCE_REMOTE_DIR}/app/etc/env.php\\\"; echo base64_encode(json_encode(\\\$a['db']['connection']['default']));\"" 2>/dev/null)
-        
-        if [[ -z "${src_db_info}" ]]; then
+        # Source DB info
+        local src_db_info=$(get_remote_db_info "${SOURCE_REMOTE_HOST}" "${SOURCE_REMOTE_PORT}" "${SOURCE_REMOTE_USER}" "${SOURCE_REMOTE_DIR}")
+        if [[ $? -ne 0 ]]; then
             printf "\033[31mError: Failed to retrieve source database credentials from %s.\033[0m\n" "${SOURCE_REMOTE_HOST}" >&2
             return 1
         fi
 
-        local src_db_host=$(php -r "\$a = json_decode(base64_decode(\$argv[1]), true); echo strpos(\$a['host'] ?? 'db', ':') === false ? (\$a['host'] ?? 'db') : explode(':', \$a['host'])[0];" -- "${src_db_info}")
-        local src_db_port=$(php -r "\$a = json_decode(base64_decode(\$argv[1]), true); echo strpos(\$a['host'] ?? '', ':') === false ? '3306' : explode(':', \$a['host'])[1];" -- "${src_db_info}")
-        local src_db_user=$(php -r "\$a = json_decode(base64_decode(\$argv[1]), true); echo \$a['username'] ?? '';" -- "${src_db_info}")
-        local src_db_pass=$(php -r "\$a = json_decode(base64_decode(\$argv[1]), true); echo \$a['password'] ?? '';" -- "${src_db_info}")
-        local src_db_name=$(php -r "\$a = json_decode(base64_decode(\$argv[1]), true); echo \$a['dbname'] ?? '';" -- "${src_db_info}")
+        local src_db_host=$(echo "${src_db_info}" | grep "^DB_HOST=" | cut -d= -f2-)
+        local src_db_port=$(echo "${src_db_info}" | grep "^DB_PORT=" | cut -d= -f2-)
+        local src_db_user=$(echo "${src_db_info}" | grep "^DB_USERNAME=" | cut -d= -f2-)
+        local src_db_pass=$(echo "${src_db_info}" | grep "^DB_PASSWORD=" | cut -d= -f2-)
+        local src_db_name=$(echo "${src_db_info}" | grep "^DB_DATABASE=" | cut -d= -f2-)
 
-        # Destination DB info via base64 JSON
-        local dest_db_info=$(ssh ${SSH_OPTS} -o IdentityAgent=none -p "${DEST_REMOTE_PORT}" "${DEST_REMOTE_USER}@${DEST_REMOTE_HOST}" "php -r \"\\\$a=@include \\\"${DEST_REMOTE_DIR}/app/etc/env.php\\\"; echo base64_encode(json_encode(\\\$a['db']['connection']['default']));\"" 2>/dev/null)
-        
-        if [[ -z "${dest_db_info}" ]]; then
+        # Destination DB info
+        local dest_db_info=$(get_remote_db_info "${DEST_REMOTE_HOST}" "${DEST_REMOTE_PORT}" "${DEST_REMOTE_USER}" "${DEST_REMOTE_DIR}")
+        if [[ $? -ne 0 ]]; then
             printf "\033[31mError: Failed to retrieve destination database credentials from %s.\033[0m\n" "${DEST_REMOTE_HOST}" >&2
             return 1
         fi
 
-        local dest_db_host=$(php -r "\$a = json_decode(base64_decode(\$argv[1]), true); echo strpos(\$a['host'] ?? 'db', ':') === false ? (\$a['host'] ?? 'db') : explode(':', \$a['host'])[0];" -- "${dest_db_info}")
-        local dest_db_port=$(php -r "\$a = json_decode(base64_decode(\$argv[1]), true); echo strpos(\$a['host'] ?? '', ':') === false ? '3306' : explode(':', \$a['host'])[1];" -- "${dest_db_info}")
-        local dest_db_user=$(php -r "\$a = json_decode(base64_decode(\$argv[1]), true); echo \$a['username'] ?? '';" -- "${dest_db_info}")
-        local dest_db_pass=$(php -r "\$a = json_decode(base64_decode(\$argv[1]), true); echo \$a['password'] ?? '';" -- "${dest_db_info}")
-        local dest_db_name=$(php -r "\$a = json_decode(base64_decode(\$argv[1]), true); echo \$a['dbname'] ?? '';" -- "${dest_db_info}")
+        local dest_db_host=$(echo "${dest_db_info}" | grep "^DB_HOST=" | cut -d= -f2-)
+        local dest_db_port=$(echo "${dest_db_info}" | grep "^DB_PORT=" | cut -d= -f2-)
+        local dest_db_user=$(echo "${dest_db_info}" | grep "^DB_USERNAME=" | cut -d= -f2-)
+        local dest_db_pass=$(echo "${dest_db_info}" | grep "^DB_PASSWORD=" | cut -d= -f2-)
+        local dest_db_name=$(echo "${dest_db_info}" | grep "^DB_DATABASE=" | cut -d= -f2-)
 
         # Centralized SQL cleanup filters
         local SED_FILTERS=(
@@ -212,19 +213,17 @@ function sync_database() {
         printf "⌛ \033[1;32mSyncing DB from local to %s ...\033[0m\n" "${SYNC_DESTINATION}"
 
         # 1. Get Remote (Destination) DB Credentials
-        # Note: ENV_SOURCE_* variables point to the destination remote environment in "upload" mode
-        local dest_db_info=$(ssh ${SSH_OPTS} -o IdentityAgent=none -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "php -r \"\\\$a=@include \\\"${ENV_SOURCE_DIR}/app/etc/env.php\\\"; echo base64_encode(json_encode(\\\$a['db']['connection']['default']));\"" 2>/dev/null)
-        
-        if [[ -z "${dest_db_info}" ]]; then
+        local dest_db_info=$(get_remote_db_info "${ENV_SOURCE_HOST}" "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}" "${ENV_SOURCE_DIR}")
+        if [[ $? -ne 0 ]]; then
             printf "\033[31mError: Failed to retrieve database credentials from %s.\033[0m\n" "${ENV_SOURCE_HOST}" >&2
             return 1
         fi
 
-        local dest_db_host=$(warden env exec -T php-fpm php -r "\$a = json_decode(base64_decode(\$argv[1]), true); echo strpos(\$a['host'] ?? 'db', ':') === false ? (\$a['host'] ?? 'db') : explode(':', \$a['host'])[0];" -- "${dest_db_info}")
-        local dest_db_port=$(warden env exec -T php-fpm php -r "\$a = json_decode(base64_decode(\$argv[1]), true); echo strpos(\$a['host'] ?? '', ':') === false ? '3306' : explode(':', \$a['host'])[1];" -- "${dest_db_info}")
-        local dest_db_user=$(warden env exec -T php-fpm php -r "\$a = json_decode(base64_decode(\$argv[1]), true); echo \$a['username'] ?? '';" -- "${dest_db_info}")
-        local dest_db_pass=$(warden env exec -T php-fpm php -r "\$a = json_decode(base64_decode(\$argv[1]), true); echo \$a['password'] ?? '';" -- "${dest_db_info}")
-        local dest_db_name=$(warden env exec -T php-fpm php -r "\$a = json_decode(base64_decode(\$argv[1]), true); echo \$a['dbname'] ?? '';" -- "${dest_db_info}")
+        local dest_db_host=$(echo "${dest_db_info}" | grep "^DB_HOST=" | cut -d= -f2-)
+        local dest_db_port=$(echo "${dest_db_info}" | grep "^DB_PORT=" | cut -d= -f2-)
+        local dest_db_user=$(echo "${dest_db_info}" | grep "^DB_USERNAME=" | cut -d= -f2-)
+        local dest_db_pass=$(echo "${dest_db_info}" | grep "^DB_PASSWORD=" | cut -d= -f2-)
+        local dest_db_name=$(echo "${dest_db_info}" | grep "^DB_DATABASE=" | cut -d= -f2-)
 
         # 2. Get Local (Source) DB Credentials
         local src_db_info=$(warden env exec -T php-fpm php -r "\$a=@include \"/var/www/html/app/etc/env.php\"; echo base64_encode(json_encode(\$a['db']['connection']['default']));" 2>/dev/null)
@@ -260,18 +259,17 @@ function sync_database() {
 
     # Logic borrowed from db-import.cmd
     # Get remote DB credentials from env.php via base64 encoded JSON for maximum reliability
-    local db_info=$(ssh ${SSH_OPTS} -o IdentityAgent=none -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "php -r \"\\\$a=@include \\\"${ENV_SOURCE_DIR}/app/etc/env.php\\\"; echo base64_encode(json_encode(\\\$a['db']['connection']['default']));\"" 2>/dev/null)
-    
-    if [[ -z "${db_info}" ]]; then
+    local db_info=$(get_remote_db_info "${ENV_SOURCE_HOST}" "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}" "${ENV_SOURCE_DIR}")
+    if [[ $? -ne 0 ]]; then
         printf "\033[31mError: Failed to retrieve database credentials from %s. Check SSH connectivity and app/etc/env.php.\033[0m\n" "${ENV_SOURCE_HOST}" >&2
         return 1
     fi
 
-    local db_host=$(warden env exec -T php-fpm php -r "\$a = json_decode(base64_decode(\$argv[1]), true); echo strpos(\$a['host'] ?? 'db', ':') === false ? (\$a['host'] ?? 'db') : explode(':', \$a['host'])[0];" -- "${db_info}")
-    local db_port=$(warden env exec -T php-fpm php -r "\$a = json_decode(base64_decode(\$argv[1]), true); echo strpos(\$a['host'] ?? '', ':') === false ? '3306' : explode(':', \$a['host'])[1];" -- "${db_info}")
-    local db_user=$(warden env exec -T php-fpm php -r "\$a = json_decode(base64_decode(\$argv[1]), true); echo \$a['username'] ?? '';" -- "${db_info}")
-    local db_pass=$(warden env exec -T php-fpm php -r "\$a = json_decode(base64_decode(\$argv[1]), true); echo \$a['password'] ?? '';" -- "${db_info}")
-    local db_name=$(warden env exec -T php-fpm php -r "\$a = json_decode(base64_decode(\$argv[1]), true); echo \$a['dbname'] ?? '';" -- "${db_info}")
+    local db_host=$(echo "${db_info}" | grep "^DB_HOST=" | cut -d= -f2-)
+    local db_port=$(echo "${db_info}" | grep "^DB_PORT=" | cut -d= -f2-)
+    local db_user=$(echo "${db_info}" | grep "^DB_USERNAME=" | cut -d= -f2-)
+    local db_pass=$(echo "${db_info}" | grep "^DB_PASSWORD=" | cut -d= -f2-)
+    local db_name=$(echo "${db_info}" | grep "^DB_DATABASE=" | cut -d= -f2-)
     
     if [[ -z "${db_user}" || -z "${db_name}" ]]; then
         printf "\033[31mError: Incomplete database credentials retrieved from %s.\033[0m\n" "${ENV_SOURCE_HOST}" >&2

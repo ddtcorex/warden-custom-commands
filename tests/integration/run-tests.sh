@@ -34,11 +34,11 @@ fi
 if [[ -n "$BATS_CMD" ]]; then
     # Resolve absolute path to tests root
     TESTS_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-    BATS_FILE="${TESTS_ROOT}/unit/adapters/${TEST_ENV_TYPE}/bootstrap.bats"
+    BATS_DIR="${TESTS_ROOT}/unit/adapters/${TEST_ENV_TYPE}"
     
-    if [[ -f "$BATS_FILE" ]]; then
-        echo "🧪 Executing: $BATS_CMD $BATS_FILE"
-        $BATS_CMD "$BATS_FILE"
+    if [[ -d "$BATS_DIR" ]]; then
+        echo "🧪 Executing unit tests in: $BATS_DIR"
+        $BATS_CMD "$BATS_DIR"
         UNIT_STATUS=$?
         
         if [[ $UNIT_STATUS -ne 0 ]]; then
@@ -50,7 +50,7 @@ if [[ -n "$BATS_CMD" ]]; then
             echo "✅ Unit Tests Passed"
         fi
     else
-        echo "ℹ️  No BATS tests found for ${TEST_ENV_TYPE} (looked at: ${BATS_FILE})"
+        echo "ℹ️  No BATS tests found for ${TEST_ENV_TYPE}"
     fi
 fi
 
