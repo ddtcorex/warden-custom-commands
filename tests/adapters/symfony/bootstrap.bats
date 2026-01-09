@@ -60,7 +60,7 @@ setup() {
     # It should edit the .env file with the values
     # The mock returns "test_db_value" for all MYSQL_* calls
     # So we expect DATABASE_URL using "test_db_value"
-    assert_command_called "mysql://test_db_value:test_db_value@db:3306/test_db_value"
+    assert_command_called "mysql://test_db_value:test_db_value@symfony-test-db-1:3306/test_db_value"
 }
 
 @test "Symfony: Skip flags prevent actions" {

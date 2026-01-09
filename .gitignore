@@ -35,7 +35,9 @@ tests/integration/test_id_rsa.pub
 tests/.tmp/
 
 # NPX generated files
-/composer.json
 /.env
+/composer.json
+/wp-config.php
 tests/.env
 tests/composer.json
+tests/wp-config.php

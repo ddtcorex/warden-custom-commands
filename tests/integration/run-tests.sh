@@ -71,7 +71,8 @@ fi
 echo "All environments running"
 
 export WARDEN_SSH_IDENTITY_FILE='~/.ssh/id_rsa'
-unset WARDEN_SSH_IDENTITIES_ONLY
+export WARDEN_SSH_OPTS='-o IdentityAgent=none -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o IdentitiesOnly=yes'
+export WARDEN_SSH_IDENTITIES_ONLY=1
 
 # Remove env overrides from .env
 # We use LOCAL_ENV which is set by configure_test_envs
@@ -93,7 +94,22 @@ header "Cleaning Up Test Artifacts"
 cleanup_test_files
 echo "Done"
 
-TEST_SUITES=(
+# Define Base Suites
+TEST_SUITES=()
+
+# Add environment-specific bootstrap tests
+if [[ "${TEST_ENV_TYPE}" == "magento2" ]]; then
+    TEST_SUITES+=("bootstrap-magento2.sh")
+elif [[ "${TEST_ENV_TYPE}" == "laravel" ]]; then
+    TEST_SUITES+=("bootstrap-laravel.sh")
+elif [[ "${TEST_ENV_TYPE}" == "wordpress" ]]; then
+    TEST_SUITES+=("bootstrap-wordpress.sh")
+elif [[ "${TEST_ENV_TYPE}" == "symfony" ]]; then
+    TEST_SUITES+=("bootstrap-symfony.sh")
+fi
+
+# Add Generic Sync Suites
+TEST_SUITES+=(
     "file-sync.sh"
     "media-sync.sh"
     "db-sync.sh"

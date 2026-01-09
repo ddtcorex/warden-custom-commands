@@ -21,7 +21,7 @@ test_db_sync_download
 test_db_sync_upload() {
     # 1. Setup Data on Local
     # Ensure env.php is valid on Local (restoring from potential file sync test overwrites)
-    setup_mock_env "${LOCAL_PHP}" "${LOCAL_DB}"
+    setup_mock_env "${LOCAL_PHP}"
     
     run_db_query "${LOCAL_PHP}" "DROP TABLE IF EXISTS test_upload_table;"
     run_db_query "${LOCAL_PHP}" "CREATE TABLE test_upload_table (id INT, val VARCHAR(255));"
@@ -30,7 +30,7 @@ test_db_sync_upload() {
     run_db_query "${DEV_PHP}" "DROP TABLE IF EXISTS test_upload_table;"
     
     # 3. Ensure Dev environment is mocked correctly for connection
-    setup_mock_env "${DEV_PHP}" "${DEV_DB}"
+    setup_mock_env "${DEV_PHP}"
     
     # 4. Run Sync (Local -> Dev)
     # Using run_sync_confirmed because uploading to remote triggers a CAUTION prompt

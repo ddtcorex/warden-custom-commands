@@ -112,7 +112,6 @@ function transfer_files() {
 
         # Execute the command (RSYNC_OPTS handles safety for existing files, but we blocked mkdir above)
         # If dry-run, this will safely list files.
-        # printf "DEBUG: Executing remote command: %s\n" "${cmd}"
         eval "${cmd}"
     elif [[ "${direction}" == "download" ]]; then
         printf "⌛ \033[1;32mDownloading from %s:%s to %s ...\033[0m\n" "${ENV_SOURCE_HOST}" "${source_path}" "${dest_path}"

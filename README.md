@@ -313,6 +313,7 @@ Initialize a new Magento 2 environment with all dependencies and configuration.
 - `--skip-media-sync` - Skip media sync from remote
 - `--skip-composer-install` - Skip composer install
 - `--skip-admin-create` - Skip admin user creation
+- `--fix-deps` - Auto-fix dependency versions for framework
 
 **Example:**
 

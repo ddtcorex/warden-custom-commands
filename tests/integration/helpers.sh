@@ -195,7 +195,6 @@ function setup_mock_env() {
 
 function setup_mock_magento_env() {
     local container="$1"
-    local db_host="${2:-db}"
     # Create app/etc/env.php for DB extraction tests
     docker exec --workdir / "${container}" bash -c "mkdir -p /var/www/html/app/etc && cat > /var/www/html/app/etc/env.php <<'EOF'
 <?php
@@ -203,7 +202,7 @@ return [
     'db' => [
         'connection' => [
             'default' => [
-                'host' => '${db_host}',
+                'host' => 'db',
                 'dbname' => 'magento',
                 'username' => 'magento',
                 'password' => 'magento',
@@ -217,8 +216,9 @@ EOF"
 
 function setup_mock_laravel_env() {
     local container="$1"
-    local db_host="${2:-db}"
-    docker exec --workdir / "${container}" bash -c "cat >> /var/www/html/.env <<'EOF'
+    local db_host="$(echo "${container}" | sed 's/-php-fpm-1$/-db-1/')"
+
+    docker exec -i --workdir / "${container}" bash -c "cat >> /var/www/html/.env <<EOF
 DB_HOST=${db_host}
 DB_DATABASE=laravel
 DB_USERNAME=laravel
@@ -228,23 +228,47 @@ EOF"
 
 function setup_mock_symfony_env() {
     local container="$1"
-    local db_host="${2:-db}"
-    docker exec --workdir / "${container}" bash -c "cat > /var/www/html/.env.local <<'EOF'
+    local db_host="$(echo "${container}" | sed 's/-php-fpm-1$/-db-1/')"
+
+    docker exec -i --workdir / "${container}" bash -c "cat > /var/www/html/.env.local <<EOF
 DATABASE_URL=\"mysql://symfony:symfony@${db_host}:3306/symfony?serverVersion=8.0\"
 EOF"
 }
 
 function setup_mock_wordpress_env() {
     local container="$1"
-    local db_host="${2:-db}"
-    docker exec --workdir / "${container}" bash -c "cat > /var/www/html/wp-config.php <<'EOF'
+    # Derive DB host from PHP container name (replace -php-fpm-1 with -db-1)
+    local db_host="$(echo "${container}" | sed 's/-php-fpm-1$/-db-1/')"
+
+    # Create valid wp-config.php
+    docker exec -i "${container}" bash -c "cat > /var/www/html/wp-config.php" <<EOF
 <?php
-define('DB_NAME', 'wordpress');
-define('DB_USER', 'wordpress');
-define('DB_PASSWORD', 'wordpress');
-define('DB_HOST', '${db_host}');
+define( 'DB_NAME', 'wordpress' );
+define( 'DB_USER', 'wordpress' );
+define( 'DB_PASSWORD', 'wordpress' );
+define( 'DB_HOST', '${db_host}' );
+define( 'DB_CHARSET', 'utf8' );
+define( 'DB_COLLATE', '' );
+
+define('AUTH_KEY',         'test-auth-key-1234567890abcdefghijklmnop');
+define('SECURE_AUTH_KEY',  'test-secure-auth-key-1234567890abcdefgh');
+define('LOGGED_IN_KEY',    'test-logged-in-key-1234567890abcdefghij');
+define('NONCE_KEY',        'test-nonce-key-1234567890abcdefghijklmn');
+define('AUTH_SALT',        'test-auth-salt-1234567890abcdefghijklmn');
+define('SECURE_AUTH_SALT', 'test-secure-auth-salt-1234567890abcdefg');
+define('LOGGED_IN_SALT',   'test-logged-in-salt-1234567890abcdefgh');
+define('NONCE_SALT',       'test-nonce-salt-1234567890abcdefghijklm');
+
 \$table_prefix = 'wp_';
-EOF"
+
+define( 'WP_DEBUG', false );
+
+if ( ! defined( 'ABSPATH' ) ) {
+    define( 'ABSPATH', __DIR__ . '/' );
+}
+
+require_once ABSPATH . 'wp-settings.php';
+EOF
 }
 
 function modify_config_file() {

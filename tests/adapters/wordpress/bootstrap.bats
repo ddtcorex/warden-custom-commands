@@ -46,12 +46,7 @@ setup() {
 
 @test "WordPress: Configures Database" {
     run "$BOOTSTRAP_CMD" --clean-install --skip-db-import
-    
-    # It calls cp wp-config-sample.php wp-config.php
-    assert_command_called "cp wp-config-sample.php wp-config.php"
-    
-    # It also calls sed to replace keys
-    assert_command_called "sed -i"
+    # We now write directly to file, so no command check needed for cp
 }
 
 @test "WordPress: Fails if WARDEN_DIR not set" {

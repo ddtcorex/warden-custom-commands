@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.0] - 2026-01-09
+
+**v1.9.0: Bootstrap Improvements & Full Integration Testing**
+
+This release standardizes the bootstrap process across all frameworks and introduces a complete integration testing suite for ensuring stability.
+
+### Added
+
+- **Integration Tests:**
+  - Added comprehensive BATS integration tests for `magento2`, `laravel`, `symfony`, and `wordpress`.
+  - Added `tests/integration/suites/bootstrap-*.sh` for verifying clean installs and downloads.
+- **Magento 2 Enhancements:**
+  - Implemented dynamic database credential fetching (replacing hardcoded strings).
+  - Added specific safety checks to prevent accidental execution without the dispatcher.
+
+### Changed
+
+- **Database Configuration:**
+  - Refactored all environment adapters to use the standardized `db` service alias for maximum reliability.
+  - Removed environment-specific naming logic (e.g. `WARDEN_ENV_NAME-db-1`) in favor of direct service resolution.
+- **Bootstrapping:**
+  - Unified `bootstrap.cmd` logic across all adapters to use consistent DB host determination.
+- **Diagnostics:**
+  - Replaced `ping` with `nc` (netcat) for more reliable connectivity checks in `setup-test-envs.sh`.
+
+### Fixed
+
+- **WordPress Stability:**
+  - Resolved `wp-config.php` generation issues during bootstrap.
+  - Fixed SSH agent pollution in test environments.
+
 ## [1.8.0] - 2026-01-07
 
 **v1.8.0: Unified Testing & Full Framework Parity**
