@@ -49,8 +49,12 @@ setup_remote_env() {
     } >> .env
 }
 
-printf "\nDo you want to configure remote environments (Staging, Production, Dev)? [y/N] "
-read -r response
+if [[ -t 0 ]]; then
+    printf "\nDo you want to configure remote environments (Staging, Production, Dev)? [y/N] "
+    read -r response
+else
+    response="n"
+fi
 
 if [[ "${response}" =~ ^[yY] ]]; then
     setup_remote_env "Staging" "REMOTE_STAGING"
