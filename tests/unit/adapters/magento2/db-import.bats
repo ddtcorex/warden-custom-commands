@@ -1,6 +1,6 @@
 #!/usr/bin/env bats
 
-load "../../libs/mocks.bash"
+load "../../../libs/mocks.bash"
 
 setup() {
     setup_mocks
@@ -8,7 +8,7 @@ setup() {
     
     export TEST_SCRIPT_DIR="${TEST_TMP_DIR}/magento2-db-import"
     mkdir -p "${TEST_SCRIPT_DIR}"
-    cp "${BATS_TEST_DIRNAME}/../../../env-adapters/magento2/db-import.cmd" "${TEST_SCRIPT_DIR}/db-import.cmd"
+    cp "${BATS_TEST_DIRNAME}/../../../../env-adapters/magento2/db-import.cmd" "${TEST_SCRIPT_DIR}/db-import.cmd"
     chmod +x "${TEST_SCRIPT_DIR}/db-import.cmd"
     
     BOOTSTRAP_CMD="${TEST_SCRIPT_DIR}/db-import.cmd"
