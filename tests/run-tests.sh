@@ -73,10 +73,10 @@ mkdir -p .tmp
 # Determine which BATS tests to run
 case "$ENV_TYPE" in
     all)
-        BATS_TESTS="adapters/magento2/*.bats adapters/symfony/*.bats adapters/laravel/*.bats adapters/wordpress/*.bats"
+        BATS_TESTS="unit/core/*.bats unit/adapters/magento2/*.bats unit/adapters/symfony/*.bats unit/adapters/laravel/*.bats unit/adapters/wordpress/*.bats"
         ;;
     magento2|symfony|laravel|wordpress)
-        BATS_TESTS="adapters/${ENV_TYPE}/*.bats"
+        BATS_TESTS="unit/adapters/${ENV_TYPE}/*.bats"
         ;;
 esac
 

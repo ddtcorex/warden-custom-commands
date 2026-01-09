@@ -1,6 +1,6 @@
 #!/usr/bin/env bats
 
-load "../../libs/mocks.bash"
+load "../../../libs/mocks.bash"
 
 setup() {
     setup_mocks
@@ -8,7 +8,7 @@ setup() {
     
     export TEST_SCRIPT_DIR="${TEST_TMP_DIR}/magento2-fix-deps"
     mkdir -p "${TEST_SCRIPT_DIR}"
-    cp "${BATS_TEST_DIRNAME}/../../../env-adapters/magento2/fix-deps.cmd" "${TEST_SCRIPT_DIR}/fix-deps.cmd"
+    cp "${BATS_TEST_DIRNAME}/../../../../env-adapters/magento2/fix-deps.cmd" "${TEST_SCRIPT_DIR}/fix-deps.cmd"
     chmod +x "${TEST_SCRIPT_DIR}/fix-deps.cmd"
     
     BOOTSTRAP_CMD="${TEST_SCRIPT_DIR}/fix-deps.cmd"

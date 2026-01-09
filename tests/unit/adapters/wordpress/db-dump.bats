@@ -1,17 +1,17 @@
 #!/usr/bin/env bats
 
-load "../../libs/mocks.bash"
+load "../../../libs/mocks.bash"
 
 setup() {
     setup_mocks
     
-    export WARDEN_ENV_NAME="laravel-test"
+    export WARDEN_ENV_NAME="wordpress-test"
     export ENV_SOURCE="local"
     export WARDEN_DIR="/tmp/warden"
     
-    export TEST_SCRIPT_DIR="${TEST_TMP_DIR}/laravel-db-dump"
+    export TEST_SCRIPT_DIR="${TEST_TMP_DIR}/wordpress-db-dump"
     mkdir -p "${TEST_SCRIPT_DIR}"
-    cp "${BATS_TEST_DIRNAME}/../../../env-adapters/laravel/db-dump.cmd" "${TEST_SCRIPT_DIR}/db-dump.cmd"
+    cp "${BATS_TEST_DIRNAME}/../../../../env-adapters/wordpress/db-dump.cmd" "${TEST_SCRIPT_DIR}/db-dump.cmd"
     chmod +x "${TEST_SCRIPT_DIR}/db-dump.cmd"
     
     BOOTSTRAP_CMD="${TEST_SCRIPT_DIR}/db-dump.cmd"
@@ -29,7 +29,7 @@ if [[ "$*" == *"printenv MYSQL_USER"* ]]; then
 elif [[ "$*" == *"printenv MYSQL_PASSWORD"* ]]; then
     echo "db_pass"
 elif [[ "$*" == *"printenv MYSQL_DATABASE"* ]]; then
-    echo "laravel_db"
+    echo "wordpress_db"
 fi
 EOF
     chmod +x "${MOCK_BIN}/warden"
@@ -46,14 +46,14 @@ EOF
     mkdir -p var
 }
 
-@test "Laravel DB Dump: Local dump" {
+@test "WordPress DB Dump: Local dump" {
     run "$BOOTSTRAP_CMD"
     
     grep -q "warden env exec -T db" "$MOCK_LOG"
     [[ "$output" == *"File:"* ]]
 }
 
-@test "Laravel DB Dump: Custom filename" {
+@test "WordPress DB Dump: Custom filename" {
     run "$BOOTSTRAP_CMD" --file=custom.sql.gz
     
     [[ "$output" == *"custom.sql.gz"* ]]

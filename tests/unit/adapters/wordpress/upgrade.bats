@@ -1,6 +1,6 @@
 #!/usr/bin/env bats
 
-load "../../libs/mocks.bash"
+load "../../../libs/mocks.bash"
 
 setup() {
     setup_mocks
@@ -8,7 +8,7 @@ setup() {
     export WARDEN_DIR="/tmp/warden"
     export TEST_SCRIPT_DIR="${TEST_TMP_DIR}/wordpress-upgrade"
     mkdir -p "${TEST_SCRIPT_DIR}"
-    cp "${BATS_TEST_DIRNAME}/../../../env-adapters/wordpress/upgrade.cmd" "${TEST_SCRIPT_DIR}/upgrade.cmd"
+    cp "${BATS_TEST_DIRNAME}/../../../../env-adapters/wordpress/upgrade.cmd" "${TEST_SCRIPT_DIR}/upgrade.cmd"
     chmod +x "${TEST_SCRIPT_DIR}/upgrade.cmd"
     
     BOOTSTRAP_CMD="${TEST_SCRIPT_DIR}/upgrade.cmd"

@@ -1,8 +1,8 @@
 #!/usr/bin/env bats
 
-load "../../libs/mocks.bash"
+load "../../../libs/mocks.bash"
 
-BOOTSTRAP_CMD="${BATS_TEST_DIRNAME}/../../../env-adapters/symfony/bootstrap.cmd"
+BOOTSTRAP_CMD="${BATS_TEST_DIRNAME}/../../../../env-adapters/symfony/bootstrap.cmd"
 
 setup() {
     setup_mocks
@@ -19,7 +19,7 @@ setup() {
     # Copy bootstrap to temp location
     export TEST_SCRIPT_DIR="${TEST_TMP_DIR}/symfony-adapter"
     mkdir -p "${TEST_SCRIPT_DIR}"
-    cp "${BATS_TEST_DIRNAME}/../../../env-adapters/symfony/bootstrap.cmd" "${TEST_SCRIPT_DIR}/bootstrap.cmd"
+    cp "${BATS_TEST_DIRNAME}/../../../../env-adapters/symfony/bootstrap.cmd" "${TEST_SCRIPT_DIR}/bootstrap.cmd"
     chmod +x "${TEST_SCRIPT_DIR}/bootstrap.cmd"
     
     BOOTSTRAP_CMD="${TEST_SCRIPT_DIR}/bootstrap.cmd"
@@ -60,7 +60,7 @@ setup() {
     # It should edit the .env file with the values
     # The mock returns "test_db_value" for all MYSQL_* calls
     # So we expect DATABASE_URL using "test_db_value"
-    assert_command_called "mysql://test_db_value:test_db_value@symfony-test-db-1:3306/test_db_value"
+    assert_command_called "mysql://test_db_value:test_db_value@db:3306/test_db_value"
 }
 
 @test "Symfony: Skip flags prevent actions" {

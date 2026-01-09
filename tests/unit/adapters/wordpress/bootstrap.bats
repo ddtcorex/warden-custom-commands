@@ -1,6 +1,6 @@
 #!/usr/bin/env bats
 
-load "../../libs/mocks.bash"
+load "../../../libs/mocks.bash"
 
 setup() {
     setup_mocks
@@ -13,7 +13,7 @@ setup() {
     # Copy script
     export TEST_SCRIPT_DIR="${TEST_TMP_DIR}/wordpress-adapter"
     mkdir -p "${TEST_SCRIPT_DIR}"
-    cp "${BATS_TEST_DIRNAME}/../../../env-adapters/wordpress/bootstrap.cmd" "${TEST_SCRIPT_DIR}/bootstrap.cmd"
+    cp "${BATS_TEST_DIRNAME}/../../../../env-adapters/wordpress/bootstrap.cmd" "${TEST_SCRIPT_DIR}/bootstrap.cmd"
     chmod +x "${TEST_SCRIPT_DIR}/bootstrap.cmd"
     
     BOOTSTRAP_CMD="${TEST_SCRIPT_DIR}/bootstrap.cmd"

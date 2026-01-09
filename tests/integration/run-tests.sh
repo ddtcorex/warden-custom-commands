@@ -34,7 +34,7 @@ fi
 if [[ -n "$BATS_CMD" ]]; then
     # Resolve absolute path to tests root
     TESTS_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-    BATS_FILE="${TESTS_ROOT}/adapters/${TEST_ENV_TYPE}/bootstrap.bats"
+    BATS_FILE="${TESTS_ROOT}/unit/adapters/${TEST_ENV_TYPE}/bootstrap.bats"
     
     if [[ -f "$BATS_FILE" ]]; then
         echo "🧪 Executing: $BATS_CMD $BATS_FILE"
