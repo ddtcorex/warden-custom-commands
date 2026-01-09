@@ -33,6 +33,9 @@ You can run BATS tests directly if you have `bats` installed or via `npx`:
 ```bash
 # Run all unit tests for a framework
 npx -y bats tests/adapters/magento2/*.bats
+npx -y bats tests/adapters/laravel/*.bats
+npx -y bats tests/adapters/symfony/*.bats
+npx -y bats tests/adapters/wordpress/*.bats
 
 # Run specific test file
 npx -y bats tests/adapters/magento2/bootstrap.bats

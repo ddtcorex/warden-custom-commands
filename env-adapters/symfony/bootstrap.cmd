@@ -210,8 +210,6 @@ fi
 # Configure database if using Doctrine - do this INSIDE the container
 # Symfony uses .env.local for local overrides (takes precedence over .env)
 if warden env exec php-fpm test -f config/packages/doctrine.yaml 2>/dev/null; then
-    :: Configuring database connection
-    
     # Get actual database credentials from the db container
     DB_USER=$(warden env exec -T db printenv MYSQL_USER 2>/dev/null)
     DB_PASS=$(warden env exec -T db printenv MYSQL_PASSWORD 2>/dev/null)
@@ -221,17 +219,21 @@ if warden env exec php-fpm test -f config/packages/doctrine.yaml 2>/dev/null; th
     DB_USER=${DB_USER:-symfony}
     DB_PASS=${DB_PASS:-symfony}
     DB_NAME=${DB_NAME:-symfony}
+
+    # Determine database host
+    DB_HOST_NAME="db"
+
+    :: Configuring database connection
     
-    # Determine which env file to use (.env.local preferred for local config)
+    # Configure database using a single shell command to avoid nesting issues
+    DATABASE_URL="mysql://${DB_USER}:${DB_PASS}@${DB_HOST_NAME}:3306/${DB_NAME}"
     warden env exec php-fpm sh -c "
         ENV_FILE='.env'
         if [ -f '.env.local' ]; then
             ENV_FILE='.env.local'
         fi
-        
-        # Remove existing DATABASE_URL and add the correct one
         sed -i '/DATABASE_URL/d' \"\$ENV_FILE\"
-        echo 'DATABASE_URL=\"mysql://${DB_USER}:${DB_PASS}@db:3306/${DB_NAME}\"' >> \"\$ENV_FILE\"
+        echo \"DATABASE_URL='${DATABASE_URL}'\" >> \"\$ENV_FILE\"
     "
 fi
 

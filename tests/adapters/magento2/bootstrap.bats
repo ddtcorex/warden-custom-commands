@@ -8,6 +8,7 @@ setup() {
     setup_mocks
     
     # Required for the script to believe it's in a valid environment context
+    export WARDEN_DIR="/tmp/warden"
     export ENV_SOURCE="magento2"
     export ENV_SOURCE_HOST_VAR="127.0.0.1" 
     export WARDEN_ENV_NAME="test-env"
@@ -54,4 +55,11 @@ setup() {
     
     [ "$status" -eq 1 ]
     [[ "$output" == *"Invalid version"* ]]
+}
+
+@test "Magento2: Fails if WARDEN_DIR not set" {
+    export WARDEN_DIR=""
+    run bash -c "unset WARDEN_DIR && $BOOTSTRAP_CMD"
+    [ "$status" -eq 1 ]
+    [[ "$output" == *"not intended to be run directly"* ]]
 }
