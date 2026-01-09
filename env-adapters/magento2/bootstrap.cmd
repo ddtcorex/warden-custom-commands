@@ -272,15 +272,14 @@ fi
 DB_USER=$(warden env exec -T db printenv MYSQL_USER 2>/dev/null)
 DB_PASS=$(warden env exec -T db printenv MYSQL_PASSWORD 2>/dev/null)
 DB_NAME=$(warden env exec -T db printenv MYSQL_DATABASE 2>/dev/null)
-DB_HOST_NAME="db"
-if [[ -n "${WARDEN_ENV_NAME:-}" ]]; then
-    DB_HOST_NAME="${WARDEN_ENV_NAME}-db-1"
-fi
 
 # Use defaults if not available
 DB_USER=${DB_USER:-magento}
 DB_PASS=${DB_PASS:-magento}
 DB_NAME=${DB_NAME:-magento}
+
+# Determine database host
+DB_HOST_NAME="db"
 
 if [ ! -f "${WARDEN_ENV_PATH}/app/etc/env.php" ] && [ ! $CLEAN_INSTALL ]; then
     :: Configuring environment variables

@@ -172,15 +172,14 @@ if [[ "${CLEAN_INSTALL:-}" ]]; then
     DB_USER=$(warden env exec -T db printenv MYSQL_USER 2>/dev/null)
     DB_PASS=$(warden env exec -T db printenv MYSQL_PASSWORD 2>/dev/null)
     DB_NAME=$(warden env exec -T db printenv MYSQL_DATABASE 2>/dev/null)
-    DB_HOST_NAME="db"
-    if [[ -n "${WARDEN_ENV_NAME}" ]]; then
-        DB_HOST_NAME="${WARDEN_ENV_NAME}-db-1"
-    fi
 
     # Use defaults if not available
     DB_USER=${DB_USER:-laravel}
     DB_PASS=${DB_PASS:-laravel}
     DB_NAME=${DB_NAME:-laravel}
+
+    # Determine database host
+    DB_HOST_NAME="db"
     
     # Update database settings for Warden
     :: Configuring database connection
@@ -231,15 +230,14 @@ if warden env exec php-fpm grep -q "DB_HOST=127.0.0.1" .env 2>/dev/null; then
     DB_USER=$(warden env exec -T db printenv MYSQL_USER 2>/dev/null)
     DB_PASS=$(warden env exec -T db printenv MYSQL_PASSWORD 2>/dev/null)
     DB_NAME=$(warden env exec -T db printenv MYSQL_DATABASE 2>/dev/null)
-    DB_HOST_NAME="db"
-    if [[ -n "${WARDEN_ENV_NAME}" ]]; then
-        DB_HOST_NAME="${WARDEN_ENV_NAME}-db-1"
-    fi
 
     # Use defaults if not available
     DB_USER=${DB_USER:-laravel}
     DB_PASS=${DB_PASS:-laravel}
     DB_NAME=${DB_NAME:-laravel}
+
+    # Determine database host
+    DB_HOST_NAME="db"
     
     :: Configuring database connection
     warden env exec php-fpm sed -i "s/^DB_CONNECTION=.*/DB_CONNECTION=mysql/" .env

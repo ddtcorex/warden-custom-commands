@@ -222,9 +222,6 @@ if warden env exec php-fpm test -f config/packages/doctrine.yaml 2>/dev/null; th
 
     # Determine database host
     DB_HOST_NAME="db"
-    if [[ -n "${WARDEN_ENV_NAME:-}" ]]; then
-        DB_HOST_NAME="${WARDEN_ENV_NAME}-db-1"
-    fi
 
     :: Configuring database connection
     

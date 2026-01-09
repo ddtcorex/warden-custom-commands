@@ -244,11 +244,8 @@ define('LOGGED_IN_SALT',   'put your unique phrase here');
 define('NONCE_SALT',       'put your unique phrase here');"
         fi
 
-        # Determine strict DB host to avoid network alias ambiguity
-        DB_HOST_VAL="db"
-        if [[ -n "${WARDEN_ENV_NAME}" ]]; then
-             DB_HOST_VAL="${WARDEN_ENV_NAME}-db-1"
-        fi
+        # Determine database host
+        DB_HOST_NAME="db"
         
         # Create config file directly to ensure correctness
         cat > wp-config.php <<EOF
@@ -256,7 +253,7 @@ define('NONCE_SALT',       'put your unique phrase here');"
 define( 'DB_NAME', '${DB_NAME}' );
 define( 'DB_USER', '${DB_USER}' );
 define( 'DB_PASSWORD', '${DB_PASS}' );
-define( 'DB_HOST', '${DB_HOST_VAL}' );
+define( 'DB_HOST', '${DB_HOST_NAME}' );
 define( 'DB_CHARSET', 'utf8' );
 define( 'DB_COLLATE', '' );
 
