@@ -123,6 +123,12 @@ for suite in "${TEST_SUITES[@]}"; do
     echo "🚀 Starting suite: ${suite}"
     source "${TEST_DIR}/integration/suites/${suite}"
     echo "✅ Finished suite: ${suite}"
+    
+    # Re-apply environment configuration if we just ran a bootstrap suite (which might recreate containers)
+    if [[ "${suite}" == bootstrap-*.sh ]]; then
+        echo "🔄 Re-applying environment configuration (SSH, DNS, Keys)..."
+        "${TEST_DIR}/integration/configure-test-envs.sh" --type="${TEST_ENV_TYPE}"
+    fi
 done
 
 test_summary

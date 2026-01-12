@@ -124,6 +124,7 @@ EOF
     
     run "$BOOTSTRAP_CMD"
     
-    grep -q "ssh .* mysqldump .* -hremote-db .* remote_db" "$MOCK_LOG"
+    # Check for mysqldump with --force flag and db host (use -E for extended regex)
+    grep -Eq "ssh.*mysqldump.*--force.*-hremote-db.*remote_db" "$MOCK_LOG"
     grep -q "warden db import --force" "$MOCK_LOG"
 }
