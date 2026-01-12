@@ -761,6 +761,23 @@ Update custom commands from git repository.
 warden self-update
 ```
 
+#### `warden setup-remotes`
+
+Interactive wizard to configure remote environment connection details (Dev, Staging) in your `.env` file.
+
+**Features:**
+
+- Interactive prompts for Host, User, Port, and Path.
+- Auto-validation of SSH connectivity.
+- Updates/Creates `.env` entries safely.
+
+**Example:**
+
+```bash
+warden setup-remotes
+warden setup-remotes --help
+```
+
 ## Adding New Environment Support
 
 To add support for a new framework (e.g., Symfony):
