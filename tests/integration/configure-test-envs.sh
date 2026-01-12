@@ -16,47 +16,9 @@ echo "╔═══════════════════════�
 echo "║     Setting Up Test Environments                           ║"
 echo "╚════════════════════════════════════════════════════════════╝"
 
-# Step 1: Directories
-echo ""
-echo "Step 1: Creating test directories for type: ${ENV_TYPE}..."
-for context in local dev staging; do
-    env="${ENV_TYPE}-${context}"
-    mkdir -p "${TEST_DIR}/${env}"
-    echo "  Created: tests/${env}/"
-done
+# Step 1-3: Skipped (Initialization is handled by setup-test-envs.sh)
 
-# Step 2 & 3: Initialize and Start
-echo ""
-echo "Step 2 & 3: Initializing and Starting environments..."
-
-# Cleanup function to ensure clean slate
-for context in local dev staging; do
-    env="${ENV_TYPE}-${context}"
-    cd "${TEST_DIR}/${env}"
-    rm -f .env
-    yes | warden env-init "${env}" "${ENV_TYPE}" > /dev/null 2>&1
-    
-    # Configure ENV for Speed (Disable heavy services)
-    if ! grep -q "WARDEN_ENV_NAME" .env; then
-        echo "WARDEN_ENV_NAME=${env}" >> .env
-        echo "WARDEN_ENV_TYPE=${ENV_TYPE}" >> .env
-    fi
-    
-    # Force disable heavy services
-    sed -i 's/^PHP_XDEBUG_3=.*/PHP_XDEBUG_3=0/' .env || echo "PHP_XDEBUG_3=0" >> .env
-    sed -i 's/^WARDEN_ELASTICSEARCH=.*/WARDEN_ELASTICSEARCH=0/' .env || echo "WARDEN_ELASTICSEARCH=0" >> .env
-    sed -i 's/^WARDEN_VARNISH=.*/WARDEN_VARNISH=0/' .env || echo "WARDEN_VARNISH=0" >> .env
-    sed -i 's/^WARDEN_REDIS=.*/WARDEN_REDIS=0/' .env || echo "WARDEN_REDIS=0" >> .env
-    
-    # Wipe Clean (Down + Volumes) using the generated .env context
-    warden env down -v > /dev/null 2>&1 || true
-    
-    warden env up -d > /dev/null 2>&1
-    echo "  ${env}: Initialized and Started (Lightweight + Clean)"
-done
-echo "  All environments started."
-
-# Step 4: REMOTE vars
+# Step 4: Configuring environment variables...
 echo ""
 echo "Step 4: Configuring environment variables..."
 
@@ -75,6 +37,12 @@ sleep 5
 
 DEV_IP_DETECTED=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}' "${DEV_CONTAINER}" | awk '{print $1}')
 STAGING_IP_DETECTED=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}' "${STAGING_CONTAINER}" | awk '{print $1}')
+
+# Clean up existing REMOTE variables to prevent duplication
+sed -i '/^WARDEN_SSH_IDENTITIES_ONLY=/d' "${TEST_DIR}/${ENV_TYPE}-local/.env"
+sed -i '/^WARDEN_SSH_OPTS=/d' "${TEST_DIR}/${ENV_TYPE}-local/.env"
+sed -i '/^REMOTE_DEV_/d' "${TEST_DIR}/${ENV_TYPE}-local/.env"
+sed -i '/^REMOTE_STAGING_/d' "${TEST_DIR}/${ENV_TYPE}-local/.env"
 
 # Use unquoted EOF to allow variable expansion
 cat >> "${TEST_DIR}/${ENV_TYPE}-local/.env" << EOF

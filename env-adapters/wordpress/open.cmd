@@ -3,6 +3,9 @@ set -u
 
 # env-variables is already sourced by the root dispatcher
 
+SCRIPT_DIR=$(dirname "${BASH_SOURCE[0]}")
+source "${SCRIPT_DIR}/utils.sh"
+
 function open_link() {
     if [[ "${OPEN_CL:-0}" -eq "1" ]]; then
         local OPEN=$(command -v xdg-open || command -v open || command -v start || true)
@@ -111,26 +114,15 @@ function local_elasticsearch() {
     ssh ${SSH_OPTS} -L "${LOCAL_PORT}:${ES_ENV_NAME}:${REMOTE_PORT}" -N -p 2222 -i ~/.warden/tunnel/ssh_key user@tunnel.warden.test || true
 }
 
-# Remote stubs
 function remote_db() {
     # WordPress uses wp-config.php.
-    local db_config=$(ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "grep -E \"define\s*\(.*DB_(NAME|USER|PASSWORD|HOST)\" \"${ENV_SOURCE_DIR}/wp-config.php\"")
-
-    # Parse values using sed. Pattern: define( 'CONSTANT', 'VALUE' );
-    local db_name=$(printf "%s" "${db_config}" | grep "DB_NAME" | sed -E "s/.*['\"]DB_NAME['\"]\s*,\s*['\"](.*)['\"].*/\1/")
-    local db_user=$(printf "%s" "${db_config}" | grep "DB_USER" | sed -E "s/.*['\"]DB_USER['\"]\s*,\s*['\"](.*)['\"].*/\1/")
-    local db_pass=$(printf "%s" "${db_config}" | grep "DB_PASSWORD" | sed -E "s/.*['\"]DB_PASSWORD['\"]\s*,\s*['\"](.*)['\"].*/\1/")
-    local db_host_raw=$(printf "%s" "${db_config}" | grep "DB_HOST" | sed -E "s/.*['\"]DB_HOST['\"]\s*,\s*['\"](.*)['\"].*/\1/")
-
-    local db_host=${db_host_raw%%:*}
-    local db_port=${db_host_raw#*:}
-    if [[ "${db_host}" == "${db_port}" ]]; then
-        db_port=3306
-    fi
-    # If host is localhost, we map it to 127.0.0.1 for the SSH tunnel context
-    if [[ "${db_host}" == "localhost" ]]; then
-        db_host="127.0.0.1"
-    fi
+    local db_info=$(get_remote_db_info "${ENV_SOURCE_HOST}" "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}" "${ENV_SOURCE_DIR}")
+    
+    local db_host=$(echo "${db_info}" | grep "^DB_HOST=" | cut -d= -f2-)
+    local db_port=$(echo "${db_info}" | grep "^DB_PORT=" | cut -d= -f2-)
+    local db_user=$(echo "${db_info}" | grep "^DB_USERNAME=" | cut -d= -f2-)
+    local db_pass=$(echo "${db_info}" | grep "^DB_PASSWORD=" | cut -d= -f2-)
+    local db_name=$(echo "${db_info}" | grep "^DB_DATABASE=" | cut -d= -f2-)
 
     # Defaults/Fallbacks
     db_host=${db_host:-127.0.0.1}

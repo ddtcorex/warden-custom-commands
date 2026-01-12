@@ -53,6 +53,24 @@
     "redis": "5.0",
     "composer": "1"
   },
+  "5": {
+    "php": ["5.6", "7.0", "7.1", "7.2"],
+    "php_default": "7.0",
+    "mysql": "5.7",
+    "mariadb": ["10.2", "10.3"],
+    "mariadb_default": "10.2",
+    "redis": "4.0",
+    "composer": "1"
+  },
+  "4": {
+    "php": ["5.4", "5.5", "5.6", "7.0"],
+    "php_default": "7.0",
+    "mysql": "5.6",
+    "mariadb": ["10.1", "10.2"],
+    "mariadb_default": "10.1",
+    "redis": null,
+    "composer": "1"
+  },
   "default": {
     "comment": "Default configuration for unknown versions (assumes latest)",
     "php": ["8.2", "8.3", "8.4"],

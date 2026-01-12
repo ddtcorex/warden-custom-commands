@@ -27,7 +27,7 @@ cd "${STAGING_ENV}"
 
 # Clean any existing Magento files to ensure fresh install (keep .env for warden)
 echo "Cleaning existing Magento files for fresh installation..."
-docker exec --workdir / -u www-data "${STAGING_PHP}" bash -c "rm -rf /var/www/html/{app,bin,dev,generated,lib,phpserver,pub,setup,var,vendor}/*.* /var/www/html/composer.* 2>/dev/null" || true
+docker exec --workdir / -u www-data "${STAGING_PHP}" bash -c "rm -rf /var/www/html/{app,bin,dev,generated,lib,phpserver,pub,setup,var,vendor} /var/www/html/composer.* 2>/dev/null" || true
 
 # Run clean install (using latest stable version for PHP 8.4 compatibility)
 echo "Running: warden bootstrap --clean-install --meta-version=2.4.8 --skip-admin-create"

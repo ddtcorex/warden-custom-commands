@@ -74,6 +74,9 @@ SED_FILTERS=(
     -e 's/utf8_unicode_520_ci/utf8_general_ci/g'
 )
 
+SCRIPT_DIR=$(dirname "${BASH_SOURCE[0]}")
+source "${SCRIPT_DIR}/utils.sh"
+
 if [[ "${STREAM_DB}" -eq 1 ]]; then
     if [[ "${ENV_SOURCE}" == "local" ]] || [[ -z "${ENV_SOURCE_HOST+x}" ]]; then
         printf "😮 \033[31mStreaming requires a remote environment. Specify one with -e (e.g. -e staging)\033[0m\n" >&2
@@ -81,22 +84,14 @@ if [[ "${STREAM_DB}" -eq 1 ]]; then
     fi
 
     # Streaming database from remote (direct import)
-    # Fetch DB config via SSH (using logic from db-dump.cmd)
-    db_config=$(ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "grep -E \"^\s*define\s*\(\s*['\\\"]DB_(NAME|USER|PASSWORD|HOST)\" \"${ENV_SOURCE_DIR}/wp-config.php\"")
+    # Fetch DB creds via SSH (using helper)
+    db_info=$(get_remote_db_info "${ENV_SOURCE_HOST}" "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}" "${ENV_SOURCE_DIR}")
     
-    # Parse values
-    db_name=$(printf "%s" "${db_config}" | grep "DB_NAME" | head -n 1 | sed -E "s/.*['\"]DB_NAME['\"]\s*,\s*['\"](.*)['\"].*/\1/")
-    db_user=$(printf "%s" "${db_config}" | grep "DB_USER" | head -n 1 | sed -E "s/.*['\"]DB_USER['\"]\s*,\s*['\"](.*)['\"].*/\1/")
-    db_pass=$(printf "%s" "${db_config}" | grep "DB_PASSWORD" | head -n 1 | sed -E "s/.*['\"]DB_PASSWORD['\"]\s*,\s*['\"](.*)['\"].*/\1/")
-    db_host_raw=$(printf "%s" "${db_config}" | grep "DB_HOST" | head -n 1 | sed -E "s/.*['\"]DB_HOST['\"]\s*,\s*['\"](.*)['\"].*/\1/")
-
-    db_host=${db_host_raw%%:*}
-    db_port=${db_host_raw#*:}
-    if [[ "${db_host}" == "${db_port}" ]]; then db_port=3306; fi
-    if [[ "${db_host}" == "localhost" ]]; then db_host="127.0.0.1"; fi
-
-    db_host=${db_host:-127.0.0.1}
-    db_port=${db_port:-3306}
+    db_host=$(echo "${db_info}" | grep "^DB_HOST=" | cut -d= -f2-)
+    db_port=$(echo "${db_info}" | grep "^DB_PORT=" | cut -d= -f2-)
+    db_user=$(echo "${db_info}" | grep "^DB_USERNAME=" | cut -d= -f2-)
+    db_pass=$(echo "${db_info}" | grep "^DB_PASSWORD=" | cut -d= -f2-)
+    db_name=$(echo "${db_info}" | grep "^DB_DATABASE=" | cut -d= -f2-)
     
     printf "Streaming mysqldump from %s:%s ...\n" "${ENV_SOURCE_HOST}" "${db_name}"
     ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" \
