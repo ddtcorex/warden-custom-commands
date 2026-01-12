@@ -111,10 +111,12 @@ function local_elasticsearch() {
     ssh ${SSH_OPTS} -L "${LOCAL_PORT}:${ES_ENV_NAME}:${REMOTE_PORT}" -N -p 2222 -i ~/.warden/tunnel/ssh_key user@tunnel.warden.test || true
 }
 
-# Remote stubs
+SCRIPT_DIR=$(dirname "${BASH_SOURCE[0]}")
+source "${SCRIPT_DIR}/utils.sh"
+
 function remote_db() {
     # Laravel uses .env for DB config. We fetch it via SSH.
-    local db_info=$(ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "grep -E '^DB_(HOST|PORT|DATABASE|USERNAME|PASSWORD)=' \"${ENV_SOURCE_DIR}/.env\"")
+    local db_info=$(get_remote_db_info "${ENV_SOURCE_HOST}" "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}" "${ENV_SOURCE_DIR}")
 
     # Parse variables from the grep output
     local db_host=$(printf "%s" "${db_info}" | grep DB_HOST | cut -d= -f2 | tr -d '"'"'")

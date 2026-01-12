@@ -134,7 +134,18 @@ else
     echo "COMPOSER_VERSION=${COMPOSER_VERSION}" >> .env
 fi
 
+# Disable xdebug3 for PHP versions < 7.2 (xdebug3 requires PHP 7.2+)
+PHP_MAJOR=$(echo "${PHP_VERSION}" | cut -d. -f1)
+PHP_MINOR=$(echo "${PHP_VERSION}" | cut -d. -f2)
+if [[ "${PHP_MAJOR}" -lt 7 ]] || [[ "${PHP_MAJOR}" -eq 7 && "${PHP_MINOR}" -lt 2 ]]; then
+    if grep -q "^PHP_XDEBUG_3=" .env; then
+        sed -i "s/^PHP_XDEBUG_3=.*/PHP_XDEBUG_3=0/" .env
+    else
+        echo "PHP_XDEBUG_3=0" >> .env
+    fi
+fi
+
 echo "✅ .env file updated successfully!"
 echo ""
 echo "Summary of changes:"
-grep -E "^(PHP_VERSION|MYSQL_DISTRIBUTION|MYSQL_DISTRIBUTION_VERSION|REDIS_VERSION|COMPOSER_VERSION)=" .env | sort
+grep -E "^(PHP_VERSION|MYSQL_DISTRIBUTION|MYSQL_DISTRIBUTION_VERSION|REDIS_VERSION|COMPOSER_VERSION|PHP_XDEBUG_3)=" .env | sort

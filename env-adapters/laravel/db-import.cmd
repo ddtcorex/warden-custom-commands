@@ -70,6 +70,9 @@ SED_FILTERS=(
     -e 's/utf8_unicode_520_ci/utf8_general_ci/g'
 )
 
+SCRIPT_DIR=$(dirname "${BASH_SOURCE[0]}")
+source "${SCRIPT_DIR}/utils.sh"
+
 if [[ "${STREAM_DB}" -eq 1 ]]; then
     if [[ "${ENV_SOURCE}" == "local" ]] || [[ -z "${ENV_SOURCE_HOST+x}" ]]; then
         printf "😮 \033[31mStreaming requires a remote environment. Specify one with -e (e.g. -e staging)\033[0m\n" >&2
@@ -77,9 +80,8 @@ if [[ "${STREAM_DB}" -eq 1 ]]; then
     fi
 
     # Streaming database from remote (direct import)
-    # Fetch DB creds via SSH (using logic from db-dump.cmd)
-    local remote_cmd="grep -h -E '^(DB_HOST|DB_PORT|DB_DATABASE|DB_USERNAME|DB_PASSWORD)=' \"${ENV_SOURCE_DIR}/.env\" 2>/dev/null"
-    local db_vars=$(ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "${remote_cmd}")
+    # Fetch DB creds via SSH (using logic from db-dump.cmd via utils.sh)
+    local db_vars=$(get_remote_db_info "${ENV_SOURCE_HOST}" "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}" "${ENV_SOURCE_DIR}")
     
     local db_host=$(echo "${db_vars}" | grep "^DB_HOST=" | tail -n 1 | cut -d= -f2- | tr -d '"'"'")
     local db_port=$(echo "${db_vars}" | grep "^DB_PORT=" | tail -n 1 | cut -d= -f2- | tr -d '"'"'")
@@ -89,9 +91,9 @@ if [[ "${STREAM_DB}" -eq 1 ]]; then
 
     db_host=${db_host:-127.0.0.1}
     db_port=${db_port:-3306}
-    
+
     if [[ -z "${db_name}" ]]; then
-      printf "❌ \033[31mCould not detect DB_DATABASE from remote .env\033[0m\n" >&2
+      printf "❌ \033[31mCould not detect DB_DATABASE from remote .env or .env.php\033[0m\n" >&2
       exit 1
     fi
 

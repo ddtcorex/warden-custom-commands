@@ -65,6 +65,10 @@ LOCAL_CONTAINER="${ENV_TYPE}-local-php-fpm-1"
 DEV_CONTAINER="${ENV_TYPE}-dev-php-fpm-1"
 STAGING_CONTAINER="${ENV_TYPE}-staging-php-fpm-1"
 
+LOCAL_DB="${ENV_TYPE}-local-db-1"
+DEV_DB="${ENV_TYPE}-dev-db-1"
+STAGING_DB="${ENV_TYPE}-staging-db-1"
+
 # Wait for containers to be ready
 echo "  Waiting for containers to be ready..."
 sleep 5
@@ -131,11 +135,28 @@ echo "  All environments: Public keys distributed"
 
 # Step 7: Networks
 echo ""
-echo "Step 7: Connecting Docker networks..."
+echo "Step 7: Connecting Docker networks and fixing DNS..."
 docker network connect "${ENV_TYPE}-dev_default" "${LOCAL_CONTAINER}" 2>/dev/null || echo "Warning: Could not connect ${LOCAL_CONTAINER} to ${ENV_TYPE}-dev_default"
 docker network connect "${ENV_TYPE}-staging_default" "${LOCAL_CONTAINER}" 2>/dev/null || echo "Warning: Could not connect ${LOCAL_CONTAINER} to ${ENV_TYPE}-staging_default"
 docker network connect "${ENV_TYPE}-staging_default" "${DEV_CONTAINER}" 2>/dev/null || echo "Warning: Could not connect ${DEV_CONTAINER} to ${ENV_TYPE}-staging_default"
 docker network connect "${ENV_TYPE}-dev_default" "${STAGING_CONTAINER}" 2>/dev/null || echo "Warning: Could not connect ${STAGING_CONTAINER} to ${ENV_TYPE}-dev_default"
+
+# Fix 'db' DNS resolution to point to the correct DB container for each environment
+# This is necessary because containers are connected to multiple networks where 'db' alias exists
+for context in local dev staging; do
+    case "${context}" in
+        local) php_cont="${LOCAL_CONTAINER}"; db_cont="${LOCAL_DB}"; net="${ENV_TYPE}-local_default" ;;
+        dev) php_cont="${DEV_CONTAINER}"; db_cont="${DEV_DB}"; net="${ENV_TYPE}-dev_default" ;;
+        staging) php_cont="${STAGING_CONTAINER}"; db_cont="${STAGING_DB}"; net="${ENV_TYPE}-staging_default" ;;
+    esac
+    
+    DB_IP=$(docker inspect -f "{{with index .NetworkSettings.Networks \"${net}\"}}{{.IPAddress}}{{end}}" "${db_cont}")
+    if [[ -n "${DB_IP}" ]]; then
+        # Add to /etc/hosts. We use sed to replace or append. 
+        # Since docker already has 'db' there, we want our IP to be first or replace it.
+        docker exec -u root "${php_cont}" bash -c "grep -q 'db' /etc/hosts && sed -i \"s/.*db$/${DB_IP} db/\" /etc/hosts || echo '${DB_IP} db' >> /etc/hosts"
+    fi
+done
 
 # Verify connectivity
 if ! docker exec "${LOCAL_CONTAINER}" nc -z -w 2 "${DEV_CONTAINER}" 22 >/dev/null 2>&1; then
@@ -143,11 +164,10 @@ if ! docker exec "${LOCAL_CONTAINER}" nc -z -w 2 "${DEV_CONTAINER}" 22 >/dev/nul
      DEV_IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}' "${DEV_CONTAINER}" | awk '{print $1}')
      if ! docker exec "${LOCAL_CONTAINER}" nc -z -w 2 "${DEV_IP}" 22 >/dev/null 2>&1; then
          echo "Error: Network connection failed between local and dev containers."
-         # Force reconnect?
      fi
 fi
 
-echo "  Networks connected"
+echo "  Networks connected and DNS fixed"
 
 # Step 9: Test Dirs
 echo ""

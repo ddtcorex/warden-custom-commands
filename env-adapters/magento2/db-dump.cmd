@@ -11,6 +11,9 @@ elif [[ -z "${!ENV_SOURCE_HOST_VAR+x}" ]]; then
     exit 2
 fi
 
+SCRIPT_DIR=$(dirname "${BASH_SOURCE[0]}")
+source "${SCRIPT_DIR}/utils.sh"
+
 IGNORED_TABLES=(
     'admin_system_messages'
     'admin_user_expiration'
@@ -121,10 +124,10 @@ function dump_local () {
 
     printf "⌛ \033[1;32mDumping local database (\033[33m%s\033[1;32m)...\033[0m\n" "${DB_NAME}"
 
-    local db_dump_metadata="export MYSQL_PWD='${DB_PASS}'; mysqldump --single-transaction --no-tablespaces --no-data --routines -hdb -u${DB_USER} ${DB_NAME} | sed -e '/999999.*enable the sandbox mode/d' -e 's/DEFINER=[^*]*\*/\*/g' -e 's/ROW_FORMAT=FIXED//g' | gzip"
+    local db_dump_metadata="export MYSQL_PWD='${DB_PASS}'; mysqldump --force --single-transaction --no-tablespaces --no-data --routines -hdb -u${DB_USER} ${DB_NAME} | sed -e '/999999.*enable the sandbox mode/d' -e 's/DEFINER=[^*]*\*/\*/g' -e 's/ROW_FORMAT=FIXED//g' | gzip"
     warden env exec -T db bash -c "${db_dump_metadata}" > "${DUMP_FILENAME}"
     
-    local db_dump_data="export MYSQL_PWD='${DB_PASS}'; mysqldump --single-transaction --no-tablespaces --skip-triggers --no-create-info ${ignored_opts[*]} -hdb -u${DB_USER} ${DB_NAME} | sed -e '/999999.*enable the sandbox mode/d' -e 's/DEFINER=[^*]*\*/\*/g' -e 's/ROW_FORMAT=FIXED//g' | gzip"
+    local db_dump_data="export MYSQL_PWD='${DB_PASS}'; mysqldump --force --single-transaction --no-tablespaces --skip-triggers --no-create-info ${ignored_opts[*]} -hdb -u${DB_USER} ${DB_NAME} | sed -e '/999999.*enable the sandbox mode/d' -e 's/DEFINER=[^*]*\*/\*/g' -e 's/ROW_FORMAT=FIXED//g' | gzip"
     warden env exec -T db bash -c "${db_dump_data}" >> "${DUMP_FILENAME}"
 
     printf "✅ \033[32mDatabase dump complete! File: %s\033[0m\n" "${DUMP_FILENAME}"
@@ -156,12 +159,12 @@ function dump_cloud () {
 }
 
 function dump_premise () {
-    local db_info=$(ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" 'php -r "\$a=include \"'"${ENV_SOURCE_DIR}"'/app/etc/env.php\"; var_export(\$a[\"db\"][\"connection\"][\"default\"]);"')
-    local db_host=$(warden env exec php-fpm php -r "\$a = ${db_info}; echo strpos(\$a['host'], ':') === false ? \$a['host'] : explode(':', \$a['host'])[0];")
-    local db_port=$(warden env exec php-fpm php -r "\$a = ${db_info}; echo strpos(\$a['host'], ':') === false ? '3306' : explode(':', \$a['host'])[1];")
-    local db_user=$(warden env exec php-fpm php -r "\$a = ${db_info}; echo \$a['username'];")
-    local db_pass=$(warden env exec php-fpm php -r "\$a = ${db_info}; echo \$a['password'];")
-    local db_name=$(warden env exec php-fpm php -r "\$a = ${db_info}; echo \$a['dbname'];")
+    local db_info=$(get_remote_db_info "${ENV_SOURCE_HOST}" "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}" "${ENV_SOURCE_DIR}")
+    local db_host=$(echo "${db_info}" | grep "^DB_HOST=" | cut -d= -f2-)
+    local db_port=$(echo "${db_info}" | grep "^DB_PORT=" | cut -d= -f2-)
+    local db_user=$(echo "${db_info}" | grep "^DB_USERNAME=" | cut -d= -f2-)
+    local db_pass=$(echo "${db_info}" | grep "^DB_PASSWORD=" | cut -d= -f2-)
+    local db_name=$(echo "${db_info}" | grep "^DB_DATABASE=" | cut -d= -f2-)
 
     local ignored_opts=()
     if [[ "${FULL_DUMP:-0}" -eq "0" ]]; then
@@ -172,10 +175,10 @@ function dump_premise () {
 
     printf "⌛ \033[1;32mDumping \033[33m%s\033[1;32m database from \033[33m%s\033[1;32m...\033[0m\n" "${db_name}" "${ENV_SOURCE_HOST}"
 
-    local db_dump_metadata="export MYSQL_PWD='${db_pass}'; mysqldump --single-transaction --no-tablespaces --no-data --routines -h${db_host} -P${db_port} -u${db_user} ${db_name} | sed -e '/999999.*enable the sandbox mode/d' -e 's/DEFINER=[^*]*\*/\*/g' -e 's/ROW_FORMAT=FIXED//g' | gzip"
+    local db_dump_metadata="export MYSQL_PWD='${db_pass}'; mysqldump --force --single-transaction --no-tablespaces --no-data --routines -h${db_host} -P${db_port} -u${db_user} ${db_name} | sed -e '/999999.*enable the sandbox mode/d' -e 's/DEFINER=[^*]*\*/\*/g' -e 's/ROW_FORMAT=FIXED//g' | gzip"
     ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "set -o pipefail; ${db_dump_metadata}" > "${DUMP_FILENAME}"
 
-    local db_dump_data="export MYSQL_PWD='${db_pass}'; mysqldump --single-transaction --no-tablespaces --skip-triggers --no-create-info ${ignored_opts[*]} -h${db_host} -P${db_port} -u${db_user} ${db_name} | sed -e '/999999.*enable the sandbox mode/d' -e 's/DEFINER=[^*]*\*/\*/g' -e 's/ROW_FORMAT=FIXED//g' | gzip"
+    local db_dump_data="export MYSQL_PWD='${db_pass}'; mysqldump --force --single-transaction --no-tablespaces --skip-triggers --no-create-info ${ignored_opts[*]} -h${db_host} -P${db_port} -u${db_user} ${db_name} | sed -e '/999999.*enable the sandbox mode/d' -e 's/DEFINER=[^*]*\*/\*/g' -e 's/ROW_FORMAT=FIXED//g' | gzip"
     ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "set -o pipefail; ${db_dump_data}" >> "${DUMP_FILENAME}"
     
     printf "✅ \033[32mDatabase dump complete! File: %s\033[0m\n" "${DUMP_FILENAME}"

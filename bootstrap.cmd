@@ -59,6 +59,10 @@ if [[ ! -f .env ]]; then
         fatal "Failed to initialize environment"
     fi
     
+    # Prompt for remote setup
+    source "${SUBCOMMAND_DIR}/setup-remotes.cmd"
+    
+    
     # Set flag to automatically fix dependencies since we just created .env
     FIX_DEPS_FLAG="--fix-deps"
 fi

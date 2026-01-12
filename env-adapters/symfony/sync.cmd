@@ -23,6 +23,9 @@ fi
 MEDIA_PATH="public/uploads"
 CODE_EXCLUDE=('vendor' 'node_modules' 'var/cache/*' 'var/log/*' '.git' '.idea' '*.gz' '*.zip' '*.tar' '*.7z' '*.sql' '.env' '.env.local')
 
+SCRIPT_DIR=$(dirname "${BASH_SOURCE[0]}")
+source "${SCRIPT_DIR}/utils.sh"
+
 # Function for file transfer (uses rsync)
 function transfer_files() {
     local direction="${1}"
@@ -30,7 +33,7 @@ function transfer_files() {
     local dest_path="${3%/}"
     local excludes=("${@:4}")
 
-    # Path-aware .env.local exclusion (only if it exists on destination)
+    # Path-aware .env exclusion (only if it exists on destination)
     local target_file=".env.local"
     local rel_exclude=""
     local exists_on_dest=0
@@ -75,7 +78,6 @@ function transfer_files() {
     if [[ -n "${rel_exclude}" ]]; then
         excludes+=( "${rel_exclude}" )
     fi
-    
     local exclude_args=()
     for item in "${excludes[@]}"; do
         exclude_args+=( --exclude="${item}" )
@@ -145,42 +147,22 @@ function sync_database() {
         printf "⌛ \033[1;32mSyncing DB from %s to %s ...\033[0m\n" "${SYNC_SOURCE}" "${SYNC_DESTINATION}"
         
         # Source DB info
-        local src_db_url=$(ssh ${SSH_OPTS} -p "${SOURCE_REMOTE_PORT}" "${SOURCE_REMOTE_USER}@${SOURCE_REMOTE_HOST}" "grep -h -E '^DATABASE_URL=' \"${SOURCE_REMOTE_DIR}/.env.local\" \"${SOURCE_REMOTE_DIR}/.env\" 2>/dev/null | head -n 1")
+        local src_db_info=$(get_remote_db_info "${SOURCE_REMOTE_HOST}" "${SOURCE_REMOTE_PORT}" "${SOURCE_REMOTE_USER}" "${SOURCE_REMOTE_DIR}")
         
-        src_db_url=${src_db_url#*=}
-        src_db_url=$(printf "%s" "${src_db_url}" | tr -d '"'"'")
-        src_db_url=${src_db_url#*://}
-        local src_user_pass=${src_db_url%%@*}
-        local src_db_user=${src_user_pass%%:*}
-        local src_db_pass=${src_user_pass#*:}
-        local src_host_port_name=${src_db_url#*@}
-        local src_host_port=${src_host_port_name%%/*}
-        local src_db_host=${src_host_port%%:*}
-        local src_db_port=${src_host_port#*:}
-        if [[ "${src_db_host}" == "${src_db_port}" ]]; then src_db_port=3306; else src_db_port=${src_db_port%%\?*}; fi
-        local src_name_rest=${src_host_port_name#*/}
-        local src_db_name=${src_name_rest%%\?*}
-        src_db_host=${src_db_host:-127.0.0.1}
-        src_db_port=${src_db_port:-3306}
+        local src_db_host=$(echo "${src_db_info}" | grep "^DB_HOST=" | cut -d= -f2-)
+        local src_db_port=$(echo "${src_db_info}" | grep "^DB_PORT=" | cut -d= -f2-)
+        local src_db_user=$(echo "${src_db_info}" | grep "^DB_USERNAME=" | cut -d= -f2-)
+        local src_db_pass=$(echo "${src_db_info}" | grep "^DB_PASSWORD=" | cut -d= -f2-)
+        local src_db_name=$(echo "${src_db_info}" | grep "^DB_DATABASE=" | cut -d= -f2-)
 
         # Destination DB info
-        local dest_db_url=$(ssh ${SSH_OPTS} -p "${DEST_REMOTE_PORT}" "${DEST_REMOTE_USER}@${DEST_REMOTE_HOST}" "grep -h -E '^DATABASE_URL=' \"${DEST_REMOTE_DIR}/.env.local\" \"${DEST_REMOTE_DIR}/.env\" 2>/dev/null | head -n 1")
+        local dest_db_info=$(get_remote_db_info "${DEST_REMOTE_HOST}" "${DEST_REMOTE_PORT}" "${DEST_REMOTE_USER}" "${DEST_REMOTE_DIR}")
         
-        dest_db_url=${dest_db_url#*=}
-        dest_db_url=$(printf "%s" "${dest_db_url}" | tr -d '"'"'")
-        dest_db_url=${dest_db_url#*://}
-        local dest_user_pass=${dest_db_url%%@*}
-        local dest_db_user=${dest_user_pass%%:*}
-        local dest_db_pass=${dest_user_pass#*:}
-        local dest_host_port_name=${dest_db_url#*@}
-        local dest_host_port=${dest_host_port_name%%/*}
-        local dest_db_host=${dest_host_port%%:*}
-        local dest_db_port=${dest_host_port#*:}
-        if [[ "${dest_db_host}" == "${dest_db_port}" ]]; then dest_db_port=3306; else dest_db_port=${dest_db_port%%\?*}; fi
-        local dest_name_rest=${dest_host_port_name#*/}
-        local dest_db_name=${dest_name_rest%%\?*}
-        dest_db_host=${dest_db_host:-127.0.0.1}
-        dest_db_port=${dest_db_port:-3306}
+        local dest_db_host=$(echo "${dest_db_info}" | grep "^DB_HOST=" | cut -d= -f2-)
+        local dest_db_port=$(echo "${dest_db_info}" | grep "^DB_PORT=" | cut -d= -f2-)
+        local dest_db_user=$(echo "${dest_db_info}" | grep "^DB_USERNAME=" | cut -d= -f2-)
+        local dest_db_pass=$(echo "${dest_db_info}" | grep "^DB_PASSWORD=" | cut -d= -f2-)
+        local dest_db_name=$(echo "${dest_db_info}" | grep "^DB_DATABASE=" | cut -d= -f2-)
 
         printf "Streaming mysqldump from %s to %s ...\n" "${SYNC_SOURCE}" "${SYNC_DESTINATION}"
         if ! ssh ${SSH_OPTS} -p "${SOURCE_REMOTE_PORT}" "${SOURCE_REMOTE_USER}@${SOURCE_REMOTE_HOST}" \
@@ -213,24 +195,13 @@ function sync_database() {
         printf "⌛ \033[1;32mSyncing DB from local to %s ...\033[0m\n" "${SYNC_DESTINATION}"
 
         # 1. Get Destination (Remote) DB Credentials
-        local dest_db_url=$(ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "grep -h -E '^DATABASE_URL=' \"${ENV_SOURCE_DIR}/.env.local\" \"${ENV_SOURCE_DIR}/.env\" 2>/dev/null | head -n 1")
+        local dest_db_info=$(get_remote_db_info "${ENV_SOURCE_HOST}" "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}" "${ENV_SOURCE_DIR}")
         
-        dest_db_url=${dest_db_url#*=}
-        dest_db_url=$(printf "%s" "${dest_db_url}" | tr -d '"'"'")
-        dest_db_url=${dest_db_url#*://}
-        local dest_user_pass=${dest_db_url%%@*}
-        local dest_db_user=${dest_user_pass%%:*}
-        local dest_db_pass=${dest_user_pass#*:}
-        local dest_host_port_name=${dest_db_url#*@}
-        local dest_host_port=${dest_host_port_name%%/*}
-        local dest_db_host=${dest_host_port%%:*}
-        local dest_db_port=${dest_host_port#*:}
-        if [[ "${dest_db_host}" == "${dest_db_port}" ]]; then dest_db_port=3306; else dest_db_port=${dest_db_port%%\?*}; fi
-        local dest_name_rest=${dest_host_port_name#*/}
-        local dest_db_name=${dest_name_rest%%\?*}
-        
-        dest_db_host=${dest_db_host:-127.0.0.1}
-        dest_db_port=${dest_db_port:-3306}
+        local dest_db_host=$(echo "${dest_db_info}" | grep "^DB_HOST=" | cut -d= -f2-)
+        local dest_db_port=$(echo "${dest_db_info}" | grep "^DB_PORT=" | cut -d= -f2-)
+        local dest_db_user=$(echo "${dest_db_info}" | grep "^DB_USERNAME=" | cut -d= -f2-)
+        local dest_db_pass=$(echo "${dest_db_info}" | grep "^DB_PASSWORD=" | cut -d= -f2-)
+        local dest_db_name=$(echo "${dest_db_info}" | grep "^DB_DATABASE=" | cut -d= -f2-)
 
         # 2. Get Local (Source) DB Credentials
         local src_db_user=$(warden env exec -T db printenv MYSQL_USER)
@@ -258,25 +229,13 @@ function sync_database() {
     fi
 
     # Fetch DB creds via SSH
-    local db_url=$(ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "grep -h -E '^DATABASE_URL=' \"${ENV_SOURCE_DIR}/.env.local\" \"${ENV_SOURCE_DIR}/.env\" 2>/dev/null | head -n 1")
+    local db_info=$(get_remote_db_info "${ENV_SOURCE_HOST}" "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}" "${ENV_SOURCE_DIR}")
     
-    # Parse URL format: db_type://db_user:db_pass@db_host:db_port/db_name...
-    db_url=${db_url#*=}
-    db_url=$(printf "%s" "${db_url}" | tr -d '"'"'")
-    db_url=${db_url#*://}
-    local db_user_pass=${db_url%%@*}
-    local db_user=${db_user_pass%%:*}
-    local db_pass=${db_user_pass#*:}
-    local db_host_port_name=${db_url#*@}
-    local db_host_port=${db_host_port_name%%/*}
-    local db_host=${db_host_port%%:*}
-    local db_port=${db_host_port#*:}
-    if [[ "${db_host}" == "${db_port}" ]]; then db_port=3306; else db_port=${db_port%%\?*}; fi
-    local db_name_rest=${db_host_port_name#*/}
-    local db_name=${db_name_rest%%\?*}
-
-    db_host=${db_host:-127.0.0.1}
-    db_port=${db_port:-3306}
+    local db_host=$(echo "${db_info}" | grep "^DB_HOST=" | cut -d= -f2-)
+    local db_port=$(echo "${db_info}" | grep "^DB_PORT=" | cut -d= -f2-)
+    local db_user=$(echo "${db_info}" | grep "^DB_USERNAME=" | cut -d= -f2-)
+    local db_pass=$(echo "${db_info}" | grep "^DB_PASSWORD=" | cut -d= -f2-)
+    local db_name=$(echo "${db_info}" | grep "^DB_DATABASE=" | cut -d= -f2-)
     
     printf "Streaming mysqldump from %s:%s ...\n" "${ENV_SOURCE_HOST}" "${db_name}"
     ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" \
