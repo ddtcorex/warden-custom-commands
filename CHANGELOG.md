@@ -5,6 +5,43 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2026-01-12
+
+**v2.0.0: Interactive Remote Setup & Robust DB Sync**
+
+This major release significantly improves database synchronization reliability by introducing file-based transfers and transactional integrity. It also adds a new interactive command for configuring remote environments and expands the test suite with comprehensive unit and integration tests.
+
+### ✨ New Features
+
+- **Interactive Remote Setup (`warden setup-remotes`):**
+  - New wizard-style command to easily configure remote environments (Dev/Staging) in `.env`.
+  - Validates inputs and updates `.env` file automatically.
+
+- **Robust DB Sync (`warden sync --db`):**
+  - Refactored Remote-to-Remote (R2R) sync to use file-based transfer (Dump -> SCP -> Import) instead of piping.
+  - Added `--force` flag to `mysqldump` to gracefully handle missing view/table definitions.
+  - Improved error handling and transactional safety during syncs.
+
+- **Laravel Legacy Support:**
+  - Added support for legacy Laravel 4 `app/config/local/database.php` via `.env.php`.
+  - Improved non-interactive mode for legacy projects.
+
+### 🛠 Improvements
+
+- **Refactored Adapters:** Centralized logic in `utils.sh` for all frameworks (Magento 2, Laravel, Symfony, WordPress).
+- **Extended Test Coverage:**
+  - Added comprehensive unit tests (`.bats`) for `open`, `sync`, and `utils` commands.
+  - Added full integration tests for Database Sync and Remote-to-Remote operations.
+- **Test Environment Stability:**
+  - Implemented DNS resolution fixes (`/etc/hosts` injection) for test containers.
+  - Added `configure-test-envs.sh` to restore SSH/DNS settings after container recreation.
+
+### 🐛 Bug Fixes
+
+- Fixed `mysqldump` failures on views with invalid definers or missing tables.
+- Fixed SSH pipe corruption issues during large database transfers.
+- Fixed SSH persistence issues where test containers lost configuration after bootstrap.
+
 ## [1.9.0] - 2026-01-09
 
 **v1.9.0: Bootstrap Improvements & Full Integration Testing**
