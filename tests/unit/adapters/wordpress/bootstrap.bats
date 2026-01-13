@@ -55,3 +55,18 @@ setup() {
     [ "$status" -eq 1 ]
     [[ "$output" == *"not intended to be run directly"* ]]
 }
+
+@test "WordPress: Default behavior streams database" {
+    export ENV_SOURCE_HOST="example.com"
+    run "$BOOTSTRAP_CMD" --skip-wp-install
+    
+    assert_command_called "warden db-import --stream-db"
+}
+
+@test "WordPress: --no-stream-db falls back to local download" {
+    export ENV_SOURCE_HOST="example.com"
+    run "$BOOTSTRAP_CMD" --no-stream-db --skip-wp-install
+    
+    # Should use --local in db-dump
+    grep -E -q "warden db-dump --local --file=.* -e wordpress" "${MOCK_LOG}"
+}

@@ -63,3 +63,22 @@ setup() {
     [ "$status" -eq 1 ]
     [[ "$output" == *"not intended to be run directly"* ]]
 }
+
+@test "Magento2: Bootstrap uses streaming by default" {
+    # We need ENV_SOURCE setup
+    export ENV_SOURCE="staging"
+    export ENV_SOURCE_HOST="mock-host"
+    
+    run "$BOOTSTRAP_CMD" --skip-composer-install --skip-admin-create --skip-media-sync
+    
+    assert_command_called "warden db-import --stream-db -e staging"
+}
+
+@test "Magento2: Bootstrap uses --local for db-dump when not streaming" {
+    export ENV_SOURCE="staging"
+    export ENV_SOURCE_HOST="mock-host"
+    
+    run "$BOOTSTRAP_CMD" --no-stream-db --skip-composer-install --skip-admin-create --skip-media-sync
+    
+    grep -E -q "warden db-dump --local --file=.* -e staging" "$MOCK_LOG"
+}

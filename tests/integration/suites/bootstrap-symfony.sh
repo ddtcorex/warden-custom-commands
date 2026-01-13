@@ -56,6 +56,17 @@ fi
 # -----------------------------------------------------
 header "Scenario 2: Clone Local from Staging (Symfony)"
 
+# Scenario 1's clean-install may have restarted staging container or killed sshd
+# Ensure SSH is running on staging before attempting sync
+echo "Ensuring SSH is running on staging..."
+docker exec --workdir / -u root "${STAGING_PHP}" bash -c "command -v sshd >/dev/null 2>&1 || dnf install -y openssh-server > /dev/null 2>&1; ssh-keygen -A > /dev/null 2>&1; mkdir -p /run/sshd; /usr/sbin/sshd 2>/dev/null || true"
+
+# Ensure SSH keys are in place for local -> staging
+LOCAL_PUBKEY=$(docker exec --workdir / "${LOCAL_PHP}" cat /home/www-data/.ssh/id_rsa.pub 2>/dev/null || true)
+if [[ -n "${LOCAL_PUBKEY}" ]]; then
+    docker exec --workdir / -u www-data "${STAGING_PHP}" bash -c "mkdir -p ~/.ssh && echo '${LOCAL_PUBKEY}' >> ~/.ssh/authorized_keys && sort -u ~/.ssh/authorized_keys -o ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys" 2>/dev/null || true
+fi
+
 echo "Navigating to local environment: ${LOCAL_ENV}"
 cd "${LOCAL_ENV}"
 

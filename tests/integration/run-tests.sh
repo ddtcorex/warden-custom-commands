@@ -123,6 +123,7 @@ fi
 TEST_SUITES+=(
     "file-sync.sh"
     "media-sync.sh"
+    "db-dump-behavior.sh"
     "db-sync.sh"
     "full-sync.sh"
     "custom-path.sh"
