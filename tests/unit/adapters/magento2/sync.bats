@@ -27,7 +27,10 @@ setup() {
     export SYNC_DELETE="0"
     export SYNC_REDEPLOY="0"
     export SYNC_REMOTE_TO_REMOTE="0"
+    export SYNC_REMOTE_TO_REMOTE="0"
     export SYNC_INCLUDE_PRODUCT="0"
+    export SYNC_BACKUP="0"
+    export SYNC_BACKUP_DIR="~/backup"
     
     export MOCK_BIN="${TEST_TMP_DIR}/mock-bin"
     mkdir -p "${MOCK_BIN}"
@@ -127,4 +130,44 @@ EOF
     # Check for mysqldump with --force flag and db host (use -E for extended regex)
     grep -q "ssh.*\\\$(command -v mariadb" "$MOCK_LOG"
     grep -Fq "warden env exec -T db bash -c \$(command -v mariadb || echo mysql) -hdb -u\"\$MYSQL_USER\" -p\"\$MYSQL_PASSWORD\" \"\$MYSQL_DATABASE\" -f" "$MOCK_LOG"
+}
+
+@test "Magento2 Sync: DB Download with Backup" {
+    export ENV_SOURCE="dev"
+    export ENV_SOURCE_HOST="example.com"
+    export ENV_SOURCE_PORT="22"
+    export ENV_SOURCE_USER="user"
+    export ENV_SOURCE_DIR="/var/www/remote"
+    export ENV_SOURCE_HOST_VAR="REMOTE_DEV_HOST"
+    export REMOTE_DEV_HOST="dummy"
+    
+    export DIRECTION="download"
+    export SYNC_TYPE_DB=1
+    export SYNC_BACKUP=1
+    export SYNC_BACKUP_DIR="${TEST_TMP_DIR}/backup"
+    
+    run "$BOOTSTRAP_CMD"
+    
+    grep -q "warden db-dump --file=${TEST_TMP_DIR}/backup" "$MOCK_LOG"
+}
+
+@test "Magento2 Sync: DB Upload with Backup" {
+    export ENV_SOURCE="dev"
+    export ENV_SOURCE_HOST="example.com"
+    export ENV_SOURCE_PORT="22"
+    export ENV_SOURCE_USER="user"
+    export ENV_SOURCE_DIR="/var/www/remote"
+    export ENV_SOURCE_HOST_VAR="REMOTE_DEV_HOST"
+    export REMOTE_DEV_HOST="dummy"
+    
+    export DIRECTION="upload"
+    export SYNC_DESTINATION="remote-test"
+    export SYNC_TYPE_DB=1
+    export SYNC_BACKUP=1
+    export SYNC_BACKUP_DIR="~/backup"
+    
+    run "$BOOTSTRAP_CMD"
+    
+    grep -q "ssh.*mkdir -p.*~/backup" "$MOCK_LOG"
+    grep -q "ssh.*| gzip > .*~/backup" "$MOCK_LOG"
 }

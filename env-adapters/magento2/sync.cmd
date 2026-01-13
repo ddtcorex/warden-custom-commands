@@ -178,6 +178,17 @@ function sync_database() {
         local dest_db_pass=$(echo "${dest_db_info}" | grep "^DB_PASSWORD=" | cut -d= -f2-)
         local dest_db_name=$(echo "${dest_db_info}" | grep "^DB_DATABASE=" | cut -d= -f2-)
 
+        # Backup Destination DB (Remote)
+        if [[ "${SYNC_BACKUP}" -eq 1 ]]; then
+            printf "  Creating backup of destination database...\n"
+            local backup_file="${SYNC_BACKUP_DIR}/${WARDEN_ENV_NAME}_backup_$(date +%Y%m%d_%H%M%S).sql.gz"
+            if ! ssh ${SSH_OPTS} -p "${DEST_REMOTE_PORT}" "${DEST_REMOTE_USER}@${DEST_REMOTE_HOST}" \
+                "mkdir -p \"${SYNC_BACKUP_DIR}\" && export MYSQL_PWD='${dest_db_pass}'; \$(command -v mariadb-dump || echo mysqldump) --force --single-transaction --no-tablespaces --routines -h${dest_db_host} -P${dest_db_port} -u${dest_db_user} ${dest_db_name} | gzip > \"${backup_file}\""; then
+                printf "\033[31mError: Destination database backup failed.\033[0m\n" >&2
+                return 1
+            fi
+        fi
+
         # Use file-based transfer through local to avoid pipe corruption and handle network issues
         local local_tmp_file="var/warden_r2r_$(date +%Y%m%dT%H%M%S).sql.gz"
         mkdir -p var
@@ -227,6 +238,17 @@ function sync_database() {
         local dest_db_pass=$(echo "${dest_db_info}" | grep "^DB_PASSWORD=" | cut -d= -f2-)
         local dest_db_name=$(echo "${dest_db_info}" | grep "^DB_DATABASE=" | cut -d= -f2-)
 
+        # Backup Destination DB (Remote - Upload)
+        if [[ "${SYNC_BACKUP}" -eq 1 ]]; then
+            printf "  Creating backup of destination database...\n"
+            local backup_file="${SYNC_BACKUP_DIR}/${WARDEN_ENV_NAME}_backup_$(date +%Y%m%d_%H%M%S).sql.gz"
+            if ! ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" \
+                "mkdir -p \"${SYNC_BACKUP_DIR}\" && export MYSQL_PWD='${dest_db_pass}'; \$(command -v mariadb-dump || echo mysqldump) --force --single-transaction --no-tablespaces --routines -h${dest_db_host} -P${dest_db_port} -u${dest_db_user} ${dest_db_name} | gzip > \"${backup_file}\""; then
+                printf "\033[31mError: Destination database backup failed.\033[0m\n" >&2
+                return 1
+            fi
+        fi
+
         # Use host-side warden db-dump to avoid container DNS issues
         local local_dump="var/warden_upload_$(date +%Y%m%dT%H%M%S).sql.gz"
         mkdir -p var
@@ -271,6 +293,18 @@ function sync_database() {
     fi
 
     # Download logic
+    if [[ "${SYNC_BACKUP}" -eq 1 ]]; then
+        printf "  Creating backup of local database...\n"
+        local local_backup_dir="${SYNC_BACKUP_DIR/#\~/$HOME}"
+        local backup_file="${local_backup_dir}/${WARDEN_ENV_NAME}_backup_$(date +%Y%m%d_%H%M%S).sql.gz"
+        mkdir -p "${local_backup_dir}"
+        
+        if ! warden db-dump --file="${backup_file}"; then
+             printf "\033[31mError: Local database backup failed.\033[0m\n" >&2
+             return 1
+        fi
+    fi
+
     local db_info=$(get_remote_db_info "${ENV_SOURCE_HOST}" "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}" "${ENV_SOURCE_DIR}")
     if [[ $? -ne 0 ]]; then
         printf "\033[31mError: Failed to retrieve database credentials from %s.\033[0m\n" "${ENV_SOURCE_HOST}" >&2
