@@ -51,10 +51,8 @@ setup_remote_env() {
 
 if [[ -t 0 ]]; then
     printf "\nDo you want to configure remote environments (Staging, Production, Dev)? [y/N] "
-    read -r response
-else
-    response="n"
 fi
+read -r response || response="n"
 
 if [[ "${response}" =~ ^[yY] ]]; then
     setup_remote_env "Staging" "REMOTE_STAGING"
