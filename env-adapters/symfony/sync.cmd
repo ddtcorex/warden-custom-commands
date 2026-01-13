@@ -259,7 +259,6 @@ function sync_database() {
 
     # Download logic
     if [[ "${SYNC_BACKUP}" -eq 1 ]]; then
-        printf "  Creating backup of local database...\n"
         local local_backup_dir="${SYNC_BACKUP_DIR/#\~/$HOME}"
         local backup_file="${local_backup_dir}/${WARDEN_ENV_NAME}_backup_$(date +%Y%m%d_%H%M%S).sql.gz"
         mkdir -p "${local_backup_dir}"
@@ -268,7 +267,6 @@ function sync_database() {
              printf "\033[31mError: Local database backup failed.\033[0m\n" >&2
              return 1
         fi
-        printf "  ✅ Backup saved to: %s\n" "${backup_file}"
     fi
 
     # Fetch DB creds via SSH
