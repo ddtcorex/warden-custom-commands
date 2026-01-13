@@ -102,11 +102,11 @@ if [[ "$UNIT_ONLY" -eq 0 ]]; then
             for env in magento2 symfony laravel wordpress; do
                 if [[ -d "$SCRIPT_DIR/${env}-local" ]] || [[ "$env" == "magento2" ]]; then
                     echo -e "${CYAN}▸ Integration tests for ${env}${NC}"
-                    "$SCRIPT_DIR/integration/run-tests.sh" --type="$env" || INTEGRATION_PASSED=$?
+                    "$SCRIPT_DIR/integration/run-tests.sh" --type="$env" --skip-unit || INTEGRATION_PASSED=$?
                 fi
             done
         else
-            "$SCRIPT_DIR/integration/run-tests.sh" --type="$ENV_TYPE"
+            "$SCRIPT_DIR/integration/run-tests.sh" --type="$ENV_TYPE" --skip-unit
             INTEGRATION_PASSED=$?
         fi
     else
