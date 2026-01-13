@@ -27,6 +27,8 @@ setup() {
     export SYNC_DELETE="0"
     export SYNC_REDEPLOY="0"
     export SYNC_REMOTE_TO_REMOTE="0"
+    export SYNC_BACKUP="0"
+    export SYNC_BACKUP_DIR="~/backup"
     
     export MOCK_BIN="${TEST_TMP_DIR}/mock-bin"
     mkdir -p "${MOCK_BIN}"
@@ -107,6 +109,30 @@ EOF
     
     run "$BOOTSTRAP_CMD"
     
-    grep -q "ssh .* mysqldump .* -hremote-db .* remote_db" "$MOCK_LOG"
-    grep -q "warden db import --force" "$MOCK_LOG"
+    grep -q "ssh .* \$(command -v mariadb" "$MOCK_LOG"
+    grep -Fq 'export MYSQL_PWD="$MYSQL_PASSWORD"' "$MOCK_LOG"
+    grep -Fq 'SET FOREIGN_KEY_CHECKS=0' "$MOCK_LOG"
+    grep -Fq 'mariadb || echo mysql' "$MOCK_LOG"
+}
+
+@test "Symfony Sync: DB Download with Backup" {
+    export ENV_SOURCE="dev"
+    export ENV_SOURCE_HOST="example.com"
+    export ENV_SOURCE_PORT="22"
+    export ENV_SOURCE_USER="user"
+    export ENV_SOURCE_DIR="/var/www/remote"
+    export ENV_SOURCE_HOST_VAR="REMOTE_DEV_HOST"
+    export REMOTE_DEV_HOST="dummy"
+    
+    export DIRECTION="download"
+    export SYNC_TYPE_DB=1
+    export SYNC_BACKUP=1
+    
+    run "$BOOTSTRAP_CMD"
+    
+    grep -q "warden db-dump -e local" "$MOCK_LOG"
+    if grep -q "warden db-dump -e local --file" "$MOCK_LOG"; then
+        echo "Found --file arg when it should be absent"
+        return 1
+    fi
 }

@@ -65,8 +65,7 @@ chmod +x ~/.warden/commands/*.cmd
 chmod +x ~/.warden/commands/env-adapters/*/*.cmd
 ```
 
-> [!TIP]
-> **Development Workflow:** If you are contributing or modifying these commands, it is recommended to symlink your development directory to `~/.warden/commands`:
+> [!TIP] > **Development Workflow:** If you are contributing or modifying these commands, it is recommended to symlink your development directory to `~/.warden/commands`:
 >
 > ```bash
 > ln -s ~/path/to/your/repo ~/.warden/commands
@@ -235,54 +234,54 @@ The unified synchronization command for files, media, and databases.
 
 1. **Sync Database (Remote to Local)**
 
-    ```bash
-    # Pull database from staging (default) to local
-    warden sync --db
+   ```bash
+   # Pull database from staging (default) to local
+   warden sync --db
 
-    # Pull database from production to local and flush cache
-    warden sync -s prod --db --flush
-    ```
+   # Pull database from production to local and flush cache
+   warden sync -s prod --db --flush
+   ```
 
 2. **Sync Media (Remote to Local)**
 
-    ```bash
-    # Pull media files from staging to local
-    warden sync --media
+   ```bash
+   # Pull media files from staging to local
+   warden sync --media
 
-    # Delete local files that are missing on remote (mirroring)
-    warden sync --media --delete
-    ```
+   # Delete local files that are missing on remote (mirroring)
+   warden sync --media --delete
+   ```
 
 3. **Sync Files/Code (Local to Remote)**
 
-    ```bash
-    # Push local changes to dev environment
-    warden sync -d dev --file
+   ```bash
+   # Push local changes to dev environment
+   warden sync -d dev --file
 
-    # Push a specific file
-    warden sync -d dev -p app/etc/config.php
-    ```
+   # Push a specific file
+   warden sync -d dev -p app/etc/config.php
+   ```
 
 4. **Sync Specific Path (Remote to Remote)**
 
-    ```bash
-    # Sync a specific log folder from prod to staging
-    warden sync -s prod -d staging -p var/log/
-    ```
+   ```bash
+   # Sync a specific log folder from prod to staging
+   warden sync -s prod -d staging -p var/log/
+   ```
 
 5. **Full Synchronization**
 
-    ```bash
-    # Sync everything: DB, Media, Files
-    warden sync --full
-    ```
+   ```bash
+   # Sync everything: DB, Media, Files
+   warden sync --full
+   ```
 
 6. **Dry Run**
 
-    ```bash
-    # See what would happen without actually syncing
-    warden sync --media --delete --dry-run
-    ```
+   ```bash
+   # See what would happen without actually syncing
+   warden sync --media --delete --dry-run
+   ```
 
 > [!IMPORTANT]
 > Operations to remote environments (where neither source nor destination is `local`) use **SSH Agent Forwarding**.
@@ -464,8 +463,10 @@ Dump database from a remote Laravel environment.
 
 **Options:**
 
+- `-h, --help` - Display help menu
 - `-e, --environment=<dev|staging|production>` - Environment to dump from (default: staging)
 - `-f, --file=<file>` - Output filename (default: auto-generated)
+- `--exclude-sensitive-data` - Exclude sensitive data from the dump (based on predefined IGNORED_TABLES)
 
 **Example:**
 
@@ -568,8 +569,10 @@ Dump database from a remote Symfony environment.
 
 **Options:**
 
+- `-h, --help` - Display help menu
 - `-e, --environment=<dev|staging|production>` - Environment to dump from (default: staging)
 - `-f, --file=<file>` - Output filename (default: auto-generated)
+- `--exclude-sensitive-data` - Exclude sensitive data from the dump (based on predefined IGNORED_TABLES)
 
 **Example:**
 
@@ -674,8 +677,10 @@ Dump database from a remote WordPress environment.
 
 **Options:**
 
+- `-h, --help` - Display help menu
 - `-e, --environment=<dev|staging|production>` - Environment to dump from (default: staging)
 - `-f, --file=<file>` - Output filename (default: auto-generated)
+- `--exclude-sensitive-data` - Exclude sensitive data from the dump (based on predefined IGNORED_TABLES)
 
 **Example:**
 

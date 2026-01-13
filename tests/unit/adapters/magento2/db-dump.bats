@@ -26,13 +26,18 @@ setup() {
     cat > "${MOCK_BIN}/warden" << 'EOF'
 #!/usr/bin/env bash
 echo "warden $*" >> "${MOCK_LOG}"
-# Handle printenv calls
+# Handle printenv calls (legacy)
 if [[ "$*" == *"printenv MYSQL_USER"* ]]; then
     echo "db_user"
 elif [[ "$*" == *"printenv MYSQL_PASSWORD"* ]]; then
     echo "db_pass"
 elif [[ "$*" == *"printenv MYSQL_DATABASE"* ]]; then
     echo "test_db"
+# Handle new single bash -c call for db info
+elif [[ "$*" == *'echo "MYSQL_USER='* ]]; then
+    echo "MYSQL_USER=db_user"
+    echo "MYSQL_PASSWORD=db_pass"
+    echo "MYSQL_DATABASE=test_db"
 else
     # For other warden commands, just succeed
     :
@@ -57,12 +62,7 @@ EOF
 @test "DB Dump: Default local dump creates file" {
     run "$BOOTSTRAP_CMD"
     
-    # Should call warden to get DB credentials
-    grep -q "warden env exec -T db printenv MYSQL_USER" "$MOCK_LOG"
-    grep -q "warden env exec -T db printenv MYSQL_PASSWORD" "$MOCK_LOG"
-    grep -q "warden env exec -T db printenv MYSQL_DATABASE" "$MOCK_LOG"
-    
-    # Should attempt to dump via warden
+    # Should call warden to get DB credentials (single call now)
     grep -q "warden env exec -T db bash" "$MOCK_LOG"
     
     # Should output filename
@@ -89,5 +89,5 @@ EOF
     run "$BOOTSTRAP_CMD" --exclude-sensitive-data
     
     # Should include additional sales tables in ignored list
-    grep -q "sales_order" "$MOCK_LOG" || grep -q "mysqldump" "$MOCK_LOG"
+    grep -q "sales_order" "$MOCK_LOG" || grep -E -q "(mariadb-dump|mysqldump)" "$MOCK_LOG"
 }

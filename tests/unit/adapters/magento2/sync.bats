@@ -27,7 +27,10 @@ setup() {
     export SYNC_DELETE="0"
     export SYNC_REDEPLOY="0"
     export SYNC_REMOTE_TO_REMOTE="0"
+    export SYNC_REMOTE_TO_REMOTE="0"
     export SYNC_INCLUDE_PRODUCT="0"
+    export SYNC_BACKUP="0"
+    export SYNC_BACKUP_DIR="~/backup"
     
     export MOCK_BIN="${TEST_TMP_DIR}/mock-bin"
     mkdir -p "${MOCK_BIN}"
@@ -125,6 +128,53 @@ EOF
     run "$BOOTSTRAP_CMD"
     
     # Check for mysqldump with --force flag and db host (use -E for extended regex)
-    grep -Eq "ssh.*mysqldump.*--force.*-hremote-db.*remote_db" "$MOCK_LOG"
-    grep -q "warden db import --force" "$MOCK_LOG"
+    grep -q "ssh.*\\\$(command -v mariadb" "$MOCK_LOG"
+    grep -Fq 'export MYSQL_PWD="$MYSQL_PASSWORD"' "$MOCK_LOG"
+    grep -Fq 'SET FOREIGN_KEY_CHECKS=0' "$MOCK_LOG"
+    grep -Fq 'mariadb || echo mysql' "$MOCK_LOG"
+}
+
+@test "Magento2 Sync: DB Download with Backup" {
+    export ENV_SOURCE="dev"
+    export ENV_SOURCE_HOST="example.com"
+    export ENV_SOURCE_PORT="22"
+    export ENV_SOURCE_USER="user"
+    export ENV_SOURCE_DIR="/var/www/remote"
+    export ENV_SOURCE_HOST_VAR="REMOTE_DEV_HOST"
+    export REMOTE_DEV_HOST="dummy"
+    
+    export DIRECTION="download"
+    export SYNC_TYPE_DB=1
+    export SYNC_BACKUP=1
+    export SYNC_BACKUP_DIR="${TEST_TMP_DIR}/backup"
+    
+    run "$BOOTSTRAP_CMD"
+    
+    # Expect warden db-dump call without --file
+    grep -q "warden db-dump -e local" "$MOCK_LOG"
+    if grep -q "warden db-dump -e local --file" "$MOCK_LOG"; then
+        echo "FAIL: Found --file argument"
+        return 1
+    fi
+}
+
+@test "Magento2 Sync: DB Upload with Backup" {
+    export ENV_SOURCE="dev"
+    export ENV_SOURCE_HOST="example.com"
+    export ENV_SOURCE_PORT="22"
+    export ENV_SOURCE_USER="user"
+    export ENV_SOURCE_DIR="/var/www/remote"
+    export ENV_SOURCE_HOST_VAR="REMOTE_DEV_HOST"
+    export REMOTE_DEV_HOST="dummy"
+    
+    export DIRECTION="upload"
+    export SYNC_DESTINATION="remote-test"
+    export SYNC_TYPE_DB=1
+    export SYNC_BACKUP=1
+    export SYNC_BACKUP_DIR="~/backup"
+    
+    run "$BOOTSTRAP_CMD"
+    
+    # Expect warden db-dump call for destination backup
+    grep -q "warden db-dump -e remote-test" "$MOCK_LOG"
 }

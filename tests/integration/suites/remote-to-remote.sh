@@ -126,7 +126,8 @@ test_r2r_db_sync() {
     fi
     
     local output
-    output=$(run_sync_confirmed -s dev -d staging --db 2>&1) || true
+    # Test with backup enabled
+    output=$(run_sync_confirmed -s dev -d staging --db --backup 2>&1) || true
     
     local result
     result=$(run_db_query "${STAGING_PHP}" "SELECT val FROM test_r2r_db WHERE id=1;" 2>&1 | grep "r2r-db-data" | head -n 1)
@@ -135,6 +136,22 @@ test_r2r_db_sync() {
         pass "R2R DB sync - data transferred correctly"
     else
         fail "R2R DB sync" "Verification failed. Result: ${result}. Output: ${output}"
+    fi
+
+    # Verify backup exists on destination remote (Staging)
+    # Pattern: {WARDEN_ENV_NAME}_staging-{TIMESTAMP}.sql.gz (handled by warden db-dump -e staging)
+    local backup_exists=$(docker exec --workdir / "${STAGING_PHP}" bash -c "ls /home/www-data/backup/${TEST_ENV_TYPE}-local_staging-*.sql.gz 2>/dev/null | wc -l")
+    if [[ "${backup_exists}" -gt 0 ]]; then
+        pass "R2R DB sync - Destination backup created with standard hyphenated naming"
+    else
+        fail "R2R DB sync" "Destination backup NOT found in ~/backup/. Output: ${output}"
+    fi
+
+    # Verify hyphenated naming in transfer (Dev -> Staging)
+    if [[ "${output}" == *"dev -> staging"* ]]; then
+        pass "R2R DB sync - Used hyphenated 'dev -> staging' naming for transfer"
+    else
+        fail "R2R DB sync" "Output did not contain expected 'dev -> staging' pattern. Output: ${output}"
     fi
 }
 test_r2r_db_sync

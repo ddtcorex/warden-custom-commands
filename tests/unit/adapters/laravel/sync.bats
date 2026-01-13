@@ -28,6 +28,8 @@ setup() {
     export SYNC_DELETE="0"
     export SYNC_REDEPLOY="0"
     export SYNC_REMOTE_TO_REMOTE="0"
+    export SYNC_BACKUP="0"
+    export SYNC_BACKUP_DIR="~/backup"
     
     # Custom Mocks
     export MOCK_BIN="${TEST_TMP_DIR}/mock-bin"
@@ -110,8 +112,10 @@ EOF
         echo "Output: $output"
     fi
     
-    grep -q "ssh .* mysqldump .* -h10.0.0.1 .* remote_db" "$MOCK_LOG"
-    grep -q "warden db import --force" "$MOCK_LOG"
+    grep -q "ssh .* \$(command -v mariadb" "$MOCK_LOG"
+    grep -Fq 'export MYSQL_PWD="$MYSQL_PASSWORD"' "$MOCK_LOG"
+    grep -Fq 'SET FOREIGN_KEY_CHECKS=0' "$MOCK_LOG"
+    grep -Fq 'mariadb || echo mysql' "$MOCK_LOG"
 }
 
 @test "Laravel Sync: DB Upload" {
@@ -140,7 +144,7 @@ EOF
 
     # Loose grep because quoted bash -c is hard to match exactly if whitespaces differ
     grep -q "warden env exec -T db bash -c" "$MOCK_LOG"
-    grep -q "mysqldump .* local_db" "$MOCK_LOG"
+    grep -E -q "(mariadb-dump|mysqldump) .* local_db" "$MOCK_LOG"
 }
 
 @test "Laravel Sync: Remote to Remote DB" {
@@ -170,8 +174,10 @@ EOF
     cat "$MOCK_LOG" || true
     echo "========================================="
     
-    grep -q "ssh .* dev@dev.com .* mysqldump" "$MOCK_LOG"
+    grep -q "ssh .* dev@dev.com .* \$(command -v mariadb" "$MOCK_LOG"
     
     # Use fgrep for safety
-    grep -F "cat > /tmp/warden_r2r_db.sql" "$MOCK_LOG"
+    grep -F "export MYSQL_PWD='remote_pass'" "$MOCK_LOG"
+    grep -F "SET FOREIGN_KEY_CHECKS=0" "$MOCK_LOG"
+    grep -F "mariadb || echo mysql" "$MOCK_LOG"
 }

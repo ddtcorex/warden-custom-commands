@@ -31,6 +31,10 @@ elif [[ "$*" == *"printenv MYSQL_PASSWORD"* ]]; then
     echo "db_pass"
 elif [[ "$*" == *"printenv MYSQL_DATABASE"* ]]; then
     echo "wordpress_db"
+elif [[ "$*" == *'echo "MYSQL_USER='* ]]; then
+    echo "MYSQL_USER=db_user"
+    echo "MYSQL_PASSWORD=db_pass"
+    echo "MYSQL_DATABASE=wordpress_db"
 fi
 EOF
     chmod +x "${MOCK_BIN}/warden"
@@ -51,6 +55,7 @@ EOF
     run "$BOOTSTRAP_CMD"
     
     grep -q "warden env exec -T db" "$MOCK_LOG"
+    grep -Fq "\$(command -v mariadb-dump || echo mysqldump)" "$MOCK_LOG"
     [[ "$output" == *"File:"* ]]
 }
 

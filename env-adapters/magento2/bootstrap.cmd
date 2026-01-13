@@ -15,6 +15,7 @@ INCLUDE_SAMPLE=
 DOWNLOAD_SOURCE=
 DB_DUMP=
 DB_IMPORT=1
+STREAM_DB=1
 MEDIA_SYNC=1
 COMPOSER_INSTALL=1
 ADMIN_CREATE=1
@@ -250,7 +251,7 @@ if [[ "${DB_IMPORT:-}" ]]; then
     elif [[ -z "$DB_DUMP" ]]; then
         DB_DUMP="var/${WARDEN_ENV_NAME}_${ENV_SOURCE}-`date +%Y%m%dT%H%M%S`.sql.gz"
         :: Get database
-        warden db-dump --file="${DB_DUMP}" -e "$ENV_SOURCE"
+        warden db-dump --local --file="${DB_DUMP}" -e "$ENV_SOURCE"
         
         if [[ "$DB_DUMP" ]]; then
             :: Importing database
@@ -442,7 +443,7 @@ if [[ "${CLEAN_INSTALL:-}" ]] && [[ "${INCLUDE_SAMPLE:-}" ]]; then
 fi
 
 if [[ "${CLEAN_INSTALL:-}" ]] && [[ "${HYVA_INSTALL:-}" ]]; then
-    HYVA_THEME_ID=$(warden env exec -T php-fpm mysql -u "${DB_USER}" -p"${DB_PASS}" -h "${DB_HOST_NAME}" "${DB_NAME}" -N -s -e "SELECT theme_id FROM theme WHERE code = 'hyva/default'" 2>/dev/null || echo "")
+    HYVA_THEME_ID=$(warden env exec -T php-fpm bash -c "\$(command -v mariadb || echo mysql) -u \"${DB_USER}\" -p\"${DB_PASS}\" -h \"${DB_HOST_NAME}\" \"${DB_NAME}\" -N -s -e \"SELECT theme_id FROM theme WHERE code = 'hyva/default'\"" 2>/dev/null || echo "")
     if [[ -n "${HYVA_THEME_ID}" ]]; then
         :: Activating Hyvä theme
         warden env exec php-fpm bin/magento config:set design/theme/theme_id "${HYVA_THEME_ID}" || true

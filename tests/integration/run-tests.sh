@@ -1,14 +1,17 @@
 #!/usr/bin/env bash
 # run-tests.sh - Main entry point for integration tests
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 # Load helpers
-source "$(dirname "${BASH_SOURCE[0]}")/helpers.sh"
+source "${SCRIPT_DIR}/helpers.sh"
 
 # Configuration
 export TEST_ENV_TYPE="magento2"
 for i in "$@"; do
     case $i in
         --type=*) export TEST_ENV_TYPE="${i#*=}"; shift ;;
+        --skip-unit) SKIP_UNIT=1; shift ;;
     esac
 done
 
@@ -21,36 +24,38 @@ echo "Running tests for environment type: ${TEST_ENV_TYPE}"
 header "Warden Sync Integration Tests"
 
 # Step 0: Run Unit Tests (BATS)
-header "Running Bootstrap Unit Tests"
-BATS_CMD=""
-if command -v bats &> /dev/null; then
-    BATS_CMD="bats"
-elif command -v npx &> /dev/null; then
-    BATS_CMD="npx -y bats"
-else
-    echo "Warning: neither 'bats' nor 'npx' found. Skipping Unit Tests."
-fi
-
-if [[ -n "$BATS_CMD" ]]; then
-    # Resolve absolute path to tests root
-    TESTS_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-    BATS_DIR="${TESTS_ROOT}/unit/adapters/${TEST_ENV_TYPE}"
-    
-    if [[ -d "$BATS_DIR" ]]; then
-        echo "🧪 Executing unit tests in: $BATS_DIR"
-        $BATS_CMD "$BATS_DIR"
-        UNIT_STATUS=$?
-        
-        if [[ $UNIT_STATUS -ne 0 ]]; then
-            echo ""
-            echo "❌ Unit Tests Failed (Exit Code: $UNIT_STATUS)"
-            echo "Stopping integration tests due to unit test failure."
-            exit 1
-        else
-            echo "✅ Unit Tests Passed"
-        fi
+if [[ "${SKIP_UNIT}" -ne 1 ]]; then
+    header "Running Bootstrap Unit Tests"
+    BATS_CMD=""
+    if command -v bats &> /dev/null; then
+        BATS_CMD="bats"
+    elif command -v npx &> /dev/null; then
+        BATS_CMD="npx -y bats"
     else
-        echo "ℹ️  No BATS tests found for ${TEST_ENV_TYPE}"
+        echo "Warning: neither 'bats' nor 'npx' found. Skipping Unit Tests."
+    fi
+    
+    if [[ -n "$BATS_CMD" ]]; then
+        # Resolve absolute path to tests root
+        TESTS_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+        BATS_DIR="${TESTS_ROOT}/unit/adapters/${TEST_ENV_TYPE}"
+        
+        if [[ -d "$BATS_DIR" ]]; then
+            echo "🧪 Executing unit tests in: $BATS_DIR"
+            $BATS_CMD "$BATS_DIR"
+            UNIT_STATUS=$?
+            
+            if [[ $UNIT_STATUS -ne 0 ]]; then
+                echo ""
+                echo "❌ Unit Tests Failed (Exit Code: $UNIT_STATUS)"
+                echo "Stopping integration tests due to unit test failure."
+                exit 1
+            else
+                echo "✅ Unit Tests Passed"
+            fi
+        else
+            echo "ℹ️  No BATS tests found for ${TEST_ENV_TYPE}"
+        fi
     fi
 fi
 
@@ -65,8 +70,14 @@ fi
 # Step 2: Checking Environments
 header "Checking Test Environments"
 if ! check_environments; then
-    echo "Please run: ./tests/integration/setup-test-envs.sh --type=${TEST_ENV_TYPE}"
-    exit 1
+    echo "Environment not ready. Attempting to set up ${TEST_ENV_TYPE}..."
+    "${SCRIPT_DIR}/setup-test-envs.sh" --type="${TEST_ENV_TYPE}"
+    
+    # Re-check
+    if ! check_environments; then
+        echo "❌ Failed to set up environment."
+        exit 1
+    fi
 fi
 echo "All environments running"
 
@@ -112,6 +123,7 @@ fi
 TEST_SUITES+=(
     "file-sync.sh"
     "media-sync.sh"
+    "db-dump-behavior.sh"
     "db-sync.sh"
     "full-sync.sh"
     "custom-path.sh"

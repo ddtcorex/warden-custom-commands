@@ -179,7 +179,7 @@ function run_db_query() {
         db_user="symfony"; db_pass="symfony"; db_name="symfony"
     fi
 
-    docker exec --workdir / "${db_container}" mysql -u "${db_user}" -p"${db_pass}" "${db_name}" -N -s -r -e "${query}"
+    docker exec --workdir / "${db_container}" bash -c '$(command -v mariadb || echo mysql) -u "$1" -p"$2" "$3" -N -s -r -e "$4"' -- "${db_user}" "${db_pass}" "${db_name}" "${query}"
 }
 
 # Mock env setups

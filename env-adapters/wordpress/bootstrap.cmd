@@ -14,6 +14,7 @@ FIX_DEPS=
 DOWNLOAD_SOURCE=
 DB_DUMP=
 DB_IMPORT=1
+STREAM_DB=1
 ENV_REQUIRED=
 
 ## argument parsing
@@ -203,7 +204,7 @@ if [[ "${DB_IMPORT:-}" ]] && [[ ! "${CLEAN_INSTALL:-}" ]]; then
         if [[ -z "$DB_DUMP" ]] && [[ -n "${ENV_SOURCE_HOST+x}" ]]; then
             DB_DUMP="wp-content/${WARDEN_ENV_NAME}_${ENV_SOURCE}-$(date +%Y%m%dT%H%M%S).sql.gz"
             :: Downloading database from ${ENV_SOURCE}
-            warden db-dump --file="${DB_DUMP}" -e "$ENV_SOURCE"
+            warden db-dump --local --file="${DB_DUMP}" -e "$ENV_SOURCE"
         fi
 
         if [[ -n "$DB_DUMP" ]] && [[ -f "$DB_DUMP" ]]; then
@@ -281,8 +282,12 @@ if [[ "${CLEAN_INSTALL:-}" ]] && warden env exec -T php-fpm test -f wp-config.ph
     DB_USER="${DB_USER:-$(warden env exec -T db printenv MYSQL_USER 2>/dev/null || echo 'wordpress')}"
     DB_PASS="${DB_PASS:-$(warden env exec -T db printenv MYSQL_PASSWORD 2>/dev/null || echo 'wordpress')}"
     DB_NAME="${DB_NAME:-$(warden env exec -T db printenv MYSQL_DATABASE 2>/dev/null || echo 'wordpress')}"
-    # Use mysql directly as wp-cli might be missing
-    warden env exec -T db mysql -u"${DB_USER}" -p"${DB_PASS}" -e "DROP DATABASE IF EXISTS ${DB_NAME}; CREATE DATABASE ${DB_NAME};" 2>/dev/null || true
+    # Use mysql/mariadb directly as wp-cli might be missing
+    DB_BIN="mysql"
+    if [[ "${MYSQL_DISTRIBUTION:-}" == *"mariadb"* ]]; then
+        DB_BIN="mariadb"
+    fi
+    warden env exec -T db ${DB_BIN} -u"${DB_USER}" -p"${DB_PASS}" -e "DROP DATABASE IF EXISTS ${DB_NAME}; CREATE DATABASE ${DB_NAME};" 2>/dev/null || true
 fi
 
 # Update wp-config.php for local environment if DB was imported

@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] - 2026-01-14
+
+**v2.1.0: Sensitive Data Exclusion & Test Suite Stabilization**
+
+This release introduces sensitive data exclusion for all framework adapters, stabilizes database imports by resolving `pv` and scope issues, and enhances the integration test suite for better cross-environment reliability.
+
+### ✨ New Features
+
+- **Sensitive Data Exclusion (`--exclude-sensitive-data`):**
+  - Added support for `--exclude-sensitive-data` flag to `warden db-dump` for **Laravel**, **Symfony**, and **WordPress** adapters.
+  - Automatically excludes sensitive tables (e.g., users, sessions, password resets) during database exports.
+  - Aligns logic across all 4 major framework adapters.
+
+### 🛠 Improvements
+
+- **Robust Database Sync (`warden sync --db`):**
+  - Updated to accept either hyphenated naming (e.g., `local-to-dev`) or direct streaming confirmation in integration tests.
+  - Improved compatibility with different `mariadb-dump` versions.
+- **Enhanced Integration Tests:**
+  - Added explicit SSH server setup/start before "Clone from Staging" scenarios in bootstrap tests.
+  - Ensures SSH connectivity even if the staging container was restarted or stopped.
+  - Fixed WordPress bootstrap test command to standard single-call pattern.
+  - All 163 integration tests now passing across Magento2, Symfony, Laravel, and WordPress.
+
+### 🐛 Bug Fixes
+
+- **PV Command Fallback:** Fixed `warden db-import` error when `pv` is not installed by correctly falling back to `cat` while preserving progress visibility settings.
+- **Local Scope fixes:** Resolved "local: can only be used in a function" errors in `db-import` scripts across all adapters.
+- **Grep Brittleness:** Refactored unit tests to use multiple, smaller `grep` assertions instead of single long strings, reducing test failures due to minor formatting changes.
+- **MySQL Import flags:** Removed incorrect `-f` (force) flag when piping to `mysql`/`mariadb` to prevent confusing error messages when errors occur.
+
 ## [2.0.0] - 2026-01-12
 
 **v2.0.0: Interactive Remote Setup & Robust DB Sync**
@@ -14,10 +45,12 @@ This major release significantly improves database synchronization reliability b
 ### ✨ New Features
 
 - **Interactive Remote Setup (`warden setup-remotes`):**
+
   - New wizard-style command to easily configure remote environments (Dev/Staging) in `.env`.
   - Validates inputs and updates `.env` file automatically.
 
 - **Robust DB Sync (`warden sync --db`):**
+
   - Refactored Remote-to-Remote (R2R) sync to use file-based transfer (Dump -> SCP -> Import) instead of piping.
   - Added `--force` flag to `mysqldump` to gracefully handle missing view/table definitions.
   - Improved error handling and transactional safety during syncs.

@@ -27,6 +27,8 @@ setup() {
     export SYNC_DELETE="0"
     export SYNC_REDEPLOY="0"
     export SYNC_REMOTE_TO_REMOTE="0"
+    export SYNC_BACKUP="0"
+    export SYNC_BACKUP_DIR="~/backup"
     
     export MOCK_BIN="${TEST_TMP_DIR}/mock-bin"
     mkdir -p "${MOCK_BIN}"
@@ -93,6 +95,8 @@ EOF
     
     run "$BOOTSTRAP_CMD"
     
-    grep -q "ssh .* mysqldump .* -hremote-db .* remote_db" "$MOCK_LOG"
-    grep -q "warden db import --force" "$MOCK_LOG"
+    grep -q "ssh .* \$(command -v mariadb" "$MOCK_LOG"
+    grep -Fq 'export MYSQL_PWD="$MYSQL_PASSWORD"' "$MOCK_LOG"
+    grep -Fq 'SET FOREIGN_KEY_CHECKS=0' "$MOCK_LOG"
+    grep -Fq 'mariadb || echo mysql' "$MOCK_LOG"
 }

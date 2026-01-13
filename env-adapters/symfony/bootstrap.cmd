@@ -14,6 +14,7 @@ FIX_DEPS=
 DOWNLOAD_SOURCE=
 DB_DUMP=
 DB_IMPORT=1
+STREAM_DB=1
 ENV_REQUIRED=
 
 ## argument parsing
@@ -122,7 +123,7 @@ fi
 
 ## download files from the remote
 if [[ "${DOWNLOAD_SOURCE:-}" ]]; then
-    warden sync --file --source="${ENV_SOURCE}" --path="./"
+    warden sync --file --source="${ENV_SOURCE}"
     
     # Clean up generated files for fresh start
     warden env exec php-fpm sh -c "
@@ -190,7 +191,7 @@ if [[ "${DB_IMPORT:-}" ]] && [[ ! "${CLEAN_INSTALL:-}" ]]; then
         if [[ -z "$DB_DUMP" ]] && [[ -n "${ENV_SOURCE_HOST+x}" ]]; then
             DB_DUMP="var/${WARDEN_ENV_NAME}_${ENV_SOURCE}-$(date +%Y%m%dT%H%M%S).sql.gz"
             :: Downloading database from ${ENV_SOURCE}
-            warden db-dump --file="${DB_DUMP}" -e "$ENV_SOURCE"
+            warden db-dump --local --file="${DB_DUMP}" -e "$ENV_SOURCE"
         fi
 
         if [[ -n "$DB_DUMP" ]] && [[ -f "$DB_DUMP" ]]; then

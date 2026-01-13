@@ -19,6 +19,8 @@ SYNC_REMOTE_TO_REMOTE=0
 SYNC_INCLUDE_PRODUCT=0
 SYNC_REDEPLOY=0
 SYNC_ASSUME_YES=0
+SYNC_BACKUP=0
+SYNC_BACKUP_DIR="~/backup"
 
 # Parse remaining arguments (source/destination already handled by env-variables)
 while (( "$#" )); do
@@ -82,6 +84,18 @@ while (( "$#" )); do
         -y|--yes)
             SYNC_ASSUME_YES=1
             shift
+            ;;
+        --backup)
+            SYNC_BACKUP=1
+            shift
+            ;;
+        --backup-dir=*)
+            SYNC_BACKUP_DIR="${1#*=}"
+            shift
+            ;;
+        --backup-dir)
+            SYNC_BACKUP_DIR="$2"
+            shift 2
             ;;
         --) # End of all options
             shift
@@ -180,7 +194,7 @@ if [[ "${SYNC_REMOTE_TO_REMOTE}" -eq 1 ]]; then
         fi
     fi
 elif [[ "${SYNC_DESTINATION}" != "local" ]]; then
-    printf "\033[33mCAUTION: You are about to sync \033[1;35m%s\033[0m\033[33m TO a remote environment (\033[1;31m%s\033[0m\033[33m).\033[0m\n" "${SYNC_DESC}" "${SYNC_DESTINATION}"
+    printf "\033[33mCAUTION: You are about to sync \033[1;35m%s\033[0m\033[33m to a remote environment (\033[1;31m%s\033[0m\033[33m).\033[0m\n" "${SYNC_DESC}" "${SYNC_DESTINATION}"
     if [[ "${SYNC_ASSUME_YES}" -eq 0 ]]; then
         printf "Are you sure you want to continue? [y/N] "
         read -n 1 -r REPLY_CHOICE
@@ -196,7 +210,7 @@ else
 fi
 
 # Export variables for adapter scripts
-export SYNC_SOURCE SYNC_DESTINATION SYNC_TYPE_FILE SYNC_TYPE_MEDIA SYNC_TYPE_DB SYNC_TYPE_FULL SYNC_PATH SYNC_DRY_RUN SYNC_DELETE SYNC_REMOTE_TO_REMOTE SYNC_INCLUDE_PRODUCT SYNC_REDEPLOY SYNC_ASSUME_YES DIRECTION
+export SYNC_SOURCE SYNC_DESTINATION SYNC_TYPE_FILE SYNC_TYPE_MEDIA SYNC_TYPE_DB SYNC_TYPE_FULL SYNC_PATH SYNC_DRY_RUN SYNC_DELETE SYNC_REMOTE_TO_REMOTE SYNC_INCLUDE_PRODUCT SYNC_REDEPLOY SYNC_ASSUME_YES DIRECTION SYNC_BACKUP SYNC_BACKUP_DIR
 
 # Dispatch to environment-specific implementation
 ENV_CMD="${SUBCOMMAND_DIR}/env-adapters/${WARDEN_ENV_TYPE}/sync.cmd"

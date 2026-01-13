@@ -40,6 +40,9 @@ setup() {
     # Mock other commands
     function jq() { echo "{}"; }
     export -f jq
+    
+    function sleep() { return 0; }
+    export -f sleep
 }
 
 @test "Upgrade: Missing version argument fails" {

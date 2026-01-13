@@ -42,9 +42,32 @@ setup() {
     assert_command_called "sed -i"
 }
 
+@test "Laravel: DB Config Updates .env.php" {
+    run "$BOOTSTRAP_CMD" --skip-db-import --skip-composer-install --skip-migrate
+    
+    # We expect the script to have checked for .env.php (warden mock returns 0, so 'test -f' passes)
+    # And then run sed on .env.php
+    grep -Fq ".env.php" "$MOCK_LOG"
+}
+
 @test "Laravel: Fails if WARDEN_DIR not set" {
     export WARDEN_DIR=""
     run bash -c "unset WARDEN_DIR && $BOOTSTRAP_CMD"
     [ "$status" -eq 1 ]
     [[ "$output" == *"not intended to be run directly"* ]]
+}
+
+@test "Laravel: Default behavior streams database" {
+    export ENV_SOURCE_HOST="example.com"
+    run "$BOOTSTRAP_CMD" --skip-composer-install --skip-migrate
+    
+    assert_command_called "warden db-import --stream-db"
+}
+
+@test "Laravel: --no-stream-db falls back to local download" {
+    export ENV_SOURCE_HOST="example.com"
+    run "$BOOTSTRAP_CMD" --no-stream-db --skip-composer-install --skip-migrate
+    
+    # Should use --local indb-dump
+    grep -E -q "warden db-dump --local --file=.* -e laravel" "${MOCK_LOG}"
 }
