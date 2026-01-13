@@ -7,6 +7,8 @@ set -u
 function before_set_config() { :; }
 function after_set_config() { :; }
 
+function version { echo "$@" | awk -F. '{ printf("%d%03d%03d%03d\n", $1,$2,$3,$4); }'; }
+
 ENV_HOOKS_FILE="${WARDEN_ENV_PATH}/.warden/hooks"
 if [ -f "${ENV_HOOKS_FILE}" ]; then
     source "${ENV_HOOKS_FILE}"
@@ -85,8 +87,8 @@ fi
 :: Update configuration
 before_set_config
 
-warden db connect -e "UPDATE ${DB_PREFIX:-}core_config_data SET value = 'https://${TRAEFIK_SUBDOMAIN}.${TRAEFIK_DOMAIN}/' WHERE path IN ('web/secure/base_url', 'web/unsecure/base_url', 'web/secure/base_link_url', 'web/unsecure/base_link_url')" || true
-warden db connect -e "DELETE FROM ${DB_PREFIX:-}core_config_data WHERE path IN ('web/secure/base_static_url', 'web/secure/base_media_url', 'web/unsecure/base_static_url', 'web/unsecure/base_media_url')" || true
+warden env exec -T db bash -c '$(command -v mariadb || echo mysql) -hdb -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" -e "UPDATE ${DB_PREFIX:-}core_config_data SET value = '\''https://${TRAEFIK_SUBDOMAIN}.${TRAEFIK_DOMAIN}/'\'' WHERE path IN ('\''web/secure/base_url'\'', '\''web/unsecure/base_url'\'', '\''web/secure/base_link_url'\'', '\''web/unsecure/base_link_url'\'')"' 2> >(grep -v 'Deprecated program name' >&2) || true
+warden env exec -T db bash -c '$(command -v mariadb || echo mysql) -hdb -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" -e "DELETE FROM ${DB_PREFIX:-}core_config_data WHERE path IN ('\''web/secure/base_static_url'\'', '\''web/secure/base_media_url'\'', '\''web/unsecure/base_static_url'\'', '\''web/unsecure/base_media_url'\'')"' 2> >(grep -v 'Deprecated program name' >&2) || true
 
 warden env exec php-fpm bin/magento config:set -q --lock-env web/unsecure/base_url "https://${TRAEFIK_SUBDOMAIN}.${TRAEFIK_DOMAIN}/" || true
 warden env exec php-fpm bin/magento config:set -q --lock-env web/secure/base_url "https://${TRAEFIK_SUBDOMAIN}.${TRAEFIK_DOMAIN}/" || true

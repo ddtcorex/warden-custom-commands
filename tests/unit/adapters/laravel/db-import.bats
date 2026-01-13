@@ -31,5 +31,5 @@ setup() {
 
 @test "Laravel DB Import: Import from file" {
     run "$BOOTSTRAP_CMD" --file=dump.sql.gz
-    assert_command_called "warden db import --force"
+    grep -Fq "warden env exec -T db bash -c \$(command -v mariadb || echo mysql) -hdb -u\"\$MYSQL_USER\" -p\"\$MYSQL_PASSWORD\" \"\$MYSQL_DATABASE\" -f" "$MOCK_LOG"
 }

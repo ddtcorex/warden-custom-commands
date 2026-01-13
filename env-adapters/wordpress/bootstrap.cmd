@@ -281,8 +281,12 @@ if [[ "${CLEAN_INSTALL:-}" ]] && warden env exec -T php-fpm test -f wp-config.ph
     DB_USER="${DB_USER:-$(warden env exec -T db printenv MYSQL_USER 2>/dev/null || echo 'wordpress')}"
     DB_PASS="${DB_PASS:-$(warden env exec -T db printenv MYSQL_PASSWORD 2>/dev/null || echo 'wordpress')}"
     DB_NAME="${DB_NAME:-$(warden env exec -T db printenv MYSQL_DATABASE 2>/dev/null || echo 'wordpress')}"
-    # Use mysql directly as wp-cli might be missing
-    warden env exec -T db mysql -u"${DB_USER}" -p"${DB_PASS}" -e "DROP DATABASE IF EXISTS ${DB_NAME}; CREATE DATABASE ${DB_NAME};" 2>/dev/null || true
+    # Use mysql/mariadb directly as wp-cli might be missing
+    DB_BIN="mysql"
+    if [[ "${MYSQL_DISTRIBUTION:-}" == *"mariadb"* ]]; then
+        DB_BIN="mariadb"
+    fi
+    warden env exec -T db ${DB_BIN} -u"${DB_USER}" -p"${DB_PASS}" -e "DROP DATABASE IF EXISTS ${DB_NAME}; CREATE DATABASE ${DB_NAME};" 2>/dev/null || true
 fi
 
 # Update wp-config.php for local environment if DB was imported

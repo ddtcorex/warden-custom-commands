@@ -55,7 +55,7 @@ if [[ -z "${DB_CONTAINER_ID}" ]]; then
 fi
 
 printf "⌛ \033[1;32mDropping and initializing docker database ...\033[0m\n"
-warden db connect -e 'drop database magento; create database magento character set = "utf8" collate = "utf8_general_ci";'
+warden env exec -T db bash -c '$(command -v mariadb || echo mysql) -hdb -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" -e "drop database $MYSQL_DATABASE; create database $MYSQL_DATABASE character set = \"utf8\" collate = \"utf8_general_ci\""' 2> >(grep -v 'Deprecated program name' >&2)
 
 # Centralized SQL cleanup filters (sandbox lines, definers, row formats, and common collation fixes)
 SED_FILTERS=(
@@ -87,15 +87,15 @@ if [[ "${STREAM_DB}" -eq 1 ]]; then
     
     printf "Streaming mysqldump from %s:%s ...\n" "${ENV_SOURCE_HOST}" "${db_name}"
     ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" \
-        "export MYSQL_PWD='${db_pass}'; mysqldump --single-transaction --no-tablespaces --routines -h${db_host} -P${db_port} -u${db_user} ${db_name}" \
+        "export MYSQL_PWD='${db_pass}'; \$(command -v mariadb-dump || echo mysqldump) --single-transaction --no-tablespaces --routines -h${db_host} -P${db_port} -u${db_user} ${db_name}" \
         | sed "${SED_FILTERS[@]}" \
-        | warden db import --force
+        | warden env exec -T db bash -c '$(command -v mariadb || echo mysql) -hdb -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" -f'
 else
     printf "🔥 \033[1;32mImporting database ...\033[0m\n"
     if gzip -t "${DUMP_FILENAME}" 2>/dev/null; then
-        ${PV} "${DUMP_FILENAME}" | gunzip -c | sed "${SED_FILTERS[@]}" | warden db import --force
+        ${PV} "${DUMP_FILENAME}" | gunzip -c | sed "${SED_FILTERS[@]}" | warden env exec -T db bash -c '$(command -v mariadb || echo mysql) -hdb -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" -f'
     else
-        ${PV} "${DUMP_FILENAME}" | sed "${SED_FILTERS[@]}" | warden db import --force
+        ${PV} "${DUMP_FILENAME}" | sed "${SED_FILTERS[@]}" | warden env exec -T db bash -c '$(command -v mariadb || echo mysql) -hdb -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" -f'
     fi
 fi
 

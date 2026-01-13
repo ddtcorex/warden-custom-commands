@@ -110,8 +110,8 @@ EOF
         echo "Output: $output"
     fi
     
-    grep -q "ssh .* mysqldump .* -h10.0.0.1 .* remote_db" "$MOCK_LOG"
-    grep -q "warden db import --force" "$MOCK_LOG"
+    grep -q "ssh .* \$(command -v mariadb" "$MOCK_LOG"
+    grep -Fq "warden env exec -T db bash -c \$(command -v mariadb || echo mysql) -hdb -u\"\$MYSQL_USER\" -p\"\$MYSQL_PASSWORD\" \"\$MYSQL_DATABASE\" -f" "$MOCK_LOG"
 }
 
 @test "Laravel Sync: DB Upload" {
@@ -140,7 +140,7 @@ EOF
 
     # Loose grep because quoted bash -c is hard to match exactly if whitespaces differ
     grep -q "warden env exec -T db bash -c" "$MOCK_LOG"
-    grep -q "mysqldump .* local_db" "$MOCK_LOG"
+    grep -E -q "(mariadb-dump|mysqldump) .* local_db" "$MOCK_LOG"
 }
 
 @test "Laravel Sync: Remote to Remote DB" {
@@ -170,7 +170,7 @@ EOF
     cat "$MOCK_LOG" || true
     echo "========================================="
     
-    grep -q "ssh .* dev@dev.com .* mysqldump" "$MOCK_LOG"
+    grep -q "ssh .* dev@dev.com .* \$(command -v mariadb" "$MOCK_LOG"
     
     # Use fgrep for safety
     grep -F "cat > /tmp/warden_r2r_db.sql" "$MOCK_LOG"

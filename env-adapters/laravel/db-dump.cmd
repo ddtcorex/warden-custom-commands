@@ -21,7 +21,11 @@ function dump_local () {
 
     printf "⌛ \033[1;32mDumping local database (\033[33m%s\033[1;32m)...\033[0m\n" "${DB_NAME}"
 
-    local db_dump="export MYSQL_PWD='${DB_PASS}'; mysqldump --no-tablespaces --single-transaction --routines -hdb -u${DB_USER} ${DB_NAME} | gzip"
+    DUMP_BIN="mysqldump"
+    if [[ "${MYSQL_DISTRIBUTION:-}" == *"mariadb"* ]]; then
+        DUMP_BIN="mariadb-dump"
+    fi
+    local db_dump="export MYSQL_PWD='${DB_PASS}'; ${DUMP_BIN} --no-tablespaces --single-transaction --routines -hdb -u${DB_USER} ${DB_NAME} | gzip"
     warden env exec -T db bash -c "${db_dump}" > "${DUMP_FILENAME}"
 
     printf "✅ \033[32mDatabase dump complete! File: %s\033[0m\n" "${DUMP_FILENAME}"
@@ -49,7 +53,8 @@ function dump_premise () {
 
     printf "⌛ \033[1;32mDumping \033[33m%s\033[1;32m database from \033[33m%s\033[1;32m...\033[0m\n" "${db_name}" "${ENV_SOURCE_HOST}"
 
-    local db_dump="export MYSQL_PWD='${db_pass}'; mysqldump --no-tablespaces --single-transaction --routines -h${db_host} -P${db_port} -u${db_user} ${db_name} | gzip"
+    # Use fallback for remote dump
+    local db_dump="export MYSQL_PWD='${db_pass}'; \$(command -v mariadb-dump || echo mysqldump) --no-tablespaces --single-transaction --routines -h${db_host} -P${db_port} -u${db_user} ${db_name} | gzip"
     ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "set -o pipefail; ${db_dump}" > "${DUMP_FILENAME}"
 
     printf "✅ \033[32mDatabase dump complete! File: %s\033[0m\n" "${DUMP_FILENAME}"

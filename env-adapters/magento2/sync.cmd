@@ -184,7 +184,7 @@ function sync_database() {
         
         printf "  Dumping source database to local file ...\n"
         if ! ssh ${SSH_OPTS} -o IdentityAgent=none -p "${SOURCE_REMOTE_PORT}" "${SOURCE_REMOTE_USER}@${SOURCE_REMOTE_HOST}" \
-            "export MYSQL_PWD='${src_db_pass}'; (mysqldump --force --single-transaction --no-tablespaces --routines -h${src_db_host} -P${src_db_port} -u${src_db_user} ${src_db_name} || true)" \
+            "export MYSQL_PWD='${src_db_pass}'; (\$(command -v mariadb-dump || echo mysqldump) --force --single-transaction --no-tablespaces --routines -h${src_db_host} -P${src_db_port} -u${src_db_user} ${src_db_name} || true)" \
             | sed "${SED_FILTERS[@]}" \
             | gzip > "${local_tmp_file}"; then
             printf "\033[31mError: Source database dump failed.\033[0m\n" >&2
@@ -201,7 +201,7 @@ function sync_database() {
 
         printf "  Importing on destination ...\n"
         if ! ssh ${SSH_OPTS} -o IdentityAgent=none -p "${DEST_REMOTE_PORT}" "${DEST_REMOTE_USER}@${DEST_REMOTE_HOST}" \
-            "export MYSQL_PWD='${dest_db_pass}'; zcat \"${DEST_REMOTE_DIR}/var/warden_sync_r2r.sql.gz\" | mysql -h${dest_db_host} -P${dest_db_port} -u${dest_db_user} ${dest_db_name} && rm -f \"${DEST_REMOTE_DIR}/var/warden_sync_r2r.sql.gz\""; then
+            "export MYSQL_PWD='${dest_db_pass}'; zcat \"${DEST_REMOTE_DIR}/var/warden_sync_r2r.sql.gz\" | \$(command -v mariadb || echo mysql) -h${dest_db_host} -P${dest_db_port} -u${dest_db_user} ${dest_db_name} && rm -f \"${DEST_REMOTE_DIR}/var/warden_sync_r2r.sql.gz\""; then
             printf "\033[31mError: Destination database import failed.\033[0m\n" >&2
             rm -f "${local_tmp_file}"
             return 1
@@ -243,12 +243,7 @@ function sync_database() {
             return 1
         fi
 
-        printf "  Uploading dump file to remote ...\n"
-        if ! scp ${SSH_OPTS} -P "${ENV_SOURCE_PORT}" "${local_dump}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}:${ENV_SOURCE_DIR}/var/warden_sync_upload.sql.gz"; then
-            printf "\033[31mError: Failed to upload dump to remote.\033[0m\n" >&2
-            rm -f "${local_dump}"
-            return 1
-        fi
+
 
         printf "  Importing on remote ...\n"
         # We need to ensure var directory exists on remote
@@ -265,7 +260,7 @@ function sync_database() {
         fi
 
         if ! ssh ${SSH_OPTS} -o IdentityAgent=none -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" \
-            "export MYSQL_PWD='${dest_db_pass}'; zcat \"${ENV_SOURCE_DIR}/var/warden_sync_upload.sql.gz\" | mysql -h${dest_db_host} -P${dest_db_port} -u${dest_db_user} ${dest_db_name} && rm -f \"${ENV_SOURCE_DIR}/var/warden_sync_upload.sql.gz\""; then
+            "export MYSQL_PWD='${dest_db_pass}'; zcat \"${ENV_SOURCE_DIR}/var/warden_sync_upload.sql.gz\" | \$(command -v mariadb || echo mysql) -h${dest_db_host} -P${dest_db_port} -u${dest_db_user} ${dest_db_name} && rm -f \"${ENV_SOURCE_DIR}/var/warden_sync_upload.sql.gz\""; then
             printf "\033[31mError: Remote database import failed.\033[0m\n" >&2
             rm -f "${local_dump}" "${filtered_dump}"
             return 1
@@ -294,11 +289,11 @@ function sync_database() {
     fi
 
     printf "Streaming mysqldump from %s:%s ...\n" "${ENV_SOURCE_HOST}" "${db_name}"
-    local dump_cmd="export MYSQL_PWD='${db_pass}'; (mysqldump --force --single-transaction --no-tablespaces --routines -h${db_host} -P${db_port} -u${db_user} ${db_name} || true)"
+    local dump_cmd="export MYSQL_PWD='${db_pass}'; (\$(command -v mariadb-dump || echo mysqldump) --force --single-transaction --no-tablespaces --routines -h${db_host} -P${db_port} -u${db_user} ${db_name} 2> >(grep -v 'Deprecated program name' >&2) || true)"
     
     if ! ssh ${SSH_OPTS} -o IdentityAgent=none -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "${dump_cmd}" \
         | sed "${SED_FILTERS[@]}" \
-        | warden db import --force; then
+        | warden env exec -T db bash -c '$(command -v mariadb || echo mysql) -hdb -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" -f'; then
         printf "\033[31mError: Database sync failed during streaming.\033[0m\n" >&2
         return 1
     fi

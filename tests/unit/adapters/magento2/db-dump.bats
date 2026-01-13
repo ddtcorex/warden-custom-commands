@@ -89,5 +89,5 @@ EOF
     run "$BOOTSTRAP_CMD" --exclude-sensitive-data
     
     # Should include additional sales tables in ignored list
-    grep -q "sales_order" "$MOCK_LOG" || grep -q "mysqldump" "$MOCK_LOG"
+    grep -q "sales_order" "$MOCK_LOG" || grep -E -q "(mariadb-dump|mysqldump)" "$MOCK_LOG"
 }

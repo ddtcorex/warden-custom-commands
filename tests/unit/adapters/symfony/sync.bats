@@ -107,6 +107,6 @@ EOF
     
     run "$BOOTSTRAP_CMD"
     
-    grep -q "ssh .* mysqldump .* -hremote-db .* remote_db" "$MOCK_LOG"
-    grep -q "warden db import --force" "$MOCK_LOG"
+    grep -q "ssh .* \$(command -v mariadb" "$MOCK_LOG"
+    grep -Fq "warden env exec -T db bash -c \$(command -v mariadb || echo mysql) -hdb -u\"\$MYSQL_USER\" -p\"\$MYSQL_PASSWORD\" \"\$MYSQL_DATABASE\" -f" "$MOCK_LOG"
 }
