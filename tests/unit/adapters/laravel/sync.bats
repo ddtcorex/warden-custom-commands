@@ -113,7 +113,9 @@ EOF
     fi
     
     grep -q "ssh .* \$(command -v mariadb" "$MOCK_LOG"
-    grep -Fq "warden env exec -T db bash -c \$(command -v mariadb || echo mysql) -hdb -u\"\$MYSQL_USER\" -p\"\$MYSQL_PASSWORD\" \"\$MYSQL_DATABASE\" -f" "$MOCK_LOG"
+    grep -Fq 'export MYSQL_PWD="$MYSQL_PASSWORD"' "$MOCK_LOG"
+    grep -Fq 'SET FOREIGN_KEY_CHECKS=0' "$MOCK_LOG"
+    grep -Fq 'mariadb || echo mysql' "$MOCK_LOG"
 }
 
 @test "Laravel Sync: DB Upload" {
@@ -175,5 +177,7 @@ EOF
     grep -q "ssh .* dev@dev.com .* \$(command -v mariadb" "$MOCK_LOG"
     
     # Use fgrep for safety
-    grep -F "cat > /tmp/warden_r2r_db.sql" "$MOCK_LOG"
+    grep -F "export MYSQL_PWD='remote_pass'" "$MOCK_LOG"
+    grep -F "SET FOREIGN_KEY_CHECKS=0" "$MOCK_LOG"
+    grep -F "mariadb || echo mysql" "$MOCK_LOG"
 }

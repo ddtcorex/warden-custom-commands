@@ -38,7 +38,6 @@ setup() {
     # We can't easily mock host side grep if it runs directly, but we can check if the result file was used
     # The script creates /tmp/warden_vars.txt. Since we are running in the same shell,
     # we can check if it attempted to read/write it.
-    # Actually, BATS 'run' isolates FS somewhat? No, FS is shared.
     
     # Check that warden env exec was called to merge envs - actually this is done on host
     # We verify that the backup logic ran by checking .env content for duplication 
@@ -75,12 +74,24 @@ setup() {
     # Unset WARDEN_DIR for this test
     export WARDEN_DIR=""
     # We must run in a subshell or unset effectively
-    # 'run' runs in subshell but inherits exported vars.
-    # We can override the variable in the run command line? No.
-    # We can invoke bash -c
     
     run bash -c "unset WARDEN_DIR && $BOOTSTRAP_CMD"
     
     [ "$status" -eq 1 ]
     [[ "$output" == *"not intended to be run directly"* ]]
+}
+
+@test "Symfony: Default behavior streams database" {
+    export ENV_SOURCE_HOST="example.com"
+    run "$BOOTSTRAP_CMD" --skip-composer-install --skip-migrate
+    
+    assert_command_called "warden db-import --stream-db"
+}
+
+@test "Symfony: --no-stream-db falls back to local download" {
+    export ENV_SOURCE_HOST="example.com"
+    run "$BOOTSTRAP_CMD" --no-stream-db --skip-composer-install --skip-migrate
+    
+    # Should use --local in db-dump
+    grep -E -q "warden db-dump --local --file=.* -e symfony" "${MOCK_LOG}"
 }

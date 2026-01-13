@@ -3,7 +3,10 @@ set -u
 
 # env-variables is already sourced by the root dispatcher
 
-PV=$(command -v pv || command -v cat)
+PV="pv"
+if ! command -v pv &>/dev/null; then
+    PV="cat"
+fi
 STREAM_DB=0
 DUMP_FILENAME=""
 
@@ -104,11 +107,18 @@ if [[ "${STREAM_DB}" -eq 1 ]]; then
         | sed "${SED_FILTERS[@]}" \
         | warden env exec -T db bash -c '$(command -v mariadb || echo mysql) -hdb -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" -f'
 else
-    printf "🔥 \033[1;32mImporting database...\033[0m\n"
-    if gzip -t "${DUMP_FILENAME}" 2>/dev/null; then
-        ${PV} "${DUMP_FILENAME}" | gunzip -c | sed "${SED_FILTERS[@]}" | warden env exec -T db bash -c '$(command -v mariadb || echo mysql) -hdb -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" -f'
+    mysql_import_cmd='export MYSQL_PWD="$MYSQL_PASSWORD"; { echo "SET FOREIGN_KEY_CHECKS=0; SET UNIQUE_CHECKS=0; SET AUTOCOMMIT=0;"; cat; echo "COMMIT; SET FOREIGN_KEY_CHECKS=1; SET UNIQUE_CHECKS=1; SET AUTOCOMMIT=1;"; } | $(command -v mariadb || echo mysql) -hdb -u"$MYSQL_USER" "$MYSQL_DATABASE" -f'
+
+    if [[ "${PV}" == "pv" ]]; then
+        PV_CMD="pv -N Importing"
     else
-        ${PV} "${DUMP_FILENAME}" | sed "${SED_FILTERS[@]}" | warden env exec -T db bash -c '$(command -v mariadb || echo mysql) -hdb -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" -f'
+        PV_CMD="cat"
+    fi
+
+    if gzip -t "${DUMP_FILENAME}" 2>/dev/null; then
+        cat "${DUMP_FILENAME}" | ${PV_CMD} | gunzip -c | sed "${SED_FILTERS[@]}" | warden env exec -T db bash -c "${mysql_import_cmd}"
+    else
+        cat "${DUMP_FILENAME}" | ${PV_CMD} | sed "${SED_FILTERS[@]}" | warden env exec -T db bash -c "${mysql_import_cmd}"
     fi
 fi
 

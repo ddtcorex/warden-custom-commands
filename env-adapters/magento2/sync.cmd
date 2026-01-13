@@ -132,6 +132,10 @@ function transfer_files() {
 
 # Function for database sync
 function sync_database() {
+    local PV="pv"
+    if ! command -v pv &>/dev/null; then
+        PV="cat"
+    fi
     set -o pipefail
     
     if [[ "${SYNC_DRY_RUN}" -eq 1 ]]; then
@@ -172,54 +176,36 @@ function sync_database() {
             return 1
         fi
 
-        local dest_db_host=$(echo "${dest_db_info}" | grep "^DB_HOST=" | cut -d= -f2-)
-        local dest_db_port=$(echo "${dest_db_info}" | grep "^DB_PORT=" | cut -d= -f2-)
-        local dest_db_user=$(echo "${dest_db_info}" | grep "^DB_USERNAME=" | cut -d= -f2-)
-        local dest_db_pass=$(echo "${dest_db_info}" | grep "^DB_PASSWORD=" | cut -d= -f2-)
-        local dest_db_name=$(echo "${dest_db_info}" | grep "^DB_DATABASE=" | cut -d= -f2-)
+        local dest_db_host=$(printf "%s" "${dest_db_info}" | grep "^DB_HOST=" | tail -n 1 | cut -d= -f2-)
+        local dest_db_port=$(printf "%s" "${dest_db_info}" | grep "^DB_PORT=" | tail -n 1 | cut -d= -f2-)
+        local dest_db_user=$(printf "%s" "${dest_db_info}" | grep "^DB_USERNAME=" | tail -n 1 | cut -d= -f2-)
+        local dest_db_pass=$(printf "%s" "${dest_db_info}" | grep "^DB_PASSWORD=" | tail -n 1 | cut -d= -f2-)
+        local dest_db_name=$(printf "%s" "${dest_db_info}" | grep "^DB_DATABASE=" | tail -n 1 | cut -d= -f2-)
 
-        # Backup Destination DB (Remote)
+        # Backup Destination DB (Remote) using standard db-dump
         if [[ "${SYNC_BACKUP}" -eq 1 ]]; then
-            printf "  Creating backup of destination database...\n"
-            local backup_file="${SYNC_BACKUP_DIR}/${WARDEN_ENV_NAME}_backup_$(date +%Y%m%d_%H%M%S).sql.gz"
-            if ! ssh ${SSH_OPTS} -p "${DEST_REMOTE_PORT}" "${DEST_REMOTE_USER}@${DEST_REMOTE_HOST}" \
-                "mkdir -p \"${SYNC_BACKUP_DIR}\" && export MYSQL_PWD='${dest_db_pass}'; \$(command -v mariadb-dump || echo mysqldump) --force --single-transaction --no-tablespaces --routines -h${dest_db_host} -P${dest_db_port} -u${dest_db_user} ${dest_db_name} | gzip > \"${backup_file}\""; then
-                printf "\033[31mError: Destination database backup failed.\033[0m\n" >&2
-                return 1
-            fi
-            printf "  ✅ Backup saved to: %s:%s\n" "${DEST_REMOTE_HOST}" "${backup_file}"
+             if ! warden db-dump -e "${SYNC_DESTINATION}"; then
+                 return 1
+             fi
         fi
 
-        # Use file-based transfer through local to avoid pipe corruption and handle network issues
-        local local_tmp_file="var/warden_r2r_$(date +%Y%m%dT%H%M%S).sql.gz"
-        mkdir -p var
+        # Use standard db-dump to create a gzipped, filtered file
+        local local_tmp_file="var/${WARDEN_ENV_NAME}_${SYNC_SOURCE}-to-local-$(date +%Y%m%dT%H%M%S).sql.gz"
+        printf "  Streaming sync: %s -> %s (through local)...\n" "${SYNC_SOURCE}" "${SYNC_DESTINATION}"
         
-        printf "  Dumping source database to local file ...\n"
-        if ! ssh ${SSH_OPTS} -o IdentityAgent=none -p "${SOURCE_REMOTE_PORT}" "${SOURCE_REMOTE_USER}@${SOURCE_REMOTE_HOST}" \
-            "export MYSQL_PWD='${src_db_pass}'; (\$(command -v mariadb-dump || echo mysqldump) --force --single-transaction --no-tablespaces --routines -h${src_db_host} -P${src_db_port} -u${src_db_user} ${src_db_name} || true)" \
+        local dump_cmd="export MYSQL_PWD='${src_db_pass}'; { \$(command -v mariadb-dump || echo mysqldump) --force --single-transaction --no-tablespaces --no-data --routines -h${src_db_host} -P${src_db_port} -u${src_db_user} ${src_db_name} 2>/dev/null; \$(command -v mariadb-dump || echo mysqldump) --force --single-transaction --no-tablespaces --skip-triggers --no-create-info -h${src_db_host} -P${src_db_port} -u${src_db_user} ${src_db_name} 2>/dev/null; } | gzip"
+        local import_cmd="export MYSQL_PWD='${dest_db_pass}'; { echo \"SET FOREIGN_KEY_CHECKS=0; SET UNIQUE_CHECKS=0;\"; gunzip -c; } | \$(command -v mariadb || echo mysql) -h${dest_db_host} -P${dest_db_port} -u${dest_db_user} ${dest_db_name} -f"
+        local pv_cmd="cat"
+        if [[ "${PV}" == "pv" ]]; then pv_cmd="pv -N Syncing"; fi
+
+        if ! ssh ${SSH_OPTS} -p "${SOURCE_REMOTE_PORT}" "${SOURCE_REMOTE_USER}@${SOURCE_REMOTE_HOST}" "${dump_cmd}" \
             | sed "${SED_FILTERS[@]}" \
-            | gzip > "${local_tmp_file}"; then
-            printf "\033[31mError: Source database dump failed.\033[0m\n" >&2
-            rm -f "${local_tmp_file}"
+            | ${pv_cmd} \
+            | ssh ${SSH_OPTS} -p "${DEST_REMOTE_PORT}" "${DEST_REMOTE_USER}@${DEST_REMOTE_HOST}" "${import_cmd}"; then
+            printf "\033[31mError: Remote-to-Remote sync failed.\033[0m\n" >&2
             return 1
         fi
-
-        printf "  Uploading dump to destination ...\n"
-        if ! scp ${SSH_OPTS} -P "${DEST_REMOTE_PORT}" "${local_tmp_file}" "${DEST_REMOTE_USER}@${DEST_REMOTE_HOST}:${DEST_REMOTE_DIR}/var/warden_sync_r2r.sql.gz"; then
-            printf "\033[31mError: Failed to upload dump to destination.\033[0m\n" >&2
-            rm -f "${local_tmp_file}"
-            return 1
-        fi
-
-        printf "  Importing on destination ...\n"
-        if ! ssh ${SSH_OPTS} -o IdentityAgent=none -p "${DEST_REMOTE_PORT}" "${DEST_REMOTE_USER}@${DEST_REMOTE_HOST}" \
-            "export MYSQL_PWD='${dest_db_pass}'; zcat \"${DEST_REMOTE_DIR}/var/warden_sync_r2r.sql.gz\" | \$(command -v mariadb || echo mysql) -h${dest_db_host} -P${dest_db_port} -u${dest_db_user} ${dest_db_name} && rm -f \"${DEST_REMOTE_DIR}/var/warden_sync_r2r.sql.gz\""; then
-            printf "\033[31mError: Destination database import failed.\033[0m\n" >&2
-            rm -f "${local_tmp_file}"
-            return 1
-        fi
-
-        rm -f "${local_tmp_file}"
+        
         return 0
     fi
 
@@ -233,26 +219,21 @@ function sync_database() {
             return 1
         fi
 
-        local dest_db_host=$(echo "${dest_db_info}" | grep "^DB_HOST=" | cut -d= -f2-)
-        local dest_db_port=$(echo "${dest_db_info}" | grep "^DB_PORT=" | cut -d= -f2-)
-        local dest_db_user=$(echo "${dest_db_info}" | grep "^DB_USERNAME=" | cut -d= -f2-)
-        local dest_db_pass=$(echo "${dest_db_info}" | grep "^DB_PASSWORD=" | cut -d= -f2-)
-        local dest_db_name=$(echo "${dest_db_info}" | grep "^DB_DATABASE=" | cut -d= -f2-)
+        local dest_db_host=$(printf "%s" "${dest_db_info}" | grep "^DB_HOST=" | tail -n 1 | cut -d= -f2-)
+        local dest_db_port=$(printf "%s" "${dest_db_info}" | grep "^DB_PORT=" | tail -n 1 | cut -d= -f2-)
+        local dest_db_user=$(printf "%s" "${dest_db_info}" | grep "^DB_USERNAME=" | tail -n 1 | cut -d= -f2-)
+        local dest_db_pass=$(printf "%s" "${dest_db_info}" | grep "^DB_PASSWORD=" | tail -n 1 | cut -d= -f2-)
+        local dest_db_name=$(printf "%s" "${dest_db_info}" | grep "^DB_DATABASE=" | tail -n 1 | cut -d= -f2-)
 
-        # Backup Destination DB (Remote - Upload)
+        # Backup Destination DB (Remote) using standard db-dump
         if [[ "${SYNC_BACKUP}" -eq 1 ]]; then
-            printf "  Creating backup of destination database...\n"
-            local backup_file="${SYNC_BACKUP_DIR}/${WARDEN_ENV_NAME}_backup_$(date +%Y%m%d_%H%M%S).sql.gz"
-            if ! ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" \
-                "mkdir -p \"${SYNC_BACKUP_DIR}\" && export MYSQL_PWD='${dest_db_pass}'; \$(command -v mariadb-dump || echo mysqldump) --force --single-transaction --no-tablespaces --routines -h${dest_db_host} -P${dest_db_port} -u${dest_db_user} ${dest_db_name} | gzip > \"${backup_file}\""; then
-                printf "\033[31mError: Destination database backup failed.\033[0m\n" >&2
-                return 1
-            fi
-            printf "  ✅ Backup saved to: %s:%s\n" "${ENV_SOURCE_HOST}" "${backup_file}"
+             if ! warden db-dump -e "${SYNC_DESTINATION}"; then
+                 return 1
+             fi
         fi
 
         # Use host-side warden db-dump to avoid container DNS issues
-        local local_dump="var/warden_upload_$(date +%Y%m%dT%H%M%S).sql.gz"
+        local local_dump="var/${WARDEN_ENV_NAME}_local-to-${SYNC_DESTINATION}-$(date +%Y%m%dT%H%M%S).sql.gz"
         mkdir -p var
         
         printf "  Dumping local database to %s ...\n" "${local_dump}"
@@ -267,40 +248,26 @@ function sync_database() {
             return 1
         fi
 
-
-
-        printf "  Importing on remote ...\n"
-        # We need to ensure var directory exists on remote
-        ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "mkdir -p \"${ENV_SOURCE_DIR}/var\""
+        local import_cmd="export MYSQL_PWD='${dest_db_pass}'; { echo \"SET FOREIGN_KEY_CHECKS=0; SET UNIQUE_CHECKS=0;\"; gunzip -c; } | \$(command -v mariadb || echo mysql) -h${dest_db_host} -P${dest_db_port} -u${dest_db_user} ${dest_db_name} -f"
         
-        # Filter locally to avoid quoting issues on remote
-        local filtered_dump="${local_dump}.filtered"
-        zcat "${local_dump}" | sed "${SED_FILTERS[@]}" | gzip > "${filtered_dump}"
+        local pv_cmd="cat"
+        if [[ "${PV}" == "pv" ]]; then pv_cmd="pv -N Importing"; fi
 
-        if ! scp ${SSH_OPTS} -P "${ENV_SOURCE_PORT}" "${filtered_dump}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}:${ENV_SOURCE_DIR}/var/warden_sync_upload.sql.gz"; then
-            printf "\033[31mError: Failed to upload filtered dump to remote.\033[0m\n" >&2
-            rm -f "${local_dump}" "${filtered_dump}"
+        printf "  Importing to remote ...\n"
+        if ! cat "${local_dump}" | ${pv_cmd} | ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "${import_cmd}"; then
+            printf "\033[31mError: Database upload/import failed.\033[0m\n" >&2
+            rm -f "${local_dump}"
             return 1
         fi
 
-        if ! ssh ${SSH_OPTS} -o IdentityAgent=none -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" \
-            "export MYSQL_PWD='${dest_db_pass}'; zcat \"${ENV_SOURCE_DIR}/var/warden_sync_upload.sql.gz\" | \$(command -v mariadb || echo mysql) -h${dest_db_host} -P${dest_db_port} -u${dest_db_user} ${dest_db_name} && rm -f \"${ENV_SOURCE_DIR}/var/warden_sync_upload.sql.gz\""; then
-            printf "\033[31mError: Remote database import failed.\033[0m\n" >&2
-            rm -f "${local_dump}" "${filtered_dump}"
-            return 1
-        fi
-
-        rm -f "${local_dump}" "${filtered_dump}"
+        rm -f "${local_dump}"
         return 0
     fi
 
     # Download logic
     if [[ "${SYNC_BACKUP}" -eq 1 ]]; then
-        local local_backup_dir="${SYNC_BACKUP_DIR/#\~/$HOME}"
-        local backup_file="${local_backup_dir}/${WARDEN_ENV_NAME}_backup_$(date +%Y%m%d_%H%M%S).sql.gz"
-        mkdir -p "${local_backup_dir}"
-        
-        if ! warden db-dump --file="${backup_file}"; then
+        # Let db-dump handle the filename and location (defaults to var/ locally)
+        if ! warden db-dump -e local; then
              printf "\033[31mError: Local database backup failed.\033[0m\n" >&2
              return 1
         fi
@@ -323,12 +290,14 @@ function sync_database() {
         return 1
     fi
 
-    printf "Streaming mysqldump from %s:%s ...\n" "${ENV_SOURCE_HOST}" "${db_name}"
-    local dump_cmd="export MYSQL_PWD='${db_pass}'; (\$(command -v mariadb-dump || echo mysqldump) --force --single-transaction --no-tablespaces --routines -h${db_host} -P${db_port} -u${db_user} ${db_name} 2> >(grep -v 'Deprecated program name' >&2) || true)"
-    
+    local sed_filters="sed -e '/999999.*enable the sandbox mode/d' -e 's/DEFINER=[^*]*\\*/\\*/g' -e 's/ROW_FORMAT=FIXED//g'"
+    local dump_cmd="export MYSQL_PWD='${db_pass}'; { \$(command -v mariadb-dump || echo mysqldump) --force --single-transaction --no-tablespaces --no-data --routines -h${db_host} -P${db_port} -u${db_user} ${db_name} 2>/dev/null | ${sed_filters}; \$(command -v mariadb-dump || echo mysqldump) --force --single-transaction --no-tablespaces --skip-triggers --no-create-info -h${db_host} -P${db_port} -u${db_user} ${db_name} 2>/dev/null | ${sed_filters}; } | gzip"
+
+    PV=$(command -v pv || echo cat)
+    printf "Streaming gzipped mysqldump from %s:%s ...\n" "${ENV_SOURCE_HOST}" "${db_name}"
     if ! ssh ${SSH_OPTS} -o IdentityAgent=none -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "${dump_cmd}" \
-        | sed "${SED_FILTERS[@]}" \
-        | warden env exec -T db bash -c '$(command -v mariadb || echo mysql) -hdb -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" -f'; then
+        | ${PV} -N "Downloading" \
+        | zcat | warden env exec -T db bash -c 'export MYSQL_PWD="$MYSQL_PASSWORD"; { echo "SET FOREIGN_KEY_CHECKS=0; SET UNIQUE_CHECKS=0;"; cat; } | $(command -v mariadb || echo mysql) -hdb -u"$MYSQL_USER" "$MYSQL_DATABASE" -f'; then
         printf "\033[31mError: Database sync failed during streaming.\033[0m\n" >&2
         return 1
     fi

@@ -129,7 +129,9 @@ EOF
     
     # Check for mysqldump with --force flag and db host (use -E for extended regex)
     grep -q "ssh.*\\\$(command -v mariadb" "$MOCK_LOG"
-    grep -Fq "warden env exec -T db bash -c \$(command -v mariadb || echo mysql) -hdb -u\"\$MYSQL_USER\" -p\"\$MYSQL_PASSWORD\" \"\$MYSQL_DATABASE\" -f" "$MOCK_LOG"
+    grep -Fq 'export MYSQL_PWD="$MYSQL_PASSWORD"' "$MOCK_LOG"
+    grep -Fq 'SET FOREIGN_KEY_CHECKS=0' "$MOCK_LOG"
+    grep -Fq 'mariadb || echo mysql' "$MOCK_LOG"
 }
 
 @test "Magento2 Sync: DB Download with Backup" {
@@ -148,7 +150,12 @@ EOF
     
     run "$BOOTSTRAP_CMD"
     
-    grep -q "warden db-dump --file=${TEST_TMP_DIR}/backup" "$MOCK_LOG"
+    # Expect warden db-dump call without --file
+    grep -q "warden db-dump -e local" "$MOCK_LOG"
+    if grep -q "warden db-dump -e local --file" "$MOCK_LOG"; then
+        echo "FAIL: Found --file argument"
+        return 1
+    fi
 }
 
 @test "Magento2 Sync: DB Upload with Backup" {
@@ -168,6 +175,6 @@ EOF
     
     run "$BOOTSTRAP_CMD"
     
-    grep -q "ssh.*mkdir -p.*~/backup" "$MOCK_LOG"
-    grep -q "ssh.*| gzip > .*~/backup" "$MOCK_LOG"
+    # Expect warden db-dump call for destination backup
+    grep -q "warden db-dump -e remote-test" "$MOCK_LOG"
 }

@@ -31,6 +31,10 @@ elif [[ "$*" == *"printenv MYSQL_PASSWORD"* ]]; then
     echo "db_pass"
 elif [[ "$*" == *"printenv MYSQL_DATABASE"* ]]; then
     echo "symfony_db"
+elif [[ "$*" == *'echo "MYSQL_USER='* ]]; then
+    echo "MYSQL_USER=db_user"
+    echo "MYSQL_PASSWORD=db_pass"
+    echo "MYSQL_DATABASE=symfony_db"
 fi
 EOF
     chmod +x "${MOCK_BIN}/warden"
