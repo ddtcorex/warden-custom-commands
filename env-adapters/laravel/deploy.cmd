@@ -59,7 +59,7 @@ function deploy_full() {
 
     printf "\n"
     printf "⌛ \033[1;32mRunning migrations...\033[0m\n"
-    remote_exec php artisan migrate --force
+    remote_exec php artisan migrate --force || true
 
     deploy_static
 

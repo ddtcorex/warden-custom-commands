@@ -15,9 +15,9 @@ if [[ "$WARDEN_REDIS" -eq "1" ]]; then
 fi
 
 :: Clearing cache
-warden env exec php-fpm php artisan cache:clear
-warden env exec php-fpm php artisan config:clear
-warden env exec php-fpm php artisan route:clear
-warden env exec php-fpm php artisan view:clear
+warden env exec php-fpm php artisan cache:clear || true
+warden env exec php-fpm php artisan config:clear || true
+warden env exec php-fpm php artisan route:clear || true
+warden env exec php-fpm php artisan view:clear || true
 
 echo "✅ Configuration updated successfully!"

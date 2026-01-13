@@ -231,22 +231,20 @@ if ! warden env exec -T php-fpm test -f .env; then
     fi
 fi
 
-# Configure database if not already done
+# Get actual database credentials from the db container
+DB_USER=$(warden env exec -T db printenv MYSQL_USER 2>/dev/null)
+DB_PASS=$(warden env exec -T db printenv MYSQL_PASSWORD 2>/dev/null)
+DB_NAME=$(warden env exec -T db printenv MYSQL_DATABASE 2>/dev/null)
+
+# Use defaults if not available
+DB_USER=${DB_USER:-laravel}
+DB_PASS=${DB_PASS:-laravel}
+DB_NAME=${DB_NAME:-laravel}
+DB_HOST_NAME="db"
+
+# Configure .env if it exists and uses localhost
 if warden env exec -T php-fpm grep -q "DB_HOST=127.0.0.1" .env 2>/dev/null; then
-    # Get actual database credentials from the db container
-    DB_USER=$(warden env exec -T db printenv MYSQL_USER 2>/dev/null)
-    DB_PASS=$(warden env exec -T db printenv MYSQL_PASSWORD 2>/dev/null)
-    DB_NAME=$(warden env exec -T db printenv MYSQL_DATABASE 2>/dev/null)
-
-    # Use defaults if not available
-    DB_USER=${DB_USER:-laravel}
-    DB_PASS=${DB_PASS:-laravel}
-    DB_NAME=${DB_NAME:-laravel}
-
-    # Determine database host
-    DB_HOST_NAME="db"
-    
-    :: Configuring database connection
+    :: "Configuring database connection (.env)"
     warden env exec -T php-fpm sed -i "s/^DB_CONNECTION=.*/DB_CONNECTION=mysql/" .env
     warden env exec -T php-fpm sed -i "s/^#\?[[:space:]]*DB_HOST=.*/DB_HOST=${DB_HOST_NAME}/" .env
     warden env exec -T php-fpm sed -i "s/^#\?[[:space:]]*DB_PORT=.*/DB_PORT=3306/" .env
@@ -255,15 +253,34 @@ if warden env exec -T php-fpm grep -q "DB_HOST=127.0.0.1" .env 2>/dev/null; then
     warden env exec -T php-fpm sed -i "s/^#\?[[:space:]]*DB_PASSWORD=.*/DB_PASSWORD=${DB_PASS}/" .env
 fi
 
+# Support for older Laravel versions using .env.php
+if warden env exec -T php-fpm test -f .env.php; then
+    :: "Configuring database connection (.env.php)"
+    # Standard keys
+    warden env exec -T php-fpm sed -i "s/['\"]DB_HOST['\"][[:space:]]*=>.*/'DB_HOST' => '${DB_HOST_NAME}',/" .env.php
+    warden env exec -T php-fpm sed -i "s/['\"]DB_PORT['\"][[:space:]]*=>.*/'DB_PORT' => '3306',/" .env.php
+    warden env exec -T php-fpm sed -i "s/['\"]DB_DATABASE['\"][[:space:]]*=>.*/'DB_DATABASE' => '${DB_NAME}',/" .env.php
+    warden env exec -T php-fpm sed -i "s/['\"]DB_USERNAME['\"][[:space:]]*=>.*/'DB_USERNAME' => '${DB_USER}',/" .env.php
+    warden env exec -T php-fpm sed -i "s/['\"]DB_PASSWORD['\"][[:space:]]*=>.*/'DB_PASSWORD' => '${DB_PASS}',/" .env.php
+
+    # Alternate keys (DATABASE_*)
+    warden env exec -T php-fpm sed -i "s/['\"]DATABASE_HOST['\"][[:space:]]*=>.*/'DATABASE_HOST' => '${DB_HOST_NAME}',/" .env.php
+    warden env exec -T php-fpm sed -i "s/['\"]DATABASE_PORT['\"][[:space:]]*=>.*/'DATABASE_PORT' => 3306,/" .env.php
+    warden env exec -T php-fpm sed -i "s/['\"]DATABASE_NAME['\"][[:space:]]*=>.*/'DATABASE_NAME' => '${DB_NAME}',/" .env.php
+    warden env exec -T php-fpm sed -i "s/['\"]DATABASE_USER['\"][[:space:]]*=>.*/'DATABASE_USER' => '${DB_USER}',/" .env.php
+    warden env exec -T php-fpm sed -i "s/['\"]DATABASE_PASSWORD['\"][[:space:]]*=>.*/'DATABASE_PASSWORD' => '${DB_PASS}',/" .env.php
+fi
+
 # Generate application key if missing
 if ! warden env exec -T php-fpm grep -q "APP_KEY=base64:" .env 2>/dev/null; then
     :: Generating application key
-    warden env exec -T php-fpm php artisan key:generate
+    warden env exec -T php-fpm php artisan key:generate || true
 fi
 
 if [[ ! $SKIP_MIGRATE ]]; then
     :: Running migrations
-    warden env exec -T php-fpm php artisan migrate --force
+    # Force migration run (ignore failure)
+    warden env exec -T php-fpm php artisan migrate --force || true
 fi
 
 warden set-config

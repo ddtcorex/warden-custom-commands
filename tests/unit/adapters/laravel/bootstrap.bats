@@ -42,6 +42,14 @@ setup() {
     assert_command_called "sed -i"
 }
 
+@test "Laravel: DB Config Updates .env.php" {
+    run "$BOOTSTRAP_CMD" --skip-db-import --skip-composer-install --skip-migrate
+    
+    # We expect the script to have checked for .env.php (warden mock returns 0, so 'test -f' passes)
+    # And then run sed on .env.php
+    grep -Fq ".env.php" "$MOCK_LOG"
+}
+
 @test "Laravel: Fails if WARDEN_DIR not set" {
     export WARDEN_DIR=""
     run bash -c "unset WARDEN_DIR && $BOOTSTRAP_CMD"

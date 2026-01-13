@@ -51,6 +51,7 @@ EOF
     run "$BOOTSTRAP_CMD"
     
     grep -q "warden env exec -T db" "$MOCK_LOG"
+    grep -Fq "\$(command -v mariadb-dump || echo mysqldump)" "$MOCK_LOG"
     [[ "$output" == *"File:"* ]]
 }
 
