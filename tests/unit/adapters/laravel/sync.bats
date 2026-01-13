@@ -28,6 +28,8 @@ setup() {
     export SYNC_DELETE="0"
     export SYNC_REDEPLOY="0"
     export SYNC_REMOTE_TO_REMOTE="0"
+    export SYNC_BACKUP="0"
+    export SYNC_BACKUP_DIR="~/backup"
     
     # Custom Mocks
     export MOCK_BIN="${TEST_TMP_DIR}/mock-bin"
