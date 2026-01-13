@@ -187,6 +187,7 @@ function sync_database() {
                 printf "\033[31mError: Destination database backup failed.\033[0m\n" >&2
                 return 1
             fi
+            printf "  ✅ Backup saved to: %s:%s\n" "${DEST_REMOTE_HOST}" "${backup_file}"
         fi
 
         # Use file-based transfer through local to avoid pipe corruption and handle network issues
@@ -247,6 +248,7 @@ function sync_database() {
                 printf "\033[31mError: Destination database backup failed.\033[0m\n" >&2
                 return 1
             fi
+            printf "  ✅ Backup saved to: %s:%s\n" "${ENV_SOURCE_HOST}" "${backup_file}"
         fi
 
         # Use host-side warden db-dump to avoid container DNS issues
@@ -303,6 +305,7 @@ function sync_database() {
              printf "\033[31mError: Local database backup failed.\033[0m\n" >&2
              return 1
         fi
+        printf "  ✅ Backup saved to: %s\n" "${backup_file}"
     fi
 
     local db_info=$(get_remote_db_info "${ENV_SOURCE_HOST}" "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}" "${ENV_SOURCE_DIR}")

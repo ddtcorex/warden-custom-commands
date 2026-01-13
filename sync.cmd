@@ -194,7 +194,7 @@ if [[ "${SYNC_REMOTE_TO_REMOTE}" -eq 1 ]]; then
         fi
     fi
 elif [[ "${SYNC_DESTINATION}" != "local" ]]; then
-    printf "\033[33mCAUTION: You are about to sync \033[1;35m%s\033[0m\033[33m TO a remote environment (\033[1;31m%s\033[0m\033[33m).\033[0m\n" "${SYNC_DESC}" "${SYNC_DESTINATION}"
+    printf "\033[33mCAUTION: You are about to sync \033[1;35m%s\033[0m\033[33m to a remote environment (\033[1;31m%s\033[0m\033[33m).\033[0m\n" "${SYNC_DESC}" "${SYNC_DESTINATION}"
     if [[ "${SYNC_ASSUME_YES}" -eq 0 ]]; then
         printf "Are you sure you want to continue? [y/N] "
         read -n 1 -r REPLY_CHOICE

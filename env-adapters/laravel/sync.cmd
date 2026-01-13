@@ -176,6 +176,7 @@ function sync_database() {
                 printf "\033[31mError: Destination database backup failed.\033[0m\n" >&2
                 return 1
             fi
+            printf "  ✅ Backup saved to: %s:%s\n" "${DEST_REMOTE_HOST}" "${backup_file}"
         fi
 
         printf "Streaming mysqldump from %s to %s ...\n" "${SYNC_SOURCE}" "${SYNC_DESTINATION}"
@@ -228,6 +229,7 @@ function sync_database() {
                 printf "\033[31mError: Destination database backup failed.\033[0m\n" >&2
                 return 1
             fi
+            printf "  ✅ Backup saved to: %s:%s\n" "${ENV_SOURCE_HOST}" "${backup_file}"
         fi
 
         # 2. Get Local (Source) DB Credentials
@@ -271,6 +273,7 @@ function sync_database() {
              printf "\033[31mError: Local database backup failed.\033[0m\n" >&2
              return 1
         fi
+        printf "  ✅ Backup saved to: %s\n" "${backup_file}"
     fi
 
     # Fetch DB creds via SSH (supports .env and .env.php)
