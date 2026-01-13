@@ -86,13 +86,13 @@ if [[ "${STREAM_DB}" -eq 1 ]]; then
 
     # Streaming database from remote (direct import)
     # Fetch DB creds via SSH (using logic from db-dump.cmd via utils.sh)
-    local db_vars=$(get_remote_db_info "${ENV_SOURCE_HOST}" "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}" "${ENV_SOURCE_DIR}")
+    db_vars=$(get_remote_db_info "${ENV_SOURCE_HOST}" "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}" "${ENV_SOURCE_DIR}")
     
-    local db_host=$(echo "${db_vars}" | grep "^DB_HOST=" | tail -n 1 | cut -d= -f2- | tr -d '"'"'")
-    local db_port=$(echo "${db_vars}" | grep "^DB_PORT=" | tail -n 1 | cut -d= -f2- | tr -d '"'"'")
-    local db_name=$(echo "${db_vars}" | grep "^DB_DATABASE=" | tail -n 1 | cut -d= -f2- | tr -d '"'"'")
-    local db_user=$(echo "${db_vars}" | grep "^DB_USERNAME=" | tail -n 1 | cut -d= -f2- | tr -d '"'"'")
-    local db_pass=$(echo "${db_vars}" | grep "^DB_PASSWORD=" | tail -n 1 | cut -d= -f2- | tr -d '"'"'")
+    db_host=$(echo "${db_vars}" | grep "^DB_HOST=" | tail -n 1 | cut -d= -f2- | tr -d '"'"'")
+    db_port=$(echo "${db_vars}" | grep "^DB_PORT=" | tail -n 1 | cut -d= -f2- | tr -d '"'"'")
+    db_name=$(echo "${db_vars}" | grep "^DB_DATABASE=" | tail -n 1 | cut -d= -f2- | tr -d '"'"'")
+    db_user=$(echo "${db_vars}" | grep "^DB_USERNAME=" | tail -n 1 | cut -d= -f2- | tr -d '"'"'")
+    db_pass=$(echo "${db_vars}" | grep "^DB_PASSWORD=" | tail -n 1 | cut -d= -f2- | tr -d '"'"'")
 
     db_host=${db_host:-127.0.0.1}
     db_port=${db_port:-3306}
@@ -108,11 +108,12 @@ if [[ "${STREAM_DB}" -eq 1 ]]; then
         | sed "${SED_FILTERS[@]}" \
         | warden env exec -T db bash -c '$(command -v mariadb || echo mysql) -hdb -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" -f'
 else
-    printf "🔥 \033[1;32mImporting database...\033[0m\n"
+    local mysql_import_cmd='export MYSQL_PWD="$MYSQL_PASSWORD"; { echo "SET FOREIGN_KEY_CHECKS=0; SET UNIQUE_CHECKS=0;"; cat; } | $(command -v mariadb || echo mysql) -hdb -u"$MYSQL_USER" "$MYSQL_DATABASE" -f'
+    
     if gzip -t "${DUMP_FILENAME}" 2>/dev/null; then
-        ${PV} "${DUMP_FILENAME}" | gunzip -c | sed "${SED_FILTERS[@]}" | warden env exec -T db bash -c '$(command -v mariadb || echo mysql) -hdb -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" -f'
+        ${PV} -N "Importing" "${DUMP_FILENAME}" | gunzip -c | sed "${SED_FILTERS[@]}" | warden env exec -T db bash -c "${mysql_import_cmd}"
     else
-        ${PV} "${DUMP_FILENAME}" | sed "${SED_FILTERS[@]}" | warden env exec -T db bash -c '$(command -v mariadb || echo mysql) -hdb -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" -f'
+        ${PV} -N "Importing" "${DUMP_FILENAME}" | sed "${SED_FILTERS[@]}" | warden env exec -T db bash -c "${mysql_import_cmd}"
     fi
 fi
 

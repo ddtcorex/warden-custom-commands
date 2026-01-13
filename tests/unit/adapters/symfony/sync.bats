@@ -112,3 +112,25 @@ EOF
     grep -q "ssh .* \$(command -v mariadb" "$MOCK_LOG"
     grep -Fq "warden env exec -T db bash -c \$(command -v mariadb || echo mysql) -hdb -u\"\$MYSQL_USER\" -p\"\$MYSQL_PASSWORD\" \"\$MYSQL_DATABASE\" -f" "$MOCK_LOG"
 }
+
+@test "Symfony Sync: DB Download with Backup" {
+    export ENV_SOURCE="dev"
+    export ENV_SOURCE_HOST="example.com"
+    export ENV_SOURCE_PORT="22"
+    export ENV_SOURCE_USER="user"
+    export ENV_SOURCE_DIR="/var/www/remote"
+    export ENV_SOURCE_HOST_VAR="REMOTE_DEV_HOST"
+    export REMOTE_DEV_HOST="dummy"
+    
+    export DIRECTION="download"
+    export SYNC_TYPE_DB=1
+    export SYNC_BACKUP=1
+    
+    run "$BOOTSTRAP_CMD"
+    
+    grep -q "warden db-dump -e local" "$MOCK_LOG"
+    if grep -q "warden db-dump -e local --file" "$MOCK_LOG"; then
+        echo "Found --file arg when it should be absent"
+        return 1
+    fi
+}

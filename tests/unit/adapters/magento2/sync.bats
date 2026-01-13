@@ -148,7 +148,12 @@ EOF
     
     run "$BOOTSTRAP_CMD"
     
-    grep -q "warden db-dump --file=${TEST_TMP_DIR}/backup" "$MOCK_LOG"
+    # Expect warden db-dump call without --file
+    grep -q "warden db-dump -e local" "$MOCK_LOG"
+    if grep -q "warden db-dump -e local --file" "$MOCK_LOG"; then
+        echo "FAIL: Found --file argument"
+        return 1
+    fi
 }
 
 @test "Magento2 Sync: DB Upload with Backup" {
@@ -168,6 +173,6 @@ EOF
     
     run "$BOOTSTRAP_CMD"
     
-    grep -q "ssh.*mkdir -p.*~/backup" "$MOCK_LOG"
-    grep -q "ssh.*| gzip > .*~/backup" "$MOCK_LOG"
+    # Expect warden db-dump call for destination backup
+    grep -q "warden db-dump -e remote-test" "$MOCK_LOG"
 }

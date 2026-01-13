@@ -2,21 +2,29 @@
 [[ ! ${WARDEN_DIR} ]] && >&2 echo -e "\033[31mThis script is not intended to be run directly!\033[0m" && exit 1
 
 WARDEN_USAGE=$(cat <<EOF
-Dump remote database and download it locally.
+Dump database from local or remote environment.
 
 \033[33mUsage:\033[0m
-  db-dump [-h|--help] [-e|--environment=<env>] [-f|--file=<file>]
+  db-dump [-h|--help] [-e|--environment=<env>] [-f|--file=<file>] [--local]
 
 \033[33mOptions:\033[0m
-  -h, --help                                    Display this help menu.
+  -h, --help                  Display this help menu.
+  -f, --file=FILE             Output file path. 
+                              - Absolute (/path/...) or home (~/...) paths used as-is
+                              - Relative paths are relative to project root
+  -e, --environment=NAME      Environment to dump from. Default: local.
+  --full                      Export full database (no table exclusions).
+  --exclude-sensitive-data    Exclude sensitive data (customers, orders, etc).
 
-\033[33mArguments:\033[0m
-  -f, --file=FILE           Output file.
-  -e, --environment=NAME    Specific environment to run a database backup from. Default: local.
+\033[33mRemote Behavior:\033[0m
+  --local                     Download remote dump to local machine.
+                              Default: dump is stored ON the remote server at ~/backup/
 
-  --full                                        Export full database from selected environment.
-
-  --exclude-sensitive-data                      Exclude sensitive data.
+\033[33mExamples:\033[0m
+  db-dump                           Dump local DB to var/
+  db-dump -e staging                Dump staging DB, store ON staging at ~/backup/
+  db-dump -e staging --local        Dump staging DB, download to local var/
+  db-dump -e staging -f var/db.sql.gz   Dump staging, store at staging's project/var/
 
 EOF
 )

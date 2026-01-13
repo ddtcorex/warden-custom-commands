@@ -15,6 +15,7 @@ INCLUDE_SAMPLE=
 DOWNLOAD_SOURCE=
 DB_DUMP=
 DB_IMPORT=1
+STREAM_DB=1
 MEDIA_SYNC=1
 COMPOSER_INSTALL=1
 ADMIN_CREATE=1
@@ -250,7 +251,7 @@ if [[ "${DB_IMPORT:-}" ]]; then
     elif [[ -z "$DB_DUMP" ]]; then
         DB_DUMP="var/${WARDEN_ENV_NAME}_${ENV_SOURCE}-`date +%Y%m%dT%H%M%S`.sql.gz"
         :: Get database
-        warden db-dump --file="${DB_DUMP}" -e "$ENV_SOURCE"
+        warden db-dump --local --file="${DB_DUMP}" -e "$ENV_SOURCE"
         
         if [[ "$DB_DUMP" ]]; then
             :: Importing database

@@ -14,6 +14,7 @@ FIX_DEPS=
 DOWNLOAD_SOURCE=
 DB_DUMP=
 DB_IMPORT=1
+STREAM_DB=1
 ENV_REQUIRED=
 
 ## argument parsing
@@ -214,7 +215,7 @@ if [[ "${DB_IMPORT:-}" ]] && [[ ! "${CLEAN_INSTALL:-}" ]]; then
             fi
             DB_DUMP="${DUMP_DIR}/${WARDEN_ENV_NAME}_${ENV_SOURCE}-$(date +%Y%m%dT%H%M%S).sql.gz"
             :: Downloading database from ${ENV_SOURCE}
-            warden db-dump --file="${DB_DUMP}" -e "$ENV_SOURCE"
+            warden db-dump --local --file="${DB_DUMP}" -e "$ENV_SOURCE"
         fi
 
         if [[ -n "$DB_DUMP" ]] && [[ -f "$DB_DUMP" ]]; then
