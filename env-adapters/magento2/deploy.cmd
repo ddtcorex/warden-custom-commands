@@ -18,12 +18,17 @@ function remote_exec() {
             cmd_args="${cmd_args} $(printf %q "${arg}")"
         done
 
+        local SSH_TTY_OPT=""
+        if [ -t 1 ]; then
+            SSH_TTY_OPT="-t"
+        fi
+
         if [[ -n "${ENV_SOURCE_DIR:-}" ]]; then
             printf "DEBUG: SSH Connect: %s@%s:%s\n" "${ENV_SOURCE_USER}" "${ENV_SOURCE_HOST}" "${ENV_SOURCE_PORT}" >&2
-            ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "cd $(printf %q "${ENV_SOURCE_DIR}") && ${cmd_args}"
+            ssh ${SSH_OPTS} ${SSH_TTY_OPT} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "cd $(printf %q "${ENV_SOURCE_DIR}") && ${cmd_args}"
         else
             printf "DEBUG: SSH Connect: %s@%s:%s\n" "${ENV_SOURCE_USER}" "${ENV_SOURCE_HOST}" "${ENV_SOURCE_PORT}" >&2
-            ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "${cmd_args}"
+            ssh ${SSH_OPTS} ${SSH_TTY_OPT} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "${cmd_args}"
         fi
     else
         printf "Invalid environment '%s'\n" "${TARGET_ENV}" >&2
@@ -74,7 +79,7 @@ function deploy_static() {
     
     # Check Magento version for --jobs support (2.2+)
     # Capture version. If empty, default to 2.4.
-    MAGENTO_VERSION=$(remote_exec bin/magento --version 2>/dev/null | grep -oP '\d+\.\d+' | head -n1)
+    MAGENTO_VERSION=$(remote_exec bin/magento --version 2>/dev/null | tr -d '\r' | grep -oP '\d+\.\d+' | head -n1)
     if [[ -z "${MAGENTO_VERSION}" ]]; then
         MAGENTO_VERSION="2.4"
     fi
