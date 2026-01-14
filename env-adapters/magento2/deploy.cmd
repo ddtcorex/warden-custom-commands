@@ -220,7 +220,7 @@ function deploy_with_deployer() {
     # Determine stage name (use original environment name or default to 'staging')
     local stage="${ENV_SOURCE_ORIG:-staging}"
     if [[ "${ENV_SOURCE_DEFAULT:-0}" -eq "1" ]] || [[ "${stage}" == "local" ]]; then
-        stage="local"
+        stage="localhost"
     fi
     
     printf "\n"
