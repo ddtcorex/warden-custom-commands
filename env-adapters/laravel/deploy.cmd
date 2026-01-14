@@ -169,7 +169,7 @@ function deploy_with_deployer() {
     
     local stage="${ENV_SOURCE_ORIG:-staging}"
     if [[ "${ENV_SOURCE_DEFAULT:-0}" -eq "1" ]] || [[ "${stage}" == "local" ]]; then
-        stage="local"
+        stage="localhost"
     fi
     
     printf "\n"

@@ -24,10 +24,11 @@ setup() {
     mkdir -p "${WARDEN_ENV_PATH}/.warden"
 }
 
-@test "DeployCmd: Deployer strategy executes correctly with automated env detection" {
+@test "DeployCmd: Deployer strategy executes correctly with explicit env" {
     unset -f warden
     export DEPLOY_STRATEGY="deployer"
     export ENV_SOURCE_ORIG="develop"
+    export ENV_SOURCE_DEFAULT=0
     touch "${TEST_SCRIPT_DIR}/deploy.php"
     
     cat > "${MOCK_BIN}/warden" << 'EOF'
@@ -49,6 +50,33 @@ EOF
     [[ "$output" =~ "StrictHostKeyChecking no" ]]
     [[ "$output" =~ "env exec -T php-fpm /home/www-data/.composer/vendor/bin/dep deploy develop -f deploy.php" ]]
 }
+
+@test "DeployCmd: Deployer strategy defaults to localhost for local env" {
+    unset -f warden
+    export DEPLOY_STRATEGY="deployer"
+    unset ENV_SOURCE_ORIG
+    export ENV_SOURCE_DEFAULT=1
+    touch "${TEST_SCRIPT_DIR}/deploy.php"
+    
+    cat > "${MOCK_BIN}/warden" << 'EOF'
+#!/usr/bin/env bash
+case "$*" in
+    *"test -f vendor/bin/dep"*) exit 1 ;;
+    *"command -v dep"*) exit 1 ;;
+    *"composer global config bin-dir"*) echo "/home/www-data/.composer/vendor/bin" ;;
+    *"test -f /home/www-data/.composer/vendor/bin/dep"*) exit 0 ;;
+    *) echo "WARDEN_CALL: $*" >&2 ;;
+esac
+EOF
+    chmod +x "${MOCK_BIN}/warden"
+    
+    cd "${TEST_SCRIPT_DIR}"
+    run ./deploy.cmd
+    
+    # Needs to match 'deploy localhost' instead of 'deploy local'
+    [[ "$output" =~ "env exec -T php-fpm /home/www-data/.composer/vendor/bin/dep deploy localhost -f deploy.php" ]]
+}
+
 
 @test "DeployCmd: Deployer strategy installs deployer if missing" {
     unset -f warden
