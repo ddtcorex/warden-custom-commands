@@ -374,7 +374,21 @@ Deploy Magento application (run setup:upgrade, compile, deploy).
 warden deploy
 warden deploy --jobs=8
 warden deploy --only-static
+
+# Deployer Strategy
+warden deploy --deployer
+warden deploy -e staging --strategy=deployer
+warden deploy --deployer-config=custom/deploy.php
 ```
+
+#### Deployer Strategy
+
+You can use [Deployer](https://deployer.org/) to handle deployments by passing the `--deployer` flag or using `--strategy=deployer`.
+
+- **Automatic Detection:** Warden looks for `deploy.php` or `deploy.yaml`.
+- **Global Installation:** If `dep` is not in your project, Warden installs it globally within the container.
+- **SSH Config:** Host key verification is automatically handled.
+- **Environment Matching:** The `-e` environment name (e.g., `staging`) is passed directly to Deployer as the stage name.
 
 #### Magento 2: `warden open`
 
