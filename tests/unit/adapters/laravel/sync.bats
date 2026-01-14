@@ -181,3 +181,48 @@ EOF
     grep -F "SET FOREIGN_KEY_CHECKS=0" "$MOCK_LOG"
     grep -F "mariadb || echo mysql" "$MOCK_LOG"
 }
+
+@test "Laravel Sync: DB Upload resets destination database" {
+    export ENV_SOURCE="dev"
+    export ENV_SOURCE_HOST="example.com"
+    export ENV_SOURCE_PORT="22"
+    export ENV_SOURCE_USER="user"
+    export ENV_SOURCE_DIR="/var/www/remote"
+    export ENV_SOURCE_HOST_VAR="REMOTE_DEV_HOST"
+    export SYNC_DESTINATION="remote"
+    
+    export DIRECTION="upload"
+    export SYNC_TYPE_DB=1
+    export SYNC_BACKUP=0
+    
+    run "$BOOTSTRAP_CMD"
+    
+    # Expect SSH call with DROP DATABASE and CREATE DATABASE
+    grep -q "ssh.*DROP DATABASE IF EXISTS" "$MOCK_LOG"
+    grep -q "ssh.*CREATE DATABASE" "$MOCK_LOG"
+}
+
+@test "Laravel Sync: Remote to Remote resets destination database" {
+    export SYNC_REMOTE_TO_REMOTE=1
+    export SYNC_SOURCE="dev"
+    export SYNC_DESTINATION="stage"
+    
+    export SOURCE_REMOTE_HOST="dev.com"
+    export SOURCE_REMOTE_PORT="22"
+    export SOURCE_REMOTE_USER="dev"
+    export SOURCE_REMOTE_DIR="/var/www/dev"
+    
+    export DEST_REMOTE_HOST="stage.com"
+    export DEST_REMOTE_PORT="22"
+    export DEST_REMOTE_USER="stage"
+    export DEST_REMOTE_DIR="/var/www/stage"
+    
+    export SYNC_TYPE_DB=1
+    export ENV_SOURCE_HOST_VAR="dummy"
+    
+    run "$BOOTSTRAP_CMD"
+    
+    # Expect SSH call with DROP DATABASE and CREATE DATABASE to destination
+    grep -q "ssh.*stage@stage.com.*DROP DATABASE IF EXISTS" "$MOCK_LOG"
+    grep -q "ssh.*stage@stage.com.*CREATE DATABASE" "$MOCK_LOG"
+}

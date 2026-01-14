@@ -198,6 +198,14 @@ function sync_database() {
         local pv_cmd="cat"
         if [[ "${PV}" == "pv" ]]; then pv_cmd="pv -N Syncing"; fi
 
+        # 1. Reset destination database
+        printf "  Resetting destination database ...\n"
+        if ! ssh ${SSH_OPTS} -p "${DEST_REMOTE_PORT}" "${DEST_REMOTE_USER}@${DEST_REMOTE_HOST}" "export MYSQL_PWD='${dest_db_pass}'; \$(command -v mariadb || echo mysql) -h${dest_db_host} -P${dest_db_port} -u${dest_db_user} -e 'DROP DATABASE IF EXISTS \`${dest_db_name}\`; CREATE DATABASE \`${dest_db_name}\`;'"; then
+            printf "\033[31mError: Failed to reset destination database.\033[0m\n" >&2
+            return 1
+        fi
+
+        # 2. Stream dump from source to destination
         if ! ssh ${SSH_OPTS} -p "${SOURCE_REMOTE_PORT}" "${SOURCE_REMOTE_USER}@${SOURCE_REMOTE_HOST}" "${dump_cmd}" \
             | sed "${SED_FILTERS[@]}" \
             | ${pv_cmd} \
@@ -237,17 +245,22 @@ function sync_database() {
         mkdir -p var
         
         printf "  Dumping local database to %s ...\n" "${local_dump}"
-        if [[ "${FULL_DUMP:-0}" -eq 1 ]]; then
-            warden db-dump -s local --full -f "${local_dump}"
-        else
-            warden db-dump -s local -f "${local_dump}"
-        fi
+        warden db-dump -s local -f "${local_dump}"
 
         if [[ ! -f "${local_dump}" ]]; then
             printf "\033[31mError: Local database dump failed.\033[0m\n" >&2
             return 1
         fi
 
+        # 1. Drop and Recreate Database on Remote
+        printf "  Resetting remote database ...\n"
+        if ! ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "export MYSQL_PWD='${dest_db_pass}'; \$(command -v mariadb || echo mysql) -h${dest_db_host} -P${dest_db_port} -u${dest_db_user} -e 'DROP DATABASE IF EXISTS \`${dest_db_name}\`; CREATE DATABASE \`${dest_db_name}\`;'"; then
+            printf "\033[31mError: Failed to reset remote database.\033[0m\n" >&2
+            rm -f "${local_dump}"
+            return 1
+        fi
+
+        # 2. Import Dump
         local import_cmd="export MYSQL_PWD='${dest_db_pass}'; { echo \"SET FOREIGN_KEY_CHECKS=0; SET UNIQUE_CHECKS=0; SET SQL_MODE='NO_AUTO_VALUE_ON_ZERO';\"; gunzip -c; } | \$(command -v mariadb || echo mysql) -h${dest_db_host} -P${dest_db_port} -u${dest_db_user} ${dest_db_name} -f"
         
         local pv_cmd="cat"
