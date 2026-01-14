@@ -10,6 +10,8 @@ function remote_exec() {
     if [[ "${ENV_SOURCE_DEFAULT:-0}" -eq "1" ]] || [[ "${TARGET_ENV}" == "local" ]]; then
         warden env exec -T php-fpm "$@"
     elif [[ -n "${ENV_SOURCE_HOST:-}" ]]; then
+        # Debug remote execution
+        printf "DEBUG: Remote exec: %s\n" "$*" >&2
         local cmd_args=""
         for arg in "$@"; do
             cmd_args="${cmd_args} $(printf %q "${arg}")"
