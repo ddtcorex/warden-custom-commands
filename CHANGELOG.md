@@ -5,6 +5,41 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2026-01-14
+
+**v2.2.0: Deployer Strategy & Production Optimization**
+
+This release integrates the powerful **Deployer** tool as a first-class deployment strategy within Warden, enabling zero-downtime deployments and advanced rollback capabilities. It also ensures all production deployments use optimized Composer flags by default and improves Docker container orchestration.
+
+### ✨ New Features
+
+- **Deployer Strategy (`--deployer`):**
+  - Added native support for Deployer via `warden deploy --deployer` (or `--strategy=deployer`).
+  - Automatically detects `deploy.php` or `deploy.yaml` configurations.
+  - Installs `deployer` globally within the container if missing from the project.
+  - Executes deployment entirely within the local Warden container for consistent environments.
+  - Automatically configures SSH (`~/.ssh/config`) to bypass host key verification for seamless connectivity.
+
+- **Deployer CLI Options:**
+  - `--deployer-config=<path>`: Specific path to a custom Deployer configuration file.
+  - `--strategy=deployer|native`: Explicit strategy selection.
+  - Environment Name Preservation: Uses the exact environment name (e.g., `develop`) passed via `-e` to match Deployer host configurations.
+
+### 🛠 Improvements
+
+- **Production Optimization:**
+  - Standardized `composer install` commands to always use `--no-dev` and `--optimize-autoloader` for production deployments across all adapters.
+  - Enhanced unit tests to verify production flag usage.
+- **Test Suite Expansion:**
+  - Added comprehensive BATS unit tests for the new Deployer strategy (`tests/unit/adapters/magento2/deployer.bats`).
+  - Verified installation, configuration detection, and command execution flows.
+
+### 🐛 Bug Fixes
+
+- **Deployer "Host key verification failed":** Resolved by injecting an idempotent SSH configuration into the container before execution.
+- **Deployer 7+ TypeError:** Fixed by removing invalid CLI string overrides for `ssh_arguments`.
+- **Variable Pollution:** Redirected installation status messages to `STDERR` to ensuring binary path variables remain clean.
+
 ## [2.1.0] - 2026-01-14
 
 **v2.1.0: Sensitive Data Exclusion & Test Suite Stabilization**
@@ -71,9 +106,9 @@ This major release significantly improves database synchronization reliability b
 
 ### 🐛 Bug Fixes
 
-- Fixed `mysqldump` failures on views with invalid definers or missing tables.
-- Fixed SSH pipe corruption issues during large database transfers.
-- Fixed SSH persistence issues where test containers lost configuration after bootstrap.
+- **Fixed `mysqldump` failures** on views with invalid definers or missing tables.
+- **Fixed SSH pipe corruption** issues during large database transfers.
+- **Fixed SSH persistence** issues where test containers lost configuration after bootstrap.
 
 ## [1.9.0] - 2026-01-09
 
@@ -269,16 +304,13 @@ This release introduces a powerful, unified `sync` command, enables direct datab
 
 ### Fixed
 
-- Fixed critical bug where `warden bootstrap` would fail on fresh installs due to missing `app/etc` directory.
-- Fixed exit code leakage in `db-import` where scripts would return error code 1 even after successful imports.
-- Fixed `warden sync` defaulting to "Staging" even when `-s dev` was passed.
-- Fixed "local: can only be used in a function" errors in multiple scripts.
-- Fixed `warden sync` directory nesting issues by standardizing parent-directory referencing.
-- Fixed `warden sync` dry-run logic for remote-to-remote operations (now correctly shows incremental file list without executing changes).
-- Fixed `warden sync` remote-to-remote cache flushing by using direct `php`/`wp` commands instead of `warden env exec`.
-- Enhanced `warden sync` to auto-create parent directories on destination if missing.
-- Fixed `warden bootstrap` crash related to uninitialized variables during partial syncs.
-- Improved path normalization to robustly strip all trailing slashes (e.g. `path//` -> `path`).
+- **Fixed critical bug** where `warden bootstrap` would fail on fresh installs due to missing `app/etc` directory.
+- **Fixed exit code leakage** in `db-import` where scripts would return error code 1 even after successful imports.
+- **Fixed `warden sync` behavior** defaulting to "Staging" even when `-s dev` was passed.
+- **Fixed variable scoping errors** "local: can only be used in a function" across multiple scripts.
+- **Fixed `warden sync` dry-run logic** for remote-to-remote operations (now correctly shows incremental file list without executing changes).
+- **Fixed `warden sync` remote-to-remote cache flushing** by using direct `php`/`wp` commands instead of `warden env exec`.
+- **Improved path normalization** to robustly strip all trailing slashes.
 
 ## [1.3.0] - 2025-12-12
 
@@ -404,9 +436,9 @@ This release completes multi-framework support with comprehensive remote operati
 
 ### Fixed
 
-- Fixed `.env` quote handling in credential parsing (Laravel/Symfony).
-- Fixed `db-import` argument parsing for `-f=filename` format.
-- Fixed database permission errors by using container credentials directly.
+- **Fixed `.env` quote handling** in credential parsing (Laravel/Symfony).
+- **Fixed `db-import` argument parsing** for `-f=filename` format.
+- **Fixed database permission errors** by using container credentials directly.
 
 ## [1.1.0] - 2025-12-09
 
@@ -436,8 +468,8 @@ This release introduces a major architectural refactor to support multiple frame
 
 ### Fixed
 
-- Fixed search engine host configuration to correctly respect `WARDEN_OPENSEARCH` flags for older Magento versions.
-- Corrected path sourcing for `env-variables` to use `WARDEN_HOME_DIR`.
+- **Fixed search engine host configuration** to correctly respect `WARDEN_OPENSEARCH` flags for older Magento versions.
+- **Corrected path sourcing** for `env-variables` to use `WARDEN_HOME_DIR`.
 
 ## [1.0.0] - 2025-07-04
 

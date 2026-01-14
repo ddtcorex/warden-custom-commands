@@ -43,6 +43,13 @@ setup() {
             echo "local_pass"
         elif [[ "$*" == *"printenv MYSQL_DATABASE"* ]]; then
             echo "local_db"
+        elif [[ "$*" == *"db-dump"* ]] && [[ "$*" == *"-f"* ]]; then
+            # Extract filename and create a dummy dump file for upload tests
+            local dump_file=$(echo "$*" | grep -oE '[^ ]+\.sql\.gz' | head -1)
+            if [[ -n "${dump_file}" ]]; then
+                mkdir -p "$(dirname "${dump_file}")"
+                echo "dummy dump" | gzip > "${dump_file}"
+            fi
         fi
         return 0
     }
@@ -177,4 +184,25 @@ EOF
     
     # Expect warden db-dump call for destination backup
     grep -q "warden db-dump -e remote-test" "$MOCK_LOG"
+}
+
+@test "Magento2 Sync: DB Upload resets destination database" {
+    export ENV_SOURCE="dev"
+    export ENV_SOURCE_HOST="example.com"
+    export ENV_SOURCE_PORT="22"
+    export ENV_SOURCE_USER="user"
+    export ENV_SOURCE_DIR="/var/www/remote"
+    export ENV_SOURCE_HOST_VAR="REMOTE_DEV_HOST"
+    export REMOTE_DEV_HOST="dummy"
+    
+    export DIRECTION="upload"
+    export SYNC_DESTINATION="remote-test"
+    export SYNC_TYPE_DB=1
+    export SYNC_BACKUP=0
+    
+    run "$BOOTSTRAP_CMD"
+    
+    # Expect SSH call with DROP DATABASE and CREATE DATABASE
+    grep -q "ssh.*DROP DATABASE IF EXISTS" "$MOCK_LOG"
+    grep -q "ssh.*CREATE DATABASE" "$MOCK_LOG"
 }

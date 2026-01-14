@@ -194,10 +194,18 @@ function sync_database() {
         printf "  Streaming sync: %s -> %s (through local)...\n" "${SYNC_SOURCE}" "${SYNC_DESTINATION}"
         
         local dump_cmd="export MYSQL_PWD='${src_db_pass}'; { \$(command -v mariadb-dump || echo mysqldump) --force --single-transaction --no-tablespaces --no-data --routines -h${src_db_host} -P${src_db_port} -u${src_db_user} ${src_db_name} 2>/dev/null; \$(command -v mariadb-dump || echo mysqldump) --force --single-transaction --no-tablespaces --skip-triggers --no-create-info -h${src_db_host} -P${src_db_port} -u${src_db_user} ${src_db_name} 2>/dev/null; } | gzip"
-        local import_cmd="export MYSQL_PWD='${dest_db_pass}'; { echo \"SET FOREIGN_KEY_CHECKS=0; SET UNIQUE_CHECKS=0;\"; gunzip -c; } | \$(command -v mariadb || echo mysql) -h${dest_db_host} -P${dest_db_port} -u${dest_db_user} ${dest_db_name} -f"
+        local import_cmd="export MYSQL_PWD='${dest_db_pass}'; { echo \"SET FOREIGN_KEY_CHECKS=0; SET UNIQUE_CHECKS=0; SET SQL_MODE='NO_AUTO_VALUE_ON_ZERO';\"; gunzip -c; } | \$(command -v mariadb || echo mysql) -h${dest_db_host} -P${dest_db_port} -u${dest_db_user} ${dest_db_name} -f"
         local pv_cmd="cat"
         if [[ "${PV}" == "pv" ]]; then pv_cmd="pv -N Syncing"; fi
 
+        # 1. Reset destination database
+        printf "  Resetting destination database ...\n"
+        if ! ssh ${SSH_OPTS} -p "${DEST_REMOTE_PORT}" "${DEST_REMOTE_USER}@${DEST_REMOTE_HOST}" "export MYSQL_PWD='${dest_db_pass}'; \$(command -v mariadb || echo mysql) -h${dest_db_host} -P${dest_db_port} -u${dest_db_user} -e 'DROP DATABASE IF EXISTS \`${dest_db_name}\`; CREATE DATABASE \`${dest_db_name}\`;'"; then
+            printf "\033[31mError: Failed to reset destination database.\033[0m\n" >&2
+            return 1
+        fi
+
+        # 2. Stream dump from source to destination
         if ! ssh ${SSH_OPTS} -p "${SOURCE_REMOTE_PORT}" "${SOURCE_REMOTE_USER}@${SOURCE_REMOTE_HOST}" "${dump_cmd}" \
             | sed "${SED_FILTERS[@]}" \
             | ${pv_cmd} \
@@ -237,18 +245,23 @@ function sync_database() {
         mkdir -p var
         
         printf "  Dumping local database to %s ...\n" "${local_dump}"
-        if [[ "${FULL_DUMP:-0}" -eq 1 ]]; then
-            warden db-dump -s local --full -f "${local_dump}"
-        else
-            warden db-dump -s local -f "${local_dump}"
-        fi
+        warden db-dump -s local -f "${local_dump}"
 
         if [[ ! -f "${local_dump}" ]]; then
             printf "\033[31mError: Local database dump failed.\033[0m\n" >&2
             return 1
         fi
 
-        local import_cmd="export MYSQL_PWD='${dest_db_pass}'; { echo \"SET FOREIGN_KEY_CHECKS=0; SET UNIQUE_CHECKS=0;\"; gunzip -c; } | \$(command -v mariadb || echo mysql) -h${dest_db_host} -P${dest_db_port} -u${dest_db_user} ${dest_db_name} -f"
+        # 1. Drop and Recreate Database on Remote
+        printf "  Resetting remote database ...\n"
+        if ! ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "export MYSQL_PWD='${dest_db_pass}'; \$(command -v mariadb || echo mysql) -h${dest_db_host} -P${dest_db_port} -u${dest_db_user} -e 'DROP DATABASE IF EXISTS \`${dest_db_name}\`; CREATE DATABASE \`${dest_db_name}\`;'"; then
+            printf "\033[31mError: Failed to reset remote database.\033[0m\n" >&2
+            rm -f "${local_dump}"
+            return 1
+        fi
+
+        # 2. Import Dump
+        local import_cmd="export MYSQL_PWD='${dest_db_pass}'; { echo \"SET FOREIGN_KEY_CHECKS=0; SET UNIQUE_CHECKS=0; SET SQL_MODE='NO_AUTO_VALUE_ON_ZERO';\"; gunzip -c; } | \$(command -v mariadb || echo mysql) -h${dest_db_host} -P${dest_db_port} -u${dest_db_user} ${dest_db_name} -f"
         
         local pv_cmd="cat"
         if [[ "${PV}" == "pv" ]]; then pv_cmd="pv -N Importing"; fi
@@ -297,7 +310,7 @@ function sync_database() {
     printf "Streaming gzipped mysqldump from %s:%s ...\n" "${ENV_SOURCE_HOST}" "${db_name}"
     if ! ssh ${SSH_OPTS} -o IdentityAgent=none -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "${dump_cmd}" \
         | ${PV} -N "Downloading" \
-        | zcat | warden env exec -T db bash -c 'export MYSQL_PWD="$MYSQL_PASSWORD"; { echo "SET FOREIGN_KEY_CHECKS=0; SET UNIQUE_CHECKS=0;"; cat; } | $(command -v mariadb || echo mysql) -hdb -u"$MYSQL_USER" "$MYSQL_DATABASE" -f'; then
+        | zcat | warden env exec -T db bash -c 'export MYSQL_PWD="$MYSQL_PASSWORD"; { echo "SET FOREIGN_KEY_CHECKS=0; SET UNIQUE_CHECKS=0; SET SQL_MODE='\''NO_AUTO_VALUE_ON_ZERO'\'';"; cat; } | $(command -v mariadb || echo mysql) -hdb -u"$MYSQL_USER" "$MYSQL_DATABASE" -f'; then
         printf "\033[31mError: Database sync failed during streaming.\033[0m\n" >&2
         return 1
     fi

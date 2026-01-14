@@ -92,10 +92,10 @@ if [[ "${STREAM_DB}" -eq 1 ]]; then
     ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" \
         "export MYSQL_PWD='${db_pass}'; \$(command -v mariadb-dump || echo mysqldump) --single-transaction --no-tablespaces --routines -h${db_host} -P${db_port} -u${db_user} ${db_name}" \
         | sed "${SED_FILTERS[@]}" \
-        | warden env exec -T db bash -c '$(command -v mariadb || echo mysql) -hdb -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" -f'
+        | warden env exec -T db bash -c 'export MYSQL_PWD="$MYSQL_PASSWORD"; { echo "SET FOREIGN_KEY_CHECKS=0; SET UNIQUE_CHECKS=0; SET SQL_MODE='\''NO_AUTO_VALUE_ON_ZERO'\'';"; cat; } | $(command -v mariadb || echo mysql) -hdb -u"$MYSQL_USER" "$MYSQL_DATABASE" -f'
 else
     printf "🔥 \033[1;32mImporting database ...\033[0m\n"
-    mysql_import_cmd='export MYSQL_PWD="$MYSQL_PASSWORD"; { echo "SET FOREIGN_KEY_CHECKS=0; SET UNIQUE_CHECKS=0;"; cat; } | $(command -v mariadb || echo mysql) -hdb -u"$MYSQL_USER" "$MYSQL_DATABASE" -f'
+    mysql_import_cmd='export MYSQL_PWD="$MYSQL_PASSWORD"; { echo "SET FOREIGN_KEY_CHECKS=0; SET UNIQUE_CHECKS=0; SET SQL_MODE='\''NO_AUTO_VALUE_ON_ZERO'\'';"; cat; } | $(command -v mariadb || echo mysql) -hdb -u"$MYSQL_USER" "$MYSQL_DATABASE" -f'
     
     if [[ "${PV}" == "pv" ]]; then
         PV_CMD="pv -N Importing"
