@@ -8,6 +8,7 @@ function remote_exec() {
     # Default to LOCAL if no -e specified or -e local
     local TARGET_ENV="${ENV_SOURCE:-local}"
     if [[ "${ENV_SOURCE_DEFAULT:-0}" -eq "1" ]] || [[ "${TARGET_ENV}" == "local" ]]; then
+        printf "DEBUG: Local exec: %s\n" "$*" >&2
         warden env exec -T php-fpm "$@"
     elif [[ -n "${ENV_SOURCE_HOST:-}" ]]; then
         # Debug remote execution
