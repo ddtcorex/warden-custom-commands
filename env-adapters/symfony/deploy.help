@@ -6,6 +6,7 @@ Deploy Symfony locally. By default, runs a full deployment.
 
 \033[33mUsage:\033[0m
   deploy [-h|--help] [-e|--environment=<env>] [-o|--only-static]
+         [--deployer] [--strategy=<type>] [--deployer-config=<path>]
 
 \033[33mOptions:\033[0m
   -h, --help                Display this help menu
@@ -14,6 +15,14 @@ Deploy Symfony locally. By default, runs a full deployment.
   -e, --environment=<env>   Remote environment to deploy to (e.g. staging, prod). Default: local
 
   -o, --only-static         Deploy assets only (skip composer, migrations)
+
+\033[33mDeployer Strategy:\033[0m
+  --deployer                Use Deployer instead of native deployment (equivalent to --strategy=deployer)
+
+  --strategy=<type>         Deployment strategy: 'native' (default) or 'deployer'
+
+  --deployer-config=<path>  Path to deployer config file. Auto-detects from:
+                            .deployer/deploy.php, .deployer/deploy.yaml, deploy.php, deploy.yaml
 
 EOF
 )

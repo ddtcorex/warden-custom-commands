@@ -117,6 +117,7 @@ if [[ -z "${ENV_SOURCE:-}" ]]; then
     ENV_SOURCE_DEFAULT=1
 fi
 
+ENV_SOURCE_ORIG="${ENV_SOURCE}"
 ENV_SOURCE_VAR=$(printf "%s" "${ENV_SOURCE}" | tr '[:lower:]' '[:upper:]')
 
 if [[ "${ENV_SOURCE_VAR}" == "PRODUCTION" ]]; then
