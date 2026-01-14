@@ -98,7 +98,7 @@ function deploy_static() {
 function deploy_full() {
     printf "\n"
     printf "⌛ \033[1;32mInstalling dependencies...\033[0m\n"
-    remote_exec composer install
+    remote_exec composer install --no-interaction --verbose
     
     # Apply patches if ece-tools is installed
     if remote_exec test -f vendor/bin/ece-patches; then
