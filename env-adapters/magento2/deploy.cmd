@@ -20,10 +20,10 @@ function remote_exec() {
 
         if [[ -n "${ENV_SOURCE_DIR:-}" ]]; then
             printf "DEBUG: SSH Connect: %s@%s:%s\n" "${ENV_SOURCE_USER}" "${ENV_SOURCE_HOST}" "${ENV_SOURCE_PORT}" >&2
-            ssh ${SSH_OPTS} -v -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "cd $(printf %q "${ENV_SOURCE_DIR}") && ${cmd_args}"
+            ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "cd $(printf %q "${ENV_SOURCE_DIR}") && ${cmd_args}"
         else
             printf "DEBUG: SSH Connect: %s@%s:%s\n" "${ENV_SOURCE_USER}" "${ENV_SOURCE_HOST}" "${ENV_SOURCE_PORT}" >&2
-            ssh ${SSH_OPTS} -v -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "${cmd_args}"
+            ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "${cmd_args}"
         fi
     else
         printf "Invalid environment '%s'\n" "${TARGET_ENV}" >&2
