@@ -44,8 +44,8 @@ EOF
     # Run full deploy (no flags)
     run "${TEST_SCRIPT_DIR}/deploy.cmd"
     
-    # Check for composer install (HAS --no-interaction)
-    [[ "$output" == *"WARDEN_CALL: env exec -T php-fpm composer install --no-interaction"* ]]
+    # Check for composer install (HAS --no-dev --optimize-autoloader --no-interaction)
+    [[ "$output" == *"WARDEN_CALL: env exec -T php-fpm composer install --no-dev --optimize-autoloader --no-interaction"* ]]
     
     # Check for magento commands (NO --no-interaction)
     [[ "$output" == *"WARDEN_CALL: env exec -T php-fpm bin/magento setup:upgrade"* ]]

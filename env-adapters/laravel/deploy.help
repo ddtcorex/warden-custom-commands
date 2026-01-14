@@ -1,6 +1,28 @@
-Deploy the application to the specified environment
-Usage: warden deploy [-e <environment>] [--only-static|-o]
+#!/usr/bin/env bash
+[[ ! ${WARDEN_DIR} ]] && >&2 echo -e "\033[31mThis script is not intended to be run directly!\033[0m" && exit 1
 
-Options:
-  -e, --env <environment>   Target environment (local, dev, stage, prod, etc.)
-  -o, --only-static         Deploy only static assets (storage:link) and run hooks
+WARDEN_USAGE=$(cat <<EOF
+Deploy Laravel locally. By default, runs a full deployment.
+
+\033[33mUsage:\033[0m
+  deploy [-h|--help] [-e|--environment=<env>] [-o|--only-static]
+         [--deployer] [--strategy=<type>] [--deployer-config=<path>]
+
+\033[33mOptions:\033[0m
+  -h, --help                Display this help menu
+
+\033[33mArguments:\033[0m
+  -e, --environment=<env>   Remote environment to deploy to (e.g. staging, prod). Default: local
+
+  -o, --only-static         Deploy static assets only (storage:link) and run hooks
+
+\033[33mDeployer Strategy:\033[0m
+  --deployer                Use Deployer instead of native deployment (equivalent to --strategy=deployer)
+
+  --strategy=<type>         Deployment strategy: 'native' (default) or 'deployer'
+
+  --deployer-config=<path>  Path to deployer config file. Auto-detects from:
+                            .deployer/deploy.php, .deployer/deploy.yaml, deploy.php, deploy.yaml
+
+EOF
+)
