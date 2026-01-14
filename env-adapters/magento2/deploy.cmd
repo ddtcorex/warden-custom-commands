@@ -109,11 +109,11 @@ function deploy_full() {
 
     printf "\n"
     printf "⌛ \033[1;32mRunning setup:upgrade...\033[0m\n"
-    remote_exec bin/magento setup:upgrade
+    remote_exec bin/magento setup:upgrade --no-interaction
 
     printf "\n"
     printf "⌛ \033[1;32mRunning setup:di:compile...\033[0m\n"
-    remote_exec bin/magento setup:di:compile
+    remote_exec bin/magento setup:di:compile --no-interaction
     
     deploy_static
 

@@ -46,4 +46,8 @@ EOF
     
     # Check for composer install --no-interaction
     [[ "$output" == *"WARDEN_CALL: env exec -T php-fpm composer install --no-interaction --verbose"* ]]
+    
+    # Check for magento commands with --no-interaction
+    [[ "$output" == *"WARDEN_CALL: env exec -T php-fpm bin/magento setup:upgrade --no-interaction"* ]]
+    [[ "$output" == *"WARDEN_CALL: env exec -T php-fpm bin/magento setup:di:compile --no-interaction"* ]]
 }
