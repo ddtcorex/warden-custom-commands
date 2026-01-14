@@ -8,11 +8,8 @@ function remote_exec() {
     # Default to LOCAL if no -e specified or -e local
     local TARGET_ENV="${ENV_SOURCE:-local}"
     if [[ "${ENV_SOURCE_DEFAULT:-0}" -eq "1" ]] || [[ "${TARGET_ENV}" == "local" ]]; then
-        printf "DEBUG: Local exec: %s\n" "$*" >&2
         warden env exec -T php-fpm "$@"
     elif [[ -n "${ENV_SOURCE_HOST:-}" ]]; then
-        # Debug remote execution
-        printf "DEBUG: Remote exec: %s\n" "$*" >&2
         local cmd_args=""
         for arg in "$@"; do
             cmd_args="${cmd_args} $(printf %q "${arg}")"
@@ -24,10 +21,8 @@ function remote_exec() {
         fi
 
         if [[ -n "${ENV_SOURCE_DIR:-}" ]]; then
-            printf "DEBUG: SSH Connect: %s@%s:%s\n" "${ENV_SOURCE_USER}" "${ENV_SOURCE_HOST}" "${ENV_SOURCE_PORT}" >&2
             ssh ${SSH_OPTS} ${SSH_TTY_OPT} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "cd $(printf %q "${ENV_SOURCE_DIR}") && ${cmd_args}"
         else
-            printf "DEBUG: SSH Connect: %s@%s:%s\n" "${ENV_SOURCE_USER}" "${ENV_SOURCE_HOST}" "${ENV_SOURCE_PORT}" >&2
             ssh ${SSH_OPTS} ${SSH_TTY_OPT} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "${cmd_args}"
         fi
     else
@@ -108,7 +103,7 @@ function deploy_static() {
 function deploy_full() {
     printf "\n"
     printf "⌛ \033[1;32mInstalling dependencies...\033[0m\n"
-    remote_exec composer install --no-interaction --verbose
+    remote_exec composer install --no-interaction
     
     # Apply patches if ece-tools is installed
     if remote_exec test -f vendor/bin/ece-patches; then
@@ -119,11 +114,11 @@ function deploy_full() {
 
     printf "\n"
     printf "⌛ \033[1;32mRunning setup:upgrade...\033[0m\n"
-    remote_exec bin/magento setup:upgrade --no-interaction
+    remote_exec bin/magento setup:upgrade
 
     printf "\n"
     printf "⌛ \033[1;32mRunning setup:di:compile...\033[0m\n"
-    remote_exec bin/magento setup:di:compile --no-interaction
+    remote_exec bin/magento setup:di:compile
     
     deploy_static
 

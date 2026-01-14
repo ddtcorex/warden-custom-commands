@@ -44,10 +44,14 @@ EOF
     # Run full deploy (no flags)
     run "${TEST_SCRIPT_DIR}/deploy.cmd"
     
-    # Check for composer install --no-interaction
-    [[ "$output" == *"WARDEN_CALL: env exec -T php-fpm composer install --no-interaction --verbose"* ]]
+    # Check for composer install (HAS --no-interaction)
+    [[ "$output" == *"WARDEN_CALL: env exec -T php-fpm composer install --no-interaction"* ]]
     
-    # Check for magento commands with --no-interaction
-    [[ "$output" == *"WARDEN_CALL: env exec -T php-fpm bin/magento setup:upgrade --no-interaction"* ]]
-    [[ "$output" == *"WARDEN_CALL: env exec -T php-fpm bin/magento setup:di:compile --no-interaction"* ]]
+    # Check for magento commands (NO --no-interaction)
+    [[ "$output" == *"WARDEN_CALL: env exec -T php-fpm bin/magento setup:upgrade"* ]]
+    [[ "$output" == *"WARDEN_CALL: env exec -T php-fpm bin/magento setup:di:compile"* ]]
+    
+    # Ensure Magento commands specifically do NOT have the flag
+    [[ "$output" != *"bin/magento setup:upgrade --no-interaction"* ]]
+    [[ "$output" != *"bin/magento setup:di:compile --no-interaction"* ]]
 }
