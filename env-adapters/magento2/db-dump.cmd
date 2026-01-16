@@ -171,12 +171,12 @@ function dump_cloud () {
 }
 
 function dump_premise () {
-    local db_info=$(get_remote_db_info "${ENV_SOURCE_HOST}" "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}" "${ENV_SOURCE_DIR}")
-    local db_host=$(printf "%s" "${db_info}" | grep "^DB_HOST=" | tail -n 1 | cut -d= -f2-)
-    local db_port=$(printf "%s" "${db_info}" | grep "^DB_PORT=" | tail -n 1 | cut -d= -f2-)
-    local db_user=$(printf "%s" "${db_info}" | grep "^DB_USERNAME=" | tail -n 1 | cut -d= -f2-)
-    local db_pass=$(printf "%s" "${db_info}" | grep "^DB_PASSWORD=" | tail -n 1 | cut -d= -f2-)
-    local db_name=$(printf "%s" "${db_info}" | grep "^DB_DATABASE=" | tail -n 1 | cut -d= -f2-)
+    local src_db_info=$(get_remote_db_info "${ENV_SOURCE_DIR}")
+    local db_host=$(printf "%s" "${src_db_info}" | grep "^DB_HOST=" | tail -n 1 | cut -d= -f2-)
+    local db_port=$(printf "%s" "${src_db_info}" | grep "^DB_PORT=" | tail -n 1 | cut -d= -f2-)
+    local db_user=$(printf "%s" "${src_db_info}" | grep "^DB_USERNAME=" | tail -n 1 | cut -d= -f2-)
+    local db_pass=$(printf "%s" "${src_db_info}" | grep "^DB_PASSWORD=" | tail -n 1 | cut -d= -f2-)
+    local db_name=$(printf "%s" "${src_db_info}" | grep "^DB_DATABASE=" | tail -n 1 | cut -d= -f2-)
 
     local ignored_opts=""
     if [[ "${FULL_DUMP:-0}" -eq "0" ]]; then
@@ -192,10 +192,10 @@ function dump_premise () {
         printf "⌛ \033[1;32mDumping \033[33m%s\033[1;32m database from \033[33m%s\033[1;32m to local...\033[0m\n" "${db_name}" "${ENV_SOURCE_HOST}"
 
         local db_dump_metadata="export MYSQL_PWD='${db_pass}'; \$(command -v mariadb-dump || echo mysqldump) --force --single-transaction --no-tablespaces --no-data --routines -h${db_host} -P${db_port} -u${db_user} ${db_name} 2> >(grep -v 'Deprecated program name' >&2) | ${sed_filters} | gzip"
-        ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "set -o pipefail; ${db_dump_metadata}" > "${DUMP_FILENAME}"
+        warden remote-exec -e "${ENV_SOURCE}" -- bash -c "set -o pipefail; ${db_dump_metadata}" > "${DUMP_FILENAME}"
 
         local db_dump_data="export MYSQL_PWD='${db_pass}'; \$(command -v mariadb-dump || echo mysqldump) --force --single-transaction --no-tablespaces --skip-triggers --no-create-info ${ignored_opts} -h${db_host} -P${db_port} -u${db_user} ${db_name} 2> >(grep -v 'Deprecated program name' >&2) | ${sed_filters} | gzip"
-        ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "set -o pipefail; ${db_dump_data}" >> "${DUMP_FILENAME}"
+        warden remote-exec -e "${ENV_SOURCE}" -- bash -c "set -o pipefail; ${db_dump_data}" >> "${DUMP_FILENAME}"
         
         printf "✅ \033[32mDatabase dump complete! File: %s\033[0m\n" "${DUMP_FILENAME}"
     else
@@ -226,7 +226,7 @@ function dump_premise () {
             } | gzip > \"${remote_cmd_file}\"
         "
         
-        if ! ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "${dump_cmd}"; then
+        if ! warden remote-exec -e "${ENV_SOURCE}" -- bash -c "${dump_cmd}"; then
             printf "\033[31mError: Database dump failed on remote.\033[0m\n" >&2
             return 1
         fi

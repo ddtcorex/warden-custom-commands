@@ -1,16 +1,14 @@
 #!/usr/bin/env bash
 
 # Helper function to get remote DB credentials from WordPress wp-config.php
-# Usage: get_remote_db_info "HOST" "PORT" "USER" "DIR"
+# Usage: get_remote_db_info "REMOTE_DIR" ["ENV_NAME"]
 # Returns: newline-separated list of DB_VAR=VALUE
 function get_remote_db_info() {
-    local remote_host="$1"
-    local remote_port="$2"
-    local remote_user="$3"
-    local remote_dir="$4"
+    local remote_dir="$1"
+    local env_name="${2:-${ENV_SOURCE}}"
     
     # Fetch DB creds via SSH
-    local db_config=$(ssh ${SSH_OPTS} -p "${remote_port}" "${remote_user}@${remote_host}" "grep -E \"^\s*define\s*\(\s*['\\\"]DB_(NAME|USER|PASSWORD|HOST)\" \"${remote_dir}/wp-config.php\"")
+    local db_config=$(warden remote-exec -e "${env_name}" -- grep -E "^\s*define\s*\(\s*['\\\"]DB_(NAME|USER|PASSWORD|HOST)" "${remote_dir}/wp-config.php" 2>/dev/null)
     
     if [[ -z "${db_config}" ]]; then
         return 1

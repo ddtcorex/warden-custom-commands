@@ -10,20 +10,7 @@ function remote_exec() {
     if [[ "${ENV_SOURCE_DEFAULT:-0}" -eq "1" ]] || [[ "${TARGET_ENV}" == "local" ]]; then
         warden env exec -T php-fpm "$@"
     elif [[ -n "${ENV_SOURCE_HOST:-}" ]]; then
-        local cmd_args=""
-        for arg in "$@"; do
-            cmd_args="${cmd_args} $(printf %q "${arg}")"
-        done
-
-        local SSH_TTY_OPT=""
-        if [ -t 1 ]; then
-            SSH_TTY_OPT="-t"
-        fi
-
-        # Try to load user profile to ensure correct PHP version/PATH
-        local LOAD_PROFILE="source ~/.bash_profile 2>/dev/null || source ~/.bashrc 2>/dev/null || source ~/.profile 2>/dev/null || true"
-
-        ssh ${SSH_OPTS} ${SSH_TTY_OPT} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "${LOAD_PROFILE}; cd \"${ENV_SOURCE_DIR}\" && ${cmd_args}"
+        warden remote-exec -e "${TARGET_ENV}" -- "$@"
     else
         printf "Invalid environment '%s'\n" "${TARGET_ENV}" >&2
         exit 2

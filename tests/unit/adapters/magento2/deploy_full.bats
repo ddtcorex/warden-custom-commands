@@ -71,9 +71,14 @@ echo "SSH_CALL: $@"
 EOF
     chmod +x "${MOCK_BIN}/ssh"
 
-    # Mock warden (should not be called for remote, but just in case)
+    # Mock warden
     cat > "${MOCK_BIN}/warden" << 'EOF'
 #!/usr/bin/env bash
+if [[ "$1" == "remote-exec" ]]; then
+    shift 4
+    echo "WARDEN_REMOTE_EXEC: $@"
+    exit 0
+fi
 echo "WARDEN_CALL: $@"
 EOF
     chmod +x "${MOCK_BIN}/warden"
@@ -81,16 +86,9 @@ EOF
     # Run full deploy
     run "${TEST_SCRIPT_DIR}/deploy.cmd"
     
-    # Verify SSH call
-    # Should include profile loading
-    [[ "$output" == *"source ~/.bash_profile"* ]]
+    # Verify Warden Remote Exec call
     
-    # Should include directory change
-    [[ "$output" == *"cd /var/www/html"* ]]
-    
-    # Should include composer install --no-interaction
-    [[ "$output" == *"composer install"* ]]
-    
-    # Verify correct quoting (simple check)
-    [[ "$output" == *"SSH_CALL: -o StrictHostKeyChecking=no"* ]]
+    # Should check if remote-exec was called with correct commands
+    [[ "$output" == *"WARDEN_REMOTE_EXEC: composer install"* ]]
+    [[ "$output" == *"WARDEN_REMOTE_EXEC: bin/magento setup:upgrade"* ]]
 }

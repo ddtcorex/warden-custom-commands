@@ -144,6 +144,9 @@ if [[ -n "${!ENV_SOURCE_HOST_VAR+x}" ]]; then
     ENV_SOURCE_URL="${!VAR_URL:-}"
 
     SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -o BatchMode=yes"
+    if [[ -n "${SSH_AUTH_SOCK:-}" ]]; then
+        SSH_OPTS="${SSH_OPTS} -A"
+    fi
     if [[ "${WARDEN_SSH_IDENTITIES_ONLY:-0}" -eq 1 ]]; then
         SSH_OPTS="${SSH_OPTS} -o IdentitiesOnly=yes"
     fi

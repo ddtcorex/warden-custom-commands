@@ -35,6 +35,19 @@ setup() {
     
     function warden() {
         echo "warden $*" >> "$MOCK_LOG"
+        if [[ "$1" == "remote-exec" ]]; then
+            shift 4
+            echo "warden-remote-exec $*" >> "$MOCK_LOG"
+            if [[ "$*" == *"grep"* ]]; then
+                 # Helper for get_remote_db_info
+                 echo "define('DB_NAME', 'remote_db');"
+                 echo "define('DB_USER', 'remote_user');"
+                 echo "define('DB_PASSWORD', 'remote_pass');"
+                 echo "define('DB_HOST', 'remote-db:3306');"
+            fi
+            return 0
+        fi
+
         if [[ "$*" == *"printenv MYSQL_USER"* ]]; then
             echo "local_user"
         elif [[ "$*" == *"printenv MYSQL_PASSWORD"* ]]; then
@@ -49,13 +62,7 @@ setup() {
     cat > "${MOCK_BIN}/ssh" << 'EOF'
 #!/usr/bin/env bash
 echo "ssh $*" >> "${MOCK_LOG}"
-if [[ "$*" == *"grep"* ]]; then
-    # Helper for get_remote_db_info
-    echo "define('DB_NAME', 'remote_db');"
-    echo "define('DB_USER', 'remote_user');"
-    echo "define('DB_PASSWORD', 'remote_pass');"
-    echo "define('DB_HOST', 'remote-db:3306');"
-elif [[ "$*" == *"rsync"* ]]; then
+if [[ "$*" == *"rsync"* ]]; then
     echo "Remote rsync triggered"
 fi
 EOF
@@ -95,7 +102,7 @@ EOF
     
     run "$BOOTSTRAP_CMD"
     
-    grep -q "ssh .* \$(command -v mariadb" "$MOCK_LOG"
+    grep -q "warden-remote-exec.*\\\$(command -v mariadb" "$MOCK_LOG"
     grep -Fq 'export MYSQL_PWD="$MYSQL_PASSWORD"' "$MOCK_LOG"
     grep -Fq 'SET FOREIGN_KEY_CHECKS=0' "$MOCK_LOG"
     grep -Fq 'mariadb || echo mysql' "$MOCK_LOG"

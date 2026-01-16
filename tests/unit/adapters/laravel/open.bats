@@ -28,6 +28,24 @@ setup() {
     # Override warden function
     function warden() {
         echo "warden $*" >> "$MOCK_LOG"
+        if [[ "$1" == "remote-exec" ]]; then
+            # Shift past "remote-exec", "-e", "ENV_NAME", "--"
+            shift 4
+            echo "warden-remote-exec $*" >> "$MOCK_LOG"
+            if [[ "$*" == "bash" ]]; then
+                echo "Remote shell opened"
+            fi
+            # Helper for get_remote_db_info
+            if [[ "$*" == *"grep"* ]]; then
+                 echo "DB_HOST=10.0.0.1"
+                 echo "DB_PORT=3306"
+                 echo "DB_DATABASE=remote_db"
+                 echo "DB_USERNAME=remote_user"
+                 echo "DB_PASSWORD=remote_pass"
+            fi
+            return 0
+        fi
+
         if [[ "$*" == *"printenv MYSQL_USER"* ]]; then
             echo "local_user"
         elif [[ "$*" == *"printenv MYSQL_PASSWORD"* ]]; then
@@ -53,17 +71,6 @@ EOF
 echo "ssh $*" >> "${MOCK_LOG}"
 if [[ "$*" == *"-L"* ]]; then
     echo "Tunnel opened"
-elif [[ "$*" == *"grep"* ]]; then
-    echo "DB_HOST=10.0.0.1"
-    echo "DB_PORT=3306"
-    echo "DB_DATABASE=remote_db"
-    echo "DB_USERNAME=remote_user"
-    echo "DB_PASSWORD=remote_pass"
-else
-    entry="$*"
-    if [[ "$entry" =~ "cd /var/www/html" ]]; then
-        echo "Remote shell opened"
-    fi
 fi
 EOF
     chmod +x "${MOCK_BIN}/ssh"
@@ -125,7 +132,7 @@ run_open() {
     
     run run_open "shell"
     
-    grep -q "ssh .* -t -p 22 user@example.com .* bash" "$MOCK_LOG"
+    grep -q "warden-remote-exec.*bash" "$MOCK_LOG"
 }
 
 @test "Laravel Open: Admin Local (HTTPS)" {

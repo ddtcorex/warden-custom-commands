@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+[[ ! "${WARDEN_DIR:-}" ]] && >&2 printf "\033[31mThis script is not intended to be run directly!\033[0m\n" && exit 1
+
+cat <<EOF
+\033[33mUsage:\033[0m warden remote-exec [options] -- <command>
+
+Options:
+  -e, --environment <env>   Remote environment to execute on (default: staging)
+
+Run an arbitrary command on the remote environment.
+Example: warden remote-exec bin/magento cache:flush
+EOF

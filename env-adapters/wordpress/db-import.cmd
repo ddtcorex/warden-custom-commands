@@ -93,7 +93,7 @@ if [[ "${STREAM_DB}" -eq 1 ]]; then
 
     # Streaming database from remote (direct import)
     # Fetch DB creds via SSH (using helper)
-    db_info=$(get_remote_db_info "${ENV_SOURCE_HOST}" "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}" "${ENV_SOURCE_DIR}")
+    db_info=$(get_remote_db_info "${ENV_SOURCE_DIR}")
     
     db_host=$(echo "${db_info}" | grep "^DB_HOST=" | cut -d= -f2-)
     db_port=$(echo "${db_info}" | grep "^DB_PORT=" | cut -d= -f2-)
@@ -102,7 +102,7 @@ if [[ "${STREAM_DB}" -eq 1 ]]; then
     db_name=$(echo "${db_info}" | grep "^DB_DATABASE=" | cut -d= -f2-)
     
     printf "Streaming dump from %s:%s ...\n" "${ENV_SOURCE_HOST}" "${db_name}"
-    ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" \
+    warden remote-exec -e "${ENV_SOURCE}" -- bash -c \
         "export MYSQL_PWD='${db_pass}'; \$(command -v mariadb-dump || echo mysqldump) --single-transaction --no-tablespaces --routines -h${db_host} -P${db_port} -u${db_user} ${db_name}" \
         | sed "${SED_FILTERS[@]}" \
         | warden env exec -T db bash -c '$(command -v mariadb || echo mysql) -hdb -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" -f'
