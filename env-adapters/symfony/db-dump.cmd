@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -u
+# Strict mode inherited from env-variables
 
 # Ensure SSH_OPTS is set (fallback to WARDEN_SSH_OPTS)
 SSH_OPTS=${SSH_OPTS:-${WARDEN_SSH_OPTS:-}}

@@ -7,6 +7,7 @@ setup() {
     
     export WARDEN_ENV_NAME="magento2-test"
     export ENV_SOURCE="local"
+    export ENV_SOURCE_DEFAULT="1"
     export DB_PREFIX="mage_"
     export WARDEN_DIR="/tmp/warden"
     
@@ -34,7 +35,7 @@ elif [[ "$*" == *"printenv MYSQL_PASSWORD"* ]]; then
 elif [[ "$*" == *"printenv MYSQL_DATABASE"* ]]; then
     echo "test_db"
 # Handle new single bash -c call for db info
-elif [[ "$*" == *'echo "MYSQL_USER='* ]]; then
+elif [[ "$*" == *"MYSQL_USER="* ]]; then
     echo "MYSQL_USER=db_user"
     echo "MYSQL_PASSWORD=db_pass"
     echo "MYSQL_DATABASE=test_db"

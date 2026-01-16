@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-set -u
 [[ ! "${WARDEN_DIR:-}" ]] && >&2 printf "\033[31mThis script is not intended to be run directly!\033[0m\n" && exit 1
 
 SUBCOMMAND_DIR=$(dirname "${BASH_SOURCE[0]}")
@@ -56,7 +55,8 @@ if [[ ! -f .env ]]; then
     warden env-init "${HOST_ARGS[@]}"
     
     if [[ ! -f .env ]]; then
-        fatal "Failed to initialize environment"
+        >&2 printf "\033[31mFailed to initialize environment\033[0m\n"
+        exit 1
     fi
     
     # Prompt for remote setup
@@ -74,5 +74,6 @@ source "${SUBCOMMAND_DIR}/env-variables"
 if [[ -f "${SUBCOMMAND_DIR}/env-adapters/${WARDEN_ENV_TYPE}/bootstrap.cmd" ]]; then
     source "${SUBCOMMAND_DIR}/env-adapters/${WARDEN_ENV_TYPE}/bootstrap.cmd" ${FIX_DEPS_FLAG:-} "$@"
 else
-    fatal "Bootstrap is not supported for environment type '${WARDEN_ENV_TYPE}'"
+    error "Bootstrap is not supported for environment type '${WARDEN_ENV_TYPE}'"
+    exit 1
 fi

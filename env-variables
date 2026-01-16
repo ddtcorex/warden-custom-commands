@@ -3,7 +3,14 @@
 [[ -f "${WARDEN_DIR}/utils/env.sh" ]] && source "${WARDEN_DIR}/utils/env.sh"
 [[ ! "${WARDEN_DIR:-}" ]] && >&2 printf "\033[31mThis script is not intended to be run directly!\033[0m\n" && exit 1
 
-set -u
+# Enable strict mode for all commands
+set -euo pipefail
+
+# Use SUBCOMMAND_DIR if already set by calling script, otherwise determine it
+SUBCOMMAND_DIR="${SUBCOMMAND_DIR:-${WARDEN_HOME_DIR}/commands}"
+
+# Source error handling utilities
+source "${SUBCOMMAND_DIR}/lib/error-handling.sh"
 
 function :: {
     printf "\n"

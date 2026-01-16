@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -u
+# Strict mode inherited from env-variables
 
 # env-variables is already sourced by the root dispatcher
 
@@ -42,10 +42,11 @@ fi
 
 # Ensure database service is running
 launched_database_container=0
-DB_CONTAINER_ID=$(warden env ps --filter status=running -q db 2>/dev/null || true)
+# Container check may return empty if not running - that's expected
+DB_CONTAINER_ID=$(warden env ps --filter status=running -q db 2>/dev/null) || DB_CONTAINER_ID=""
 if [[ -z "${DB_CONTAINER_ID}" ]]; then
     warden env up db
-    DB_CONTAINER_ID=$(warden env ps --filter status=running -q db 2>/dev/null || true)
+    DB_CONTAINER_ID=$(warden env ps --filter status=running -q db 2>/dev/null) || DB_CONTAINER_ID=""
     if [[ -z "${DB_CONTAINER_ID}" ]]; then
         printf "😮 \033[31mDatabase container failed to start\033[0m\n" >&2
         exit 1

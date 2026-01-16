@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -u
+# Strict mode inherited from env-variables
 
 # Determine execution prefix based on target environment
 if [[ "${ENV_SOURCE_DEFAULT:-0}" -eq "1" ]] || [[ "${ENV_SOURCE:-local}" == "local" ]]; then

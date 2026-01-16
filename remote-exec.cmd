@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-set -u
 [[ ! "${WARDEN_DIR:-}" ]] && >&2 printf "\033[31mThis script is not intended to be run directly!\033[0m\n" && exit 1
 
 # Reconstruct arguments from WARDEN_PARAMS (consumed by warden) and preserved "$@"
