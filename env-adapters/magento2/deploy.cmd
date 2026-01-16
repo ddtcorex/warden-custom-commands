@@ -83,12 +83,8 @@ function deploy_full() {
     ${EXEC_PREFIX} bin/magento maintenance:enable || true
 
     printf "\n"
-    printf "⌛ \033[1;32mClearing generated code (pre-build)...\033[0m\n"
-    ${EXEC_PREFIX} rm -rf generated/code/* generated/metadata/* || true
-
-    printf "\n"
     printf "⌛ \033[1;32mInstalling dependencies...\033[0m\n"
-    ${EXEC_PREFIX} composer install --no-dev --optimize-autoloader --no-interaction
+    ${EXEC_PREFIX} composer install --no-dev --no-interaction
     
     # Apply patches if ece-tools is installed
     if ${EXEC_PREFIX} test -f vendor/bin/ece-patches; then
@@ -96,6 +92,10 @@ function deploy_full() {
         printf "⌛ \033[1;32mApplying patches...\033[0m\n"
         ${EXEC_PREFIX} php vendor/bin/ece-patches apply || true
     fi
+
+    printf "\n"
+    printf "⌛ \033[1;32mClearing generated code...\033[0m\n"
+    ${EXEC_PREFIX} rm -rf generated/code/* generated/metadata/* || true
 
     printf "\n"
     printf "⌛ \033[1;32mRunning setup:upgrade...\033[0m\n"
