@@ -41,11 +41,20 @@ function get_app_root() {
 
 # Check if containers are running
 function check_environments() {
+    # Check container status
     for container in "${LOCAL_PHP}" "${DEV_PHP}" "${STAGING_PHP}"; do
         if [[ "$(docker inspect -f '{{.State.Running}}' "${container}" 2>/dev/null)" != "true" ]]; then
             return 1
         fi
     done
+    
+    # Check directory existence
+    for dir in "${LOCAL_ENV}" "${DEV_ENV}" "${STAGING_ENV}"; do
+        if [[ ! -d "${dir}" ]]; then
+            return 1
+        fi
+    done
+
     return 0
 }
 

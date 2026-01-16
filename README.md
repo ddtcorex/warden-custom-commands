@@ -805,6 +805,7 @@ Run arbitrary commands on a remote environment via SSH.
 
 - `-h, --help` - Display help menu
 - `-e, --environment` - Remote environment to execute on (default: `staging`)
+- `-v, --verbose` - Print the command execution details for debugging
 
 **Example:**
 

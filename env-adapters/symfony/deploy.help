@@ -10,6 +10,7 @@ Deploy Symfony locally. By default, runs a full deployment.
 
 \033[33mOptions:\033[0m
   -h, --help                Display this help menu
+  -v, --verbose             Print the command being executed
 
 \033[33mArguments:\033[0m
   -e, --environment=<env>   Remote environment to deploy to (e.g. staging, prod). Default: local

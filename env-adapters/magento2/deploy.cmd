@@ -90,6 +90,10 @@ function deploy_full() {
     fi
 
     printf "\n"
+    printf "⌛ \033[1;32mClearing generated code...\033[0m\n"
+    ${EXEC_PREFIX} rm -rf generated/code/* generated/metadata/* || true
+
+    printf "\n"
     printf "⌛ \033[1;32mRunning setup:upgrade...\033[0m\n"
     ${EXEC_PREFIX} bin/magento setup:upgrade
 
