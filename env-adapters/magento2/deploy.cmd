@@ -79,6 +79,14 @@ function deploy_static() {
 
 function deploy_full() {
     printf "\n"
+    printf "⌛ \033[1;32mEnabling maintenance mode...\033[0m\n"
+    ${EXEC_PREFIX} bin/magento maintenance:enable || true
+
+    printf "\n"
+    printf "⌛ \033[1;32mClearing generated code (pre-build)...\033[0m\n"
+    ${EXEC_PREFIX} rm -rf generated/code/* generated/metadata/* || true
+
+    printf "\n"
     printf "⌛ \033[1;32mInstalling dependencies...\033[0m\n"
     ${EXEC_PREFIX} composer install --no-dev --optimize-autoloader --no-interaction
     
@@ -88,10 +96,6 @@ function deploy_full() {
         printf "⌛ \033[1;32mApplying patches...\033[0m\n"
         ${EXEC_PREFIX} php vendor/bin/ece-patches apply || true
     fi
-
-    printf "\n"
-    printf "⌛ \033[1;32mClearing generated code...\033[0m\n"
-    ${EXEC_PREFIX} rm -rf generated/code/* generated/metadata/* || true
 
     printf "\n"
     printf "⌛ \033[1;32mRunning setup:upgrade...\033[0m\n"
@@ -106,6 +110,10 @@ function deploy_full() {
     printf "\n"
     printf "⌛ \033[1;32mFlushing cache...\033[0m\n"
     ${EXEC_PREFIX} bin/magento cache:flush
+
+    printf "\n"
+    printf "⌛ \033[1;32mDisabling maintenance mode...\033[0m\n"
+    ${EXEC_PREFIX} bin/magento maintenance:disable
 
     printf "\n"
     printf "✅ \033[32mFull deploy complete!\033[0m\n"
