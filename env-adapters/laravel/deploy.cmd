@@ -1,21 +1,12 @@
 #!/usr/bin/env bash
 set -u
 
-# env-variables is already sourced by the root dispatcher
-
-# Helper for remote execution
-function remote_exec() {
-    # Default to LOCAL if no -e specified or -e local
-    local TARGET_ENV="${ENV_SOURCE:-local}"
-    if [[ "${ENV_SOURCE_DEFAULT:-0}" -eq "1" ]] || [[ "${TARGET_ENV}" == "local" ]]; then
-        warden env exec -T php-fpm "$@"
-    elif [[ -n "${ENV_SOURCE_HOST:-}" ]]; then
-        warden remote-exec -e "${TARGET_ENV}" -- "$@"
-    else
-        printf "Invalid environment '%s'\n" "${TARGET_ENV}" >&2
-        exit 2
-    fi
-}
+# Determine execution prefix based on target environment
+if [[ "${ENV_SOURCE_DEFAULT:-0}" -eq "1" ]] || [[ "${ENV_SOURCE:-local}" == "local" ]]; then
+    EXEC_PREFIX="warden env exec -T php-fpm"
+else
+    EXEC_PREFIX="warden remote-exec -e ${ENV_SOURCE} --"
+fi
 
 # Hooks
 function after_deploy_static() { :; }
@@ -44,7 +35,7 @@ done
 function deploy_static() {
     printf "\n"
     printf "⌛ \033[1;32mLinking storage...\033[0m\n"
-    remote_exec php artisan storage:link --quiet || true
+    ${EXEC_PREFIX} php artisan storage:link --quiet || true
 
     after_deploy_static
 
@@ -55,18 +46,18 @@ function deploy_static() {
 function deploy_full() {
     printf "\n"
     printf "⌛ \033[1;32mInstalling dependencies...\033[0m\n"
-    remote_exec composer install --no-dev --optimize-autoloader --no-interaction
+    ${EXEC_PREFIX} composer install --no-dev --optimize-autoloader --no-interaction
 
     printf "\n"
     printf "⌛ \033[1;32mRunning migrations...\033[0m\n"
-    remote_exec php artisan migrate --force || true
+    ${EXEC_PREFIX} php artisan migrate --force || true
 
     deploy_static
 
     printf "\n"
     printf "⌛ \033[1;32mOptimizing configuration and cache...\033[0m\n"
-    remote_exec php artisan optimize:clear
-    remote_exec php artisan optimize
+    ${EXEC_PREFIX} php artisan optimize:clear
+    ${EXEC_PREFIX} php artisan optimize
 
     printf "\n"
     printf "✅ \033[32mFull deploy complete!\033[0m\n"

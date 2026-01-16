@@ -1,21 +1,12 @@
 #!/usr/bin/env bash
 set -u
 
-# env-variables is already sourced by the root dispatcher
-
-# Helper for remote execution
-function remote_exec() {
-    # Default to LOCAL if no -e specified or -e local
-    local TARGET_ENV="${ENV_SOURCE:-local}"
-    if [[ "${ENV_SOURCE_DEFAULT:-0}" -eq "1" ]] || [[ "${TARGET_ENV}" == "local" ]]; then
-        warden env exec -T php-fpm "$@"
-    elif [[ -n "${ENV_SOURCE_HOST:-}" ]]; then
-        warden remote-exec -e "${TARGET_ENV}" -- "$@"
-    else
-        printf "Invalid environment '%s'\n" "${TARGET_ENV}" >&2
-        exit 2
-    fi
-}
+# Determine execution prefix based on target environment
+if [[ "${ENV_SOURCE_DEFAULT:-0}" -eq "1" ]] || [[ "${ENV_SOURCE:-local}" == "local" ]]; then
+    EXEC_PREFIX="warden env exec -T php-fpm"
+else
+    EXEC_PREFIX="warden remote-exec -e ${ENV_SOURCE} --"
+fi
 
 # Hooks
 function after_deploy_static() { :; }
@@ -53,14 +44,14 @@ done
 function deploy_static() {
     printf "\n"
     printf "⌛ \033[1;32mClearing static assets...\033[0m\n"
-    remote_exec rm -rf pub/static/* var/view_preprocessed/*
+    ${EXEC_PREFIX} rm -rf pub/static/* var/view_preprocessed/*
 
     printf "\n"
     printf "⌛ \033[1;32mDeploying static content...\033[0m\n"
     
     # Check Magento version for --jobs support (2.2+)
     # Capture version. If empty, default to 2.4.
-    MAGENTO_VERSION=$(remote_exec bin/magento --version 2>/dev/null | tr -d '\r' | grep -oP '\d+\.\d+' | head -n1)
+    MAGENTO_VERSION=$(${EXEC_PREFIX} bin/magento --version 2>/dev/null | tr -d '\r' | grep -oP '\d+\.\d+' | head -n1)
     if [[ -z "${MAGENTO_VERSION}" ]]; then
         MAGENTO_VERSION="2.4"
     fi
@@ -74,10 +65,10 @@ function deploy_static() {
     fi
     
     if [[ "${IS_MODERN_MAGENTO}" -eq 1 ]]; then
-        remote_exec bin/magento setup:static-content:deploy -f --jobs=${DEPLOY_JOBS:-4}
+        ${EXEC_PREFIX} bin/magento setup:static-content:deploy -f --jobs=${DEPLOY_JOBS:-4}
     else
         printf "Note: --jobs not supported on Magento < 2.2, using sequential deployment\n"
-        remote_exec bin/magento setup:static-content:deploy -f
+        ${EXEC_PREFIX} bin/magento setup:static-content:deploy -f
     fi
     
     after_deploy_static
@@ -89,28 +80,28 @@ function deploy_static() {
 function deploy_full() {
     printf "\n"
     printf "⌛ \033[1;32mInstalling dependencies...\033[0m\n"
-    remote_exec composer install --no-dev --optimize-autoloader --no-interaction
+    ${EXEC_PREFIX} composer install --no-dev --optimize-autoloader --no-interaction
     
     # Apply patches if ece-tools is installed
-    if remote_exec test -f vendor/bin/ece-patches; then
+    if ${EXEC_PREFIX} test -f vendor/bin/ece-patches; then
         printf "\n"
         printf "⌛ \033[1;32mApplying patches...\033[0m\n"
-        remote_exec php vendor/bin/ece-patches apply || true
+        ${EXEC_PREFIX} php vendor/bin/ece-patches apply || true
     fi
 
     printf "\n"
     printf "⌛ \033[1;32mRunning setup:upgrade...\033[0m\n"
-    remote_exec bin/magento setup:upgrade
+    ${EXEC_PREFIX} bin/magento setup:upgrade
 
     printf "\n"
     printf "⌛ \033[1;32mRunning setup:di:compile...\033[0m\n"
-    remote_exec bin/magento setup:di:compile
+    ${EXEC_PREFIX} bin/magento setup:di:compile
     
     deploy_static
 
     printf "\n"
     printf "⌛ \033[1;32mFlushing cache...\033[0m\n"
-    remote_exec bin/magento cache:flush
+    ${EXEC_PREFIX} bin/magento cache:flush
 
     printf "\n"
     printf "✅ \033[32mFull deploy complete!\033[0m\n"
