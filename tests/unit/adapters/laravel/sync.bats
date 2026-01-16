@@ -38,6 +38,21 @@ setup() {
     # Override warden function
     function warden() {
         echo "warden $*" >> "$MOCK_LOG"
+        if [[ "$1" == "remote-exec" ]]; then
+            # Shift past "remote-exec", "-e", "ENV_NAME", "--"
+            shift 4
+            echo "warden-remote-exec $*" >> "$MOCK_LOG"
+            # Simulate grep for DB Info
+            if [[ "$*" == *"grep"* ]]; then
+                 echo "DB_HOST=10.0.0.1"
+                 echo "DB_PORT=3306"
+                 echo "DB_DATABASE=remote_db"
+                 echo "DB_USERNAME=remote_user"
+                 echo "DB_PASSWORD=remote_pass"
+            fi
+            return 0
+        fi
+
         if [[ "$*" == *"printenv MYSQL_USER"* ]]; then
             echo "local_user"
         elif [[ "$*" == *"printenv MYSQL_PASSWORD"* ]]; then
@@ -55,14 +70,7 @@ setup() {
     cat > "${MOCK_BIN}/ssh" << 'EOF'
 #!/usr/bin/env bash
 echo "ssh $*" >> "${MOCK_LOG}"
-if [[ "$*" == *"grep"* ]]; then
-    # Helper for get_remote_db_info
-    echo "DB_HOST=10.0.0.1"
-    echo "DB_PORT=3306"
-    echo "DB_DATABASE=remote_db"
-    echo "DB_USERNAME=remote_user"
-    echo "DB_PASSWORD=remote_pass"
-elif [[ "$*" == *"rsync"* ]]; then
+if [[ "$*" == *"rsync"* ]]; then
     echo "Remote rsync triggered"
 fi
 EOF
@@ -112,7 +120,7 @@ EOF
         echo "Output: $output"
     fi
     
-    grep -q "ssh .* \$(command -v mariadb" "$MOCK_LOG"
+    grep -q "warden-remote-exec .* \$(command -v mariadb" "$MOCK_LOG"
     grep -Fq 'export MYSQL_PWD="$MYSQL_PASSWORD"' "$MOCK_LOG"
     grep -Fq 'SET FOREIGN_KEY_CHECKS=0' "$MOCK_LOG"
     grep -Fq 'mariadb || echo mysql' "$MOCK_LOG"
@@ -174,7 +182,7 @@ EOF
     cat "$MOCK_LOG" || true
     echo "========================================="
     
-    grep -q "ssh .* dev@dev.com .* \$(command -v mariadb" "$MOCK_LOG"
+    grep -q "warden-remote-exec .* \$(command -v mariadb" "$MOCK_LOG"
     
     # Use fgrep for safety
     grep -F "export MYSQL_PWD='remote_pass'" "$MOCK_LOG"
@@ -197,9 +205,9 @@ EOF
     
     run "$BOOTSTRAP_CMD"
     
-    # Expect SSH call with DROP DATABASE and CREATE DATABASE
-    grep -q "ssh.*DROP DATABASE IF EXISTS" "$MOCK_LOG"
-    grep -q "ssh.*CREATE DATABASE" "$MOCK_LOG"
+    # Expect warden remote-exec call with DROP DATABASE and CREATE DATABASE
+    grep -q "warden-remote-exec.*DROP DATABASE IF EXISTS" "$MOCK_LOG"
+    grep -q "warden-remote-exec.*CREATE DATABASE" "$MOCK_LOG"
 }
 
 @test "Laravel Sync: Remote to Remote resets destination database" {
@@ -222,7 +230,7 @@ EOF
     
     run "$BOOTSTRAP_CMD"
     
-    # Expect SSH call with DROP DATABASE and CREATE DATABASE to destination
-    grep -q "ssh.*stage@stage.com.*DROP DATABASE IF EXISTS" "$MOCK_LOG"
-    grep -q "ssh.*stage@stage.com.*CREATE DATABASE" "$MOCK_LOG"
+    # Expect warden remote-exec call with DROP DATABASE and CREATE DATABASE to destination
+    grep -q "warden-remote-exec.*DROP DATABASE IF EXISTS" "$MOCK_LOG"
+    grep -q "warden-remote-exec.*CREATE DATABASE" "$MOCK_LOG"
 }

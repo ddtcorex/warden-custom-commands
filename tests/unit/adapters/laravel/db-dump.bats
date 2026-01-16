@@ -4,6 +4,7 @@ load "../../../libs/mocks.bash"
 
 setup() {
     setup_mocks
+    unset -f warden
     
     export WARDEN_ENV_NAME="laravel-test"
     export ENV_SOURCE="local"

@@ -1,18 +1,16 @@
 #!/usr/bin/env bash
 
 # Helper function to get remote DB credentials from Symfony .env / .env.local
-# Usage: get_remote_db_info "HOST" "PORT" "USER" "DIR"
+# Usage: get_remote_db_info "REMOTE_DIR" ["ENV_NAME"]
 # Returns: newline-separated list of DB_VAR=VALUE
 function get_remote_db_info() {
-    local remote_host="$1"
-    local remote_port="$2"
-    local remote_user="$3"
-    local remote_dir="$4"
+    local remote_dir="$1"
+    local env_name="${2:-${ENV_SOURCE}}"
     
     # Fetch DB URL via SSH
     # Check .env.local first, then .env
     # We use -r to prevent backslash escaping issues in grep output, but SSH layer might still strict it.
-    local db_url=$(ssh ${SSH_OPTS} -p "${remote_port}" "${remote_user}@${remote_host}" "grep -h -E '^DATABASE_URL=' \"${remote_dir}/.env.local\" \"${remote_dir}/.env\" 2>/dev/null | head -n 1")
+    local db_url=$(warden remote-exec -e "${env_name}" -- grep -h -E '^DATABASE_URL=' "${remote_dir}/.env.local" "${remote_dir}/.env" 2>/dev/null | head -n 1)
     
     if [[ -z "${db_url}" ]]; then
         return 1

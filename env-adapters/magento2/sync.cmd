@@ -45,7 +45,7 @@ function transfer_files() {
 
     # 1. Check if it exists on destination
     if [[ "${SYNC_REMOTE_TO_REMOTE:-0}" -eq 1 ]]; then
-        if ssh ${SSH_OPTS} -p "${DEST_REMOTE_PORT}" "${DEST_REMOTE_USER}@${DEST_REMOTE_HOST}" "[ -e \"${DEST_REMOTE_DIR}/${target_file}\" ]" ; then
+        if warden remote-exec -e "${SYNC_DESTINATION}" -- bash -c "[ -e \"${DEST_REMOTE_DIR}/${target_file}\" ]" ; then
             exists_on_dest=1
         fi
     elif [[ "${direction}" == "download" ]]; then
@@ -54,7 +54,7 @@ function transfer_files() {
         fi
     else
         # upload
-        if ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "[ -e \"${ENV_SOURCE_DIR}/${target_file}\" ]" ; then
+        if warden remote-exec -e "${ENV_SOURCE}" -- bash -c "[ -e \"${ENV_SOURCE_DIR}/${target_file}\" ]" ; then
             exists_on_dest=1
         fi
     fi
@@ -99,23 +99,17 @@ function transfer_files() {
         # 1. Check/Create Destination Parent Directory (Local -> Dest)
         # Skip this in dry-run mode or if it's just a check
         if [[ "${SYNC_DRY_RUN:-0}" -ne 1 ]]; then
-            ssh ${SSH_OPTS} -p "${DEST_REMOTE_PORT}" "${DEST_REMOTE_USER}@${DEST_REMOTE_HOST}" \
-                "mkdir -p \"${DEST_REMOTE_DIR}/$(dirname "${dest_path}")\""
+            warden remote-exec -e "${SYNC_DESTINATION}" -- bash -c "mkdir -p \"${DEST_REMOTE_DIR}/$(dirname "${dest_path}")\""
         fi
 
-        # 2. Run Rsync on Source (Source -> Dest) using Agent Forwarding (-A)
-        # We use strict RSH options to suppress warnings on the remote side too
+        # 2. Run Rsync on Source (Source -> Dest) using Agent Forwarding (via SSH_OPTS)
         # In dry-run mode, RSYNC_OPTS contains --dry-run, so we SHOULD execute it to see the file list.
         # Added BatchMode=yes and ConnectTimeout=10 to fail fast if auth/net is broken.
-        local cmd="ssh -A ${SSH_OPTS} -p \"${SOURCE_REMOTE_PORT}\" \"${SOURCE_REMOTE_USER}@${SOURCE_REMOTE_HOST}\" \
-            \"rsync ${RSYNC_OPTS} ${rsync_excludes_str} \
+        warden remote-exec -e "${SYNC_SOURCE}" -- bash -c \
+            "rsync ${RSYNC_OPTS} ${rsync_excludes_str} \
             -e 'ssh ${SSH_OPTS} -o BatchMode=yes -o ConnectTimeout=10 -p ${DEST_REMOTE_PORT}' \
-            \\\"${SOURCE_REMOTE_DIR}/${source_path}\\\" \
-            \\\"${DEST_REMOTE_USER}@${DEST_REMOTE_HOST}:${DEST_REMOTE_DIR}/$(dirname "${dest_path}")/\\\"\""
-
-        # Execute the command (RSYNC_OPTS handles safety for existing files, but we blocked mkdir above)
-        # If dry-run, this will safely list files.
-        eval "${cmd}"
+            \"${SOURCE_REMOTE_DIR}/${source_path}\" \
+            \"${DEST_REMOTE_USER}@${DEST_REMOTE_HOST}:${DEST_REMOTE_DIR}/$(dirname "${dest_path}")/\""
     elif [[ "${direction}" == "download" ]]; then
         printf "⌛ \033[1;32mDownloading from %s:%s to %s ...\033[0m\n" "${ENV_SOURCE_HOST}" "${source_path}" "${dest_path}"
         warden env exec -T php-fpm rsync ${RSYNC_OPTS} -e "ssh ${SSH_OPTS} -p ${ENV_SOURCE_PORT}" \
@@ -157,7 +151,7 @@ function sync_database() {
         printf "⌛ \033[1;32mSyncing DB from %s to %s ...\033[0m\n" "${SYNC_SOURCE}" "${SYNC_DESTINATION}"
         
         # Source DB info
-        local src_db_info=$(get_remote_db_info "${SOURCE_REMOTE_HOST}" "${SOURCE_REMOTE_PORT}" "${SOURCE_REMOTE_USER}" "${SOURCE_REMOTE_DIR}")
+        local src_db_info=$(get_remote_db_info "${SOURCE_REMOTE_DIR}" "${SYNC_SOURCE}")
         if [[ $? -ne 0 ]]; then
             printf "\033[31mError: Failed to retrieve source database credentials from %s.\033[0m\n" "${SOURCE_REMOTE_HOST}" >&2
             return 1
@@ -170,7 +164,7 @@ function sync_database() {
         local src_db_name=$(echo "${src_db_info}" | grep "^DB_DATABASE=" | cut -d= -f2-)
 
         # Destination DB info
-        local dest_db_info=$(get_remote_db_info "${DEST_REMOTE_HOST}" "${DEST_REMOTE_PORT}" "${DEST_REMOTE_USER}" "${DEST_REMOTE_DIR}")
+        local dest_db_info=$(get_remote_db_info "${DEST_REMOTE_DIR}" "${SYNC_DESTINATION}")
         if [[ $? -ne 0 ]]; then
             printf "\033[31mError: Failed to retrieve destination database credentials from %s.\033[0m\n" "${DEST_REMOTE_HOST}" >&2
             return 1
@@ -200,16 +194,16 @@ function sync_database() {
 
         # 1. Reset destination database
         printf "  Resetting destination database ...\n"
-        if ! ssh ${SSH_OPTS} -p "${DEST_REMOTE_PORT}" "${DEST_REMOTE_USER}@${DEST_REMOTE_HOST}" "export MYSQL_PWD='${dest_db_pass}'; \$(command -v mariadb || echo mysql) -h${dest_db_host} -P${dest_db_port} -u${dest_db_user} -e 'DROP DATABASE IF EXISTS \`${dest_db_name}\`; CREATE DATABASE \`${dest_db_name}\`;'"; then
+        if ! warden remote-exec -e "${SYNC_DESTINATION}" -- bash -c "export MYSQL_PWD='${dest_db_pass}'; \$(command -v mariadb || echo mysql) -h${dest_db_host} -P${dest_db_port} -u${dest_db_user} -e 'DROP DATABASE IF EXISTS \`${dest_db_name}\`; CREATE DATABASE \`${dest_db_name}\`;'"; then
             printf "\033[31mError: Failed to reset destination database.\033[0m\n" >&2
             return 1
         fi
 
         # 2. Stream dump from source to destination
-        if ! ssh ${SSH_OPTS} -p "${SOURCE_REMOTE_PORT}" "${SOURCE_REMOTE_USER}@${SOURCE_REMOTE_HOST}" "${dump_cmd}" \
+        if ! warden remote-exec -e "${SYNC_SOURCE}" -- bash -c "${dump_cmd}" \
             | sed "${SED_FILTERS[@]}" \
             | ${pv_cmd} \
-            | ssh ${SSH_OPTS} -p "${DEST_REMOTE_PORT}" "${DEST_REMOTE_USER}@${DEST_REMOTE_HOST}" "${import_cmd}"; then
+            | warden remote-exec -e "${SYNC_DESTINATION}" -- bash -c "${import_cmd}"; then
             printf "\033[31mError: Remote-to-Remote sync failed.\033[0m\n" >&2
             return 1
         fi
@@ -221,7 +215,7 @@ function sync_database() {
         printf "⌛ \033[1;32mSyncing DB from local to %s ...\033[0m\n" "${SYNC_DESTINATION}"
 
         # 1. Get Remote (Destination) DB Credentials
-        local dest_db_info=$(get_remote_db_info "${ENV_SOURCE_HOST}" "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}" "${ENV_SOURCE_DIR}")
+        local dest_db_info=$(get_remote_db_info "${ENV_SOURCE_DIR}")
         if [[ $? -ne 0 ]]; then
             printf "\033[31mError: Failed to retrieve database credentials from %s.\033[0m\n" "${ENV_SOURCE_HOST}" >&2
             return 1
@@ -254,7 +248,7 @@ function sync_database() {
 
         # 1. Drop and Recreate Database on Remote
         printf "  Resetting remote database ...\n"
-        if ! ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "export MYSQL_PWD='${dest_db_pass}'; \$(command -v mariadb || echo mysql) -h${dest_db_host} -P${dest_db_port} -u${dest_db_user} -e 'DROP DATABASE IF EXISTS \`${dest_db_name}\`; CREATE DATABASE \`${dest_db_name}\`;'"; then
+        if ! warden remote-exec -e "${ENV_SOURCE}" -- bash -c "export MYSQL_PWD='${dest_db_pass}'; \$(command -v mariadb || echo mysql) -h${dest_db_host} -P${dest_db_port} -u${dest_db_user} -e 'DROP DATABASE IF EXISTS \`${dest_db_name}\`; CREATE DATABASE \`${dest_db_name}\`;'"; then
             printf "\033[31mError: Failed to reset remote database.\033[0m\n" >&2
             rm -f "${local_dump}"
             return 1
@@ -267,7 +261,7 @@ function sync_database() {
         if [[ "${PV}" == "pv" ]]; then pv_cmd="pv -N Importing"; fi
 
         printf "  Importing to remote ...\n"
-        if ! cat "${local_dump}" | ${pv_cmd} | ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "${import_cmd}"; then
+        if ! cat "${local_dump}" | ${pv_cmd} | warden remote-exec -e "${ENV_SOURCE}" -- bash -c "${import_cmd}"; then
             printf "\033[31mError: Database upload/import failed.\033[0m\n" >&2
             rm -f "${local_dump}"
             return 1
@@ -286,7 +280,7 @@ function sync_database() {
         fi
     fi
 
-    local db_info=$(get_remote_db_info "${ENV_SOURCE_HOST}" "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}" "${ENV_SOURCE_DIR}")
+    local db_info=$(get_remote_db_info "${ENV_SOURCE_DIR}")
     if [[ $? -ne 0 ]]; then
         printf "\033[31mError: Failed to retrieve database credentials from %s.\033[0m\n" "${ENV_SOURCE_HOST}" >&2
         return 1
@@ -308,7 +302,7 @@ function sync_database() {
 
     PV=$(command -v pv || echo cat)
     printf "Streaming gzipped mysqldump from %s:%s ...\n" "${ENV_SOURCE_HOST}" "${db_name}"
-    if ! ssh ${SSH_OPTS} -o IdentityAgent=none -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "${dump_cmd}" \
+    if ! warden remote-exec -e "${ENV_SOURCE}" -- bash -c "${dump_cmd}" \
         | ${PV} -N "Downloading" \
         | zcat | warden env exec -T db bash -c 'export MYSQL_PWD="$MYSQL_PASSWORD"; { echo "SET FOREIGN_KEY_CHECKS=0; SET UNIQUE_CHECKS=0; SET SQL_MODE='\''NO_AUTO_VALUE_ON_ZERO'\'';"; cat; } | $(command -v mariadb || echo mysql) -hdb -u"$MYSQL_USER" "$MYSQL_DATABASE" -f'; then
         printf "\033[31mError: Database sync failed during streaming.\033[0m\n" >&2

@@ -4,6 +4,7 @@ load "../../../libs/mocks.bash"
 
 setup() {
     setup_mocks
+    unset -f warden
     
     export TEST_SCRIPT_DIR="${TEST_TMP_DIR}/magento2-utils"
     mkdir -p "${TEST_SCRIPT_DIR}"
@@ -12,14 +13,18 @@ setup() {
     export MOCK_BIN="${TEST_TMP_DIR}/mock-bin"
     mkdir -p "${MOCK_BIN}"
     
-    # Mock ssh to return a base64 encoded json
-    cat > "${MOCK_BIN}/ssh" << 'EOF'
+    # Mock warden
+    cat > "${MOCK_BIN}/warden" << 'EOF'
 #!/usr/bin/env bash
-# Return valid base64 json: {"host":"remote-db:3306","username":"remote_user","password":"remote_pass","dbname":"remote_db"}
-# Base64: eyJob3N0IjoicmVtb3RlLWRiOjMzMDYiLCJ1c2VybmFtZSI6InJlbW90ZV91c2VyIiwicGFzc3dvcmQiOiJyZW1vdGVfcGFzcyIsImRibmFtZSI6InJlbW90ZV9kYiJ9
-echo "eyJob3N0IjoicmVtb3RlLWRiOjMzMDYiLCJ1c2VybmFtZSI6InJlbW90ZV91c2VyIiwicGFzc3dvcmQiOiJyZW1vdGVfcGFzcyIsImRibmFtZSI6InJlbW90ZV9kYiJ9"
+if [[ "$1" == "remote-exec" ]]; then
+    # Return valid base64 json: {"host":"remote-db:3306","username":"remote_user","password":"remote_pass","dbname":"remote_db"}
+    # Base64: eyJob3N0IjoicmVtb3RlLWRiOjMzMDYiLCJ1c2VybmFtZSI6InJlbW90ZV91c2VyIiwicGFzc3dvcmQiOiJyZW1vdGVfcGFzcyIsImRibmFtZSI6InJlbW90ZV9kYiJ9
+    echo "eyJob3N0IjoicmVtb3RlLWRiOjMzMDYiLCJ1c2VybmFtZSI6InJlbW90ZV91c2VyIiwicGFzc3dvcmQiOiJyZW1vdGVfcGFzcyIsImRibmFtZSI6InJlbW90ZV9kYiJ9"
+    exit 0
+fi
+echo "warden $*"
 EOF
-    chmod +x "${MOCK_BIN}/ssh"
+    chmod +x "${MOCK_BIN}/warden"
     
     # Mock php to decode
     cat > "${MOCK_BIN}/php" << 'EOF'
@@ -57,7 +62,7 @@ EOF
 }
 
 @test "Magento2 Utils: Get DB info decoding" {
-    run ./test_wrapper.sh "host" "2222" "user" "/var/www"
+    run ./test_wrapper.sh "/var/www"
     
     [[ "$output" == *"DB_HOST=remote-db"* ]]
     [[ "$output" == *"DB_PORT=3306"* ]]
