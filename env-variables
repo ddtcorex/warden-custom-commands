@@ -66,6 +66,9 @@ ENV_SOURCE_DEFAULT=0
 ENV_SOURCE="${ENV_SOURCE:-}"
 ENV_DESTINATION="${ENV_DESTINATION:-}"
 
+export VERBOSE="${VERBOSE:-0}"
+export VERBOSE_FLAG="${VERBOSE_FLAG:-}"
+
 # Parse source/destination arguments and build filtered args list
 declare -a SKIP_INDICES=()
 declare -a FILTERED_ARGS=()
@@ -89,6 +92,11 @@ for (( i=1; i <= "$#"; i++ )); do
             j=$(($i+1))
             ENV_DESTINATION="${!j}"
             SKIP_INDICES+=($i $j)
+            ;;
+        -v|--verbose)
+            export VERBOSE=1
+            export VERBOSE_FLAG="-v"
+            SKIP_INDICES+=($i)
             ;;
     esac
 done
@@ -144,6 +152,9 @@ if [[ -n "${!ENV_SOURCE_HOST_VAR+x}" ]]; then
     ENV_SOURCE_URL="${!VAR_URL:-}"
 
     SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -o BatchMode=yes"
+    if [[ -n "${SSH_AUTH_SOCK:-}" ]]; then
+        SSH_OPTS="${SSH_OPTS} -A"
+    fi
     if [[ "${WARDEN_SSH_IDENTITIES_ONLY:-0}" -eq 1 ]]; then
         SSH_OPTS="${SSH_OPTS} -o IdentitiesOnly=yes"
     fi

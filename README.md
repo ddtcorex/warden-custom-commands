@@ -797,6 +797,25 @@ warden setup-remotes
 warden setup-remotes --help
 ```
 
+#### `warden remote-exec`
+
+Run arbitrary commands on a remote environment via SSH.
+
+**Options:**
+
+- `-h, --help` - Display help menu
+- `-e, --environment` - Remote environment to execute on (default: `staging`)
+
+**Example:**
+
+```bash
+# Run command on staging (default)
+warden remote-exec bin/magento cache:flush
+
+# Run command on production
+warden remote-exec -e production bin/magento indexer:reindex
+```
+
 ## Adding New Environment Support
 
 To add support for a new framework (e.g., Symfony):

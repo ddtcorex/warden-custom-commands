@@ -56,7 +56,7 @@ function dump_local () {
 
 function dump_premise () {
     # Remote dump logic
-    local db_info=$(get_remote_db_info "${ENV_SOURCE_HOST}" "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}" "${ENV_SOURCE_DIR}")
+    local db_info=$(get_remote_db_info "${ENV_SOURCE_DIR}")
     local db_host=$(echo "${db_info}" | grep "^DB_HOST=" | cut -d= -f2-)
     local db_port=$(echo "${db_info}" | grep "^DB_PORT=" | cut -d= -f2-)
     local db_user=$(echo "${db_info}" | grep "^DB_USERNAME=" | cut -d= -f2-)
@@ -78,7 +78,7 @@ function dump_premise () {
          
          local dump_cmd="export MYSQL_PWD='${db_pass}'; \$(command -v mariadb-dump || echo mysqldump) --no-tablespaces --single-transaction --routines ${ignored_opts} -h${db_host} -P${db_port} -u${db_user} ${db_name} 2> >(grep -v 'Deprecated program name' >&2) | ${sed_filters} | gzip"
          
-         ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "set -o pipefail; ${dump_cmd}" > "${DUMP_FILENAME}"
+         warden remote-exec -e "${ENV_SOURCE}" -- bash -c "set -o pipefail; ${dump_cmd}" > "${DUMP_FILENAME}"
          
          printf "✅ \033[32mDatabase dump complete! File: %s\033[0m\n" "${DUMP_FILENAME}"
     else
@@ -98,7 +98,7 @@ function dump_premise () {
             \$(command -v mariadb-dump || echo mysqldump) --no-tablespaces --single-transaction --routines ${ignored_opts} -h${db_host} -P${db_port} -u${db_user} ${db_name} 2> >(grep -v 'Deprecated program name' >&2) | ${sed_filters} | gzip > \"${remote_cmd_file}\"
          "
          
-         if ! ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "${dump_cmd}"; then
+         if ! warden remote-exec -e "${ENV_SOURCE}" -- bash -c "${dump_cmd}"; then
              printf "\033[31mError: Database dump failed on remote.\033[0m\n" >&2
              return 1
          fi

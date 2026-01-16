@@ -116,7 +116,7 @@ source "${SCRIPT_DIR}/utils.sh"
 
 function remote_db() {
     # Laravel uses .env for DB config. We fetch it via SSH.
-    local db_info=$(get_remote_db_info "${ENV_SOURCE_HOST}" "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}" "${ENV_SOURCE_DIR}")
+    local db_info=$(get_remote_db_info "${ENV_SOURCE_DIR}")
 
     # Parse variables from the grep output
     local db_host=$(printf "%s" "${db_info}" | grep DB_HOST | cut -d= -f2 | tr -d '"'"'")
@@ -146,7 +146,7 @@ function remote_db() {
 }
 
 function remote_shell() {
-    ssh ${SSH_OPTS} -t -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "cd ${ENV_SOURCE_DIR}; bash"
+    warden remote-exec -e "${ENV_SOURCE_VAR}" -- bash
 }
 
 function remote_sftp() {

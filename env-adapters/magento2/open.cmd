@@ -48,7 +48,7 @@ function get_db_info() {
 }
 
 function remote_db () {
-    local db_info=$(get_remote_db_info "${ENV_SOURCE_HOST}" "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}" "${ENV_SOURCE_DIR}")
+    local db_info=$(get_remote_db_info "${ENV_SOURCE_DIR}")
     local db_host=$(echo "${db_info}" | grep "^DB_HOST=" | cut -d= -f2-)
     local db_port=$(echo "${db_info}" | grep "^DB_PORT=" | cut -d= -f2-)
     local db_user=$(echo "${db_info}" | grep "^DB_USERNAME=" | cut -d= -f2-)
@@ -106,7 +106,7 @@ function local_shell() {
 }
 
 function remote_shell() {
-    ssh ${SSH_OPTS} -t -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "cd ${ENV_SOURCE_DIR}; bash"
+    warden remote-exec -e "${ENV_SOURCE_VAR}" -- bash
 }
 
 function cloud_shell() {
@@ -137,7 +137,7 @@ function local_admin() {
 }
 
 function remote_admin() {
-    local admin_path=$(ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" 'php -r "\$a=include \"'"${ENV_SOURCE_DIR}"'/app/etc/env.php\"; echo \$a[\"backend\"][\"frontName\"];"')
+    local admin_path=$(warden remote-exec -e "${ENV_SOURCE_VAR}" -- php -r "\$a=include \"${ENV_SOURCE_DIR}/app/etc/env.php\"; echo \$a[\"backend\"][\"frontName\"];")
     printf "\033[32m%s\033[0m admin at: \033[32m%s%s\033[0m\n" "${ENV_SOURCE_VAR}" "${ENV_SOURCE_URL}" "${admin_path}"
     if [[ -n "${ENV_SOURCE_URL:-}" ]]; then
         open_link "${ENV_SOURCE_URL}${admin_path}"

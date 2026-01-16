@@ -37,7 +37,7 @@ function transfer_files() {
 
     # 1. Check if it exists on destination
     if [[ "${SYNC_REMOTE_TO_REMOTE:-0}" -eq 1 ]]; then
-        if ssh ${SSH_OPTS} -p "${DEST_REMOTE_PORT}" "${DEST_REMOTE_USER}@${DEST_REMOTE_HOST}" "[ -e \"${DEST_REMOTE_DIR}/${target_file}\" ]" ; then
+        if warden remote-exec -e "${SYNC_DESTINATION}" -- bash -c "[ -e \"${DEST_REMOTE_DIR}/${target_file}\" ]" ; then
             exists_on_dest=1
         fi
     elif [[ "${direction}" == "download" ]]; then
@@ -46,7 +46,7 @@ function transfer_files() {
         fi
     else
         # upload
-        if ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "[ -e \"${ENV_SOURCE_DIR}/${target_file}\" ]" ; then
+        if warden remote-exec -e "${ENV_SOURCE}" -- bash -c "[ -e \"${ENV_SOURCE_DIR}/${target_file}\" ]" ; then
             exists_on_dest=1
         fi
     fi
@@ -91,19 +91,16 @@ function transfer_files() {
 
         # 1. Check/Create Destination Parent Directory (Local -> Dest)
         if [[ "${SYNC_DRY_RUN:-0}" -ne 1 ]]; then
-            ssh ${SSH_OPTS} -p "${DEST_REMOTE_PORT}" "${DEST_REMOTE_USER}@${DEST_REMOTE_HOST}" \
-                "mkdir -p \"${DEST_REMOTE_DIR}/$(dirname "${dest_path}")\""
+            warden remote-exec -e "${SYNC_DESTINATION}" -- bash -c "mkdir -p \"${DEST_REMOTE_DIR}/$(dirname "${dest_path}")\""
         fi
 
-        # 2. Run Rsync on Source (Source -> Dest) using Agent Forwarding (-A)
+        # 2. Run Rsync on Source (Source -> Dest) using Agent Forwarding (via SSH_OPTS)
         # In dry-run mode, RSYNC_OPTS contains --dry-run, so we SHOULD execute it.
-        local cmd="ssh -A ${SSH_OPTS} -p \"${SOURCE_REMOTE_PORT}\" \"${SOURCE_REMOTE_USER}@${SOURCE_REMOTE_HOST}\" \
-            \"rsync ${RSYNC_OPTS} ${rsync_excludes_str} \
+        warden remote-exec -e "${SYNC_SOURCE}" -- bash -c \
+            "rsync ${RSYNC_OPTS} ${rsync_excludes_str} \
             -e 'ssh ${SSH_OPTS} -o BatchMode=yes -o ConnectTimeout=10 -p ${DEST_REMOTE_PORT}' \
-            \\\"${SOURCE_REMOTE_DIR}/${source_path}\\\" \
-            \\\"${DEST_REMOTE_USER}@${DEST_REMOTE_HOST}:${DEST_REMOTE_DIR}/$(dirname "${dest_path}")/\\\"\""
-
-        eval "${cmd}"
+            \"${SOURCE_REMOTE_DIR}/${source_path}\" \
+            \"${DEST_REMOTE_USER}@${DEST_REMOTE_HOST}:${DEST_REMOTE_DIR}/$(dirname "${dest_path}")/\""
     elif [[ "${direction}" == "download" ]]; then
         printf "⌛ \033[1;32mDownloading from %s:%s to %s ...\033[0m\n" "${ENV_SOURCE_HOST}" "${source_path}" "${dest_path}"
         warden env exec php-fpm rsync ${RSYNC_OPTS} -e "ssh ${SSH_OPTS} -p ${ENV_SOURCE_PORT}" \
@@ -141,7 +138,7 @@ function sync_database() {
         printf "⌛ \033[1;32mSyncing DB from %s to %s ...\033[0m\n" "${SYNC_SOURCE}" "${SYNC_DESTINATION}"
 
         # Source DB info
-        local src_db_info=$(get_remote_db_info "${SOURCE_REMOTE_HOST}" "${SOURCE_REMOTE_PORT}" "${SOURCE_REMOTE_USER}" "${SOURCE_REMOTE_DIR}")
+        local src_db_info=$(get_remote_db_info "${SOURCE_REMOTE_DIR}" "${SYNC_SOURCE}")
         local src_db_host=$(echo "${src_db_info}" | grep "^DB_HOST=" | cut -d= -f2-)
         local src_db_port=$(echo "${src_db_info}" | grep "^DB_PORT=" | cut -d= -f2-)
         local src_db_user=$(echo "${src_db_info}" | grep "^DB_USERNAME=" | cut -d= -f2-)
@@ -149,7 +146,7 @@ function sync_database() {
         local src_db_name=$(echo "${src_db_info}" | grep "^DB_DATABASE=" | cut -d= -f2-)
 
         # Destination DB info
-        local dest_db_info=$(get_remote_db_info "${DEST_REMOTE_HOST}" "${DEST_REMOTE_PORT}" "${DEST_REMOTE_USER}" "${DEST_REMOTE_DIR}")
+        local dest_db_info=$(get_remote_db_info "${DEST_REMOTE_DIR}" "${SYNC_DESTINATION}")
         local dest_db_host=$(echo "${dest_db_info}" | grep "^DB_HOST=" | cut -d= -f2-)
         local dest_db_port=$(echo "${dest_db_info}" | grep "^DB_PORT=" | cut -d= -f2-)
         local dest_db_user=$(echo "${dest_db_info}" | grep "^DB_USERNAME=" | cut -d= -f2-)
@@ -174,16 +171,16 @@ function sync_database() {
 
         # 1. Reset destination database
         printf "  Resetting destination database ...\n"
-        if ! ssh ${SSH_OPTS} -p "${DEST_REMOTE_PORT}" "${DEST_REMOTE_USER}@${DEST_REMOTE_HOST}" "export MYSQL_PWD='${dest_db_pass}'; \$(command -v mariadb || echo mysql) -h${dest_db_host} -P${dest_db_port} -u${dest_db_user} -e 'DROP DATABASE IF EXISTS \`${dest_db_name}\`; CREATE DATABASE \`${dest_db_name}\`;'"; then
+        if ! warden remote-exec -e "${SYNC_DESTINATION}" -- bash -c "export MYSQL_PWD='${dest_db_pass}'; \$(command -v mariadb || echo mysql) -h${dest_db_host} -P${dest_db_port} -u${dest_db_user} -e 'DROP DATABASE IF EXISTS \`${dest_db_name}\`; CREATE DATABASE \`${dest_db_name}\`;'"; then
             printf "\033[31mError: Failed to reset destination database.\033[0m\n" >&2
             return 1
         fi
 
         # 2. Stream dump from source to destination
-        if ! ssh ${SSH_OPTS} -p "${SOURCE_REMOTE_PORT}" "${SOURCE_REMOTE_USER}@${SOURCE_REMOTE_HOST}" "${dump_cmd}" \
+        if ! warden remote-exec -e "${SYNC_SOURCE}" -- bash -c "${dump_cmd}" \
             | sed "${SED_FILTERS[@]}" \
             | ${pv_cmd} \
-            | ssh ${SSH_OPTS} -p "${DEST_REMOTE_PORT}" "${DEST_REMOTE_USER}@${DEST_REMOTE_HOST}" "${import_cmd}"; then
+            | warden remote-exec -e "${SYNC_DESTINATION}" -- bash -c "${import_cmd}"; then
             printf "\033[31mError: Remote-to-Remote sync failed.\033[0m\n" >&2
             return 1
         fi
@@ -194,7 +191,7 @@ function sync_database() {
         printf "⌛ \033[1;32mSyncing DB from local to %s ...\033[0m\n" "${SYNC_DESTINATION}"
 
         # 1. Get Destination (Remote) DB Credentials
-        local dest_db_info=$(get_remote_db_info "${ENV_SOURCE_HOST}" "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}" "${ENV_SOURCE_DIR}")
+        local dest_db_info=$(get_remote_db_info "${ENV_SOURCE_DIR}")
         local dest_db_host=$(echo "${dest_db_info}" | grep "^DB_HOST=" | cut -d= -f2-)
         local dest_db_port=$(echo "${dest_db_info}" | grep "^DB_PORT=" | cut -d= -f2-)
         local dest_db_user=$(echo "${dest_db_info}" | grep "^DB_USERNAME=" | cut -d= -f2-)
@@ -230,7 +227,7 @@ function sync_database() {
 
         # 1. Reset destination database
         printf "  Resetting remote database ...\n"
-        if ! ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "export MYSQL_PWD='${dest_db_pass}'; \$(command -v mariadb || echo mysql) -h${dest_db_host} -P${dest_db_port} -u${dest_db_user} -e 'DROP DATABASE IF EXISTS \`${dest_db_name}\`; CREATE DATABASE \`${dest_db_name}\`;'"; then
+        if ! warden remote-exec -e "${ENV_SOURCE}" -- bash -c "export MYSQL_PWD='${dest_db_pass}'; \$(command -v mariadb || echo mysql) -h${dest_db_host} -P${dest_db_port} -u${dest_db_user} -e 'DROP DATABASE IF EXISTS \`${dest_db_name}\`; CREATE DATABASE \`${dest_db_name}\`;'"; then
             printf "\033[31mError: Failed to reset remote database.\033[0m\n" >&2
             return 1
         fi
@@ -238,8 +235,7 @@ function sync_database() {
         # 2. Stream import
         if ! warden env exec -T db bash -c "export MYSQL_PWD='${src_db_pass}'; ${DUMP_BIN} --single-transaction --no-tablespaces --routines -h${src_db_host} -P${src_db_port} -u${src_db_user} ${src_db_name}" \
             | sed "${SED_FILTERS[@]}" \
-            | ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" \
-            "export MYSQL_PWD='${dest_db_pass}'; ${mysql_import_cmd}"; then
+            | warden remote-exec -e "${ENV_SOURCE}" -- bash -c "export MYSQL_PWD='${dest_db_pass}'; ${mysql_import_cmd}"; then
             
             printf "\033[31mError: Database upload from local failed.\033[0m\n" >&2
             return 1
@@ -258,7 +254,7 @@ function sync_database() {
     fi
 
     # Fetch DB info
-    local db_info=$(get_remote_db_info "${ENV_SOURCE_HOST}" "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}" "${ENV_SOURCE_DIR}")
+    local db_info=$(get_remote_db_info "${ENV_SOURCE_DIR}")
     local db_host=$(echo "${db_info}" | grep "^DB_HOST=" | cut -d= -f2-)
     local db_port=$(echo "${db_info}" | grep "^DB_PORT=" | cut -d= -f2-)
     local db_user=$(echo "${db_info}" | grep "^DB_USERNAME=" | cut -d= -f2-)
@@ -270,8 +266,7 @@ function sync_database() {
     local pv_cmd="cat"
     if [[ "${PV}" == "pv" ]]; then pv_cmd="pv -N Downloading"; fi
 
-    ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" \
-        "export MYSQL_PWD='${db_pass}'; \$(command -v mariadb-dump || echo mysqldump) --single-transaction --no-tablespaces --routines -h${db_host} -P${db_port} -u${db_user} ${db_name} | gzip" \
+    warden remote-exec -e "${ENV_SOURCE}" -- bash -c "export MYSQL_PWD='${db_pass}'; \$(command -v mariadb-dump || echo mysqldump) --single-transaction --no-tablespaces --routines -h${db_host} -P${db_port} -u${db_user} ${db_name} | gzip" \
         | ${pv_cmd} \
         | zcat \
         | sed "${SED_FILTERS[@]}" \
@@ -301,9 +296,9 @@ fi
 # 5. Post-Sync Cache Flush
 if [[ "${SYNC_NO_FLUSH:-0}" -eq 0 && "${SYNC_DRY_RUN:-0}" -eq 0 ]]; then
     if [[ "${SYNC_REMOTE_TO_REMOTE:-0}" -eq 1 ]]; then
-        if ssh ${SSH_OPTS} -p "${DEST_REMOTE_PORT}" "${DEST_REMOTE_USER}@${DEST_REMOTE_HOST}" "cd \"${DEST_REMOTE_DIR}\" && wp --info &>/dev/null"; then
+        if warden remote-exec -e "${SYNC_DESTINATION}" -- bash -c "cd \"${DEST_REMOTE_DIR}\" && wp --info &>/dev/null"; then
             printf "🧹 \033[1;32mFlushing Cache via WP-CLI on %s ...\033[0m\n" "${SYNC_DESTINATION}"
-            ssh ${SSH_OPTS} -p "${DEST_REMOTE_PORT}" "${DEST_REMOTE_USER}@${DEST_REMOTE_HOST}" "cd \"${DEST_REMOTE_DIR}\" && wp cache flush" || true
+            warden remote-exec -e "${SYNC_DESTINATION}" -- bash -c "cd \"${DEST_REMOTE_DIR}\" && wp cache flush" || true
         fi
     else
         if warden env exec php-fpm wp --info &>/dev/null; then

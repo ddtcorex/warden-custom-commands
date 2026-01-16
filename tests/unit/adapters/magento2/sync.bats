@@ -37,6 +37,16 @@ setup() {
     
     function warden() {
         echo "warden $*" >> "$MOCK_LOG"
+        if [[ "$1" == "remote-exec" ]]; then
+            shift 4
+            echo "warden-remote-exec $*" >> "$MOCK_LOG"
+            if [[ "$*" == *"php -r"* ]] && [[ "$*" == *"json_encode"* ]]; then
+                 # Return base64 json for db info
+                 echo "eyJob3N0IjoicmVtb3RlLWRiOjMzMDYiLCJ1c2VybmFtZSI6InJlbW90ZV91c2VyIiwicGFzc3dvcmQiOiJyZW1vdGVfcGFzcyIsImRibmFtZSI6InJlbW90ZV9kYiJ9"
+            fi
+            return 0
+        fi
+
         if [[ "$*" == *"printenv MYSQL_USER"* ]]; then
             echo "local_user"
         elif [[ "$*" == *"printenv MYSQL_PASSWORD"* ]]; then
@@ -65,10 +75,7 @@ EOF
     cat > "${MOCK_BIN}/ssh" << 'EOF'
 #!/usr/bin/env bash
 echo "ssh $*" >> "${MOCK_LOG}"
-if [[ "$*" == *"php -r"* ]] && [[ "$*" == *"json_encode"* ]]; then
-    # Return base64 json for db info
-    echo "eyJob3N0IjoicmVtb3RlLWRiOjMzMDYiLCJ1c2VybmFtZSI6InJlbW90ZV91c2VyIiwicGFzc3dvcmQiOiJyZW1vdGVfcGFzcyIsImRibmFtZSI6InJlbW90ZV9kYiJ9"
-elif [[ "$*" == *"rsync"* ]]; then
+if [[ "$*" == *"rsync"* ]]; then
     echo "Remote rsync triggered"
 fi
 EOF
@@ -135,7 +142,7 @@ EOF
     run "$BOOTSTRAP_CMD"
     
     # Check for mysqldump with --force flag and db host (use -E for extended regex)
-    grep -q "ssh.*\\\$(command -v mariadb" "$MOCK_LOG"
+    grep -q "warden-remote-exec.*\\\$(command -v mariadb" "$MOCK_LOG"
     grep -Fq 'export MYSQL_PWD="$MYSQL_PASSWORD"' "$MOCK_LOG"
     grep -Fq 'SET FOREIGN_KEY_CHECKS=0' "$MOCK_LOG"
     grep -Fq 'mariadb || echo mysql' "$MOCK_LOG"
@@ -202,7 +209,7 @@ EOF
     
     run "$BOOTSTRAP_CMD"
     
-    # Expect SSH call with DROP DATABASE and CREATE DATABASE
-    grep -q "ssh.*DROP DATABASE IF EXISTS" "$MOCK_LOG"
-    grep -q "ssh.*CREATE DATABASE" "$MOCK_LOG"
+    # Expect warden remote-exec call with DROP DATABASE and CREATE DATABASE
+    grep -q "warden-remote-exec.*DROP DATABASE IF EXISTS" "$MOCK_LOG"
+    grep -q "warden-remote-exec.*CREATE DATABASE" "$MOCK_LOG"
 }

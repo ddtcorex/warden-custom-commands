@@ -24,6 +24,17 @@ setup() {
     
     function warden() {
         echo "warden $*" >> "$MOCK_LOG"
+        if [[ "$1" == "remote-exec" ]]; then
+            shift 4
+            echo "warden-remote-exec $*" >> "$MOCK_LOG"
+            if [[ "$*" == *"grep"* ]]; then
+                 echo "DATABASE_URL=mysql://remote_user:remote_pass@remote-db:3306/remote_db"
+            elif [[ "$*" == *"bash"* ]]; then
+                 echo "Remote shell opened"
+            fi
+            return 0
+        fi
+
         if [[ "$*" == *"printenv MYSQL_USER"* ]]; then
             echo "local_user"
         elif [[ "$*" == *"printenv MYSQL_PASSWORD"* ]]; then
@@ -48,13 +59,6 @@ EOF
 echo "ssh $*" >> "${MOCK_LOG}"
 if [[ "$*" == *"-L"* ]]; then
     echo "Tunnel opened"
-elif [[ "$*" == *"grep"* ]]; then
-    echo "DATABASE_URL=mysql://remote_user:remote_pass@remote-db:3306/remote_db"
-else
-    entry="$*"
-    if [[ "$entry" =~ "cd /var/www/html" ]]; then
-        echo "Remote shell opened"
-    fi
 fi
 EOF
     chmod +x "${MOCK_BIN}/ssh"
@@ -109,5 +113,5 @@ run_open() {
     
     run run_open "shell"
     
-    grep -q "ssh .* -t -p 22 user@example.com .* bash" "$MOCK_LOG"
+    grep -q "warden-remote-exec.*bash" "$MOCK_LOG"
 }
