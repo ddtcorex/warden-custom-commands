@@ -3,5 +3,12 @@
 
 WARDEN_USAGE=$(cat <<EOF
 Pull the latest update and apply fixes/improvements
+
+Usage:
+  warden self-update [options]
+
+Options:
+  -f, --force      Force update, overwriting any local changes (uncommitted files)
+  --dry-run        Simulate the update process without making changes
 EOF
 )
