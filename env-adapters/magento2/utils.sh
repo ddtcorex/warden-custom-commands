@@ -1,13 +1,11 @@
 #!/usr/bin/env bash
 
 # Helper function to get remote DB credentials from Magento 2 env.php
-# Usage: get_remote_db_info "HOST" "PORT" "USER" "DIR"
+# Usage: get_remote_db_info "REMOTE_DIR" ["ENV_NAME"]
 # Returns: newline-separated list of DB_VAR=VALUE
 function get_remote_db_info() {
-    local remote_host="$1"
-    local remote_port="$2"
-    local remote_user="$3"
-    local remote_dir="$4"
+    local remote_dir="$1"
+    local env_name="${2:-${ENV_SOURCE}}"
     
     # Determine PHP command for local decoding
     # Prefer local php if available, otherwise use warden container
@@ -25,8 +23,8 @@ function get_remote_db_info() {
     fi
 
     # Get remote DB credentials from env.php via base64 encoded JSON for maximum reliability
-    # We suppress stderr from ssh to avoid polluting output if something minor happens
-    local db_info_json=$(ssh ${SSH_OPTS} -o IdentityAgent=none -p "${remote_port}" "${remote_user}@${remote_host}" "php -r \"\\\$a=@include \\\"${remote_dir}/app/etc/env.php\\\"; echo base64_encode(json_encode(\\\$a['db']['connection']['default']));\"" 2>/dev/null)
+    local php_code="\$a=@include \"${remote_dir}/app/etc/env.php\"; echo base64_encode(json_encode(\$a['db']['connection']['default']));"
+    local db_info_json=$(warden remote-exec -e "${env_name}" -- php -r "${php_code}" 2>/dev/null)
     
     if [[ -z "${db_info_json}" ]]; then
         return 1

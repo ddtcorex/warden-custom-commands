@@ -5,6 +5,57 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.0] - 2026-01-18
+
+**v2.3.0: Project Shortcuts, Minimal Verbose Mode & Self-Update**
+
+This release introduces project-level shortcuts for common tasks, a minimal verbose mode for focused debugging, and a new self-update command for easy maintenance. It also includes architectural refinements for more robust remote execution and a cleaner test suite.
+
+### ✨ New Features
+
+- **Project Shortcuts (`warden open`):**
+  - Added support for quickly opening the site, database, or SSH shell directly from the project directory.
+  - Automatically identifies the current project context for faster access.
+
+- **Minimal Verbose Mode (`-v`, `-vv`):**
+  - Optimized verbosity levels for better focus.
+  - `-v`: Enables informative logging.
+  - `-vv`: Enables deep debugging mode with `set -x` cross-adapter and on remote sessions.
+
+- **Self-Update Command (`warden self-update`):**
+  - New built-in command to reliably update the Warden Custom Commands from the GitHub repository.
+  - Supports `--dry-run` to preview updates and `--force` to bypass local change warnings.
+
+- **Multiple Environments:**
+  - Standardized support for `-s|--source` and `-d|--destination` flags across all synchronization and deployment commands.
+
+### 🛠 Improvements
+
+- **Refactored SSH Library:**
+  - Centralized connectivity and command execution logic into `lib/ssh-utils.sh`.
+  - Standardized environment name sanitization and security options.
+
+- **Standardized Error Handling:**
+  - Centralized messaging logic in `lib/error-handling.sh`.
+  - Unified output formatting for errors, warnings, and information across all adapters.
+
+- **Non-Interactive Execution:**
+  - Improved `-y|--yes` flag support for automated environments.
+  - Automatically accepts `auth.json` configuration in Magento 2 bootstrap workflows.
+
+- **Lean Test Infrastructure:**
+  - Removed external dependencies on `bats-assert` and `bats-support`.
+  - Simplified all unit tests to use native Bash and BATS assertions for faster and more portable execution.
+
+### 🐛 Bug Fixes
+
+- **Test Blocking prompts:** Fixed an issue where interactive prompts would hang automated integration tests despite using the `-y` flag.
+- **Environment Detection:** Corrected error reporting when specific environment details (like `dev`) were missing from `.env`.
+
+### 🚀 Key Features
+
+- **Cross-Framework Parity:** Achieved full command and feature parity across Magento 2, Laravel, Symfony, and WordPress adapters.
+
 ## [2.2.0] - 2026-01-14
 
 **v2.2.0: Deployer Strategy & Production Optimization**
@@ -80,12 +131,10 @@ This major release significantly improves database synchronization reliability b
 ### ✨ New Features
 
 - **Interactive Remote Setup (`warden setup-remotes`):**
-
   - New wizard-style command to easily configure remote environments (Dev/Staging) in `.env`.
   - Validates inputs and updates `.env` file automatically.
 
 - **Robust DB Sync (`warden sync --db`):**
-
   - Refactored Remote-to-Remote (R2R) sync to use file-based transfer (Dump -> SCP -> Import) instead of piping.
   - Added `--force` flag to `mysqldump` to gracefully handle missing view/table definitions.
   - Improved error handling and transactional safety during syncs.
@@ -272,7 +321,6 @@ This release introduces a powerful, unified `sync` command, enables direct datab
 ### Added
 
 - **Unified `warden sync` Command:**
-
   - Replaces `download-files`, `upload-files`, `sync-media`, `sync-db` with a single, versatile command.
   - Supports `--file` (f), `--media` (m), `--db`, and `--full` synchronization types.
   - Supports custom paths via `-p|--path`.
@@ -288,12 +336,10 @@ This release introduces a powerful, unified `sync` command, enables direct datab
 ### Changed
 
 - **Database Import Refactor:**
-
   - All `db-import` commands (all adapters) now support the `--stream-db` flag for direct imports.
   - Logic standardized to prevent exit code leakage (fixed `exit 1` on success).
 
 - **Environment Selection Logic:**
-
   - Updated `env-variables` to explicitly support `-s|--source` flags.
   - Prevents overwriting of `ENV_SOURCE` if already set by a dispatcher, properly fixing `warden sync -s dev`.
 
@@ -321,7 +367,6 @@ This release adds powerful remote environment cloning capabilities to bootstrap 
 ### Added
 
 - **Remote Cloning in Bootstrap (Laravel, Symfony, WordPress):**
-
   - New `--download-source` flag to clone source code from remote environments.
   - New `--db-dump=<file>` option to use a specific database dump file.
   - New `--skip-db-import` flag to skip database import during bootstrap.
@@ -335,14 +380,12 @@ This release adds powerful remote environment cloning capabilities to bootstrap 
 ### Changed
 
 - **Dynamic Database Credentials:**
-
   - Bootstrap commands now fetch actual credentials from the running db container.
   - Uses `warden env exec -T db printenv MYSQL_USER|PASSWORD|DATABASE`.
   - Falls back to framework defaults if not available.
   - Applied to Laravel, Symfony, and WordPress bootstrap commands.
 
 - **Magento 2 Deploy Enhancements:**
-
   - Added `--jobs` (`-j`) flag for parallel static content deployment (default: 4).
   - Added `--static-only` (`-s`) flag for static content deployment only.
   - Magento 2.2+ version check for parallel job support.
@@ -350,7 +393,6 @@ This release adds powerful remote environment cloning capabilities to bootstrap 
   - Conditional ece-patches application based on ece-tools availability.
 
 - **Symfony Bootstrap Improvements:**
-
   - Uses `composer install --no-scripts` to avoid cache:clear before DB is configured.
   - Runs `composer run-script auto-scripts` after database configuration.
   - Supports `.env.local` for local database/Redis configuration (Symfony convention).
@@ -362,13 +404,11 @@ This release adds powerful remote environment cloning capabilities to bootstrap 
 ### Fixed
 
 - **URL Encoding for Database Credentials:**
-
   - Database connection URLs in `open db` now URL-encode username and password.
   - Fixes compatibility with tools like Beekeeper Studio when credentials contain special characters.
   - Applied to all environments (Laravel, Magento2, Symfony, WordPress).
 
 - **Removed Duplicate env-variables Sourcing:**
-
   - Fixed double-sourcing of `env-variables` in environment-specific commands.
   - Root dispatcher now sources once; env-specific files skip duplicate sourcing.
   - Intentional reloads (after fix-deps) are preserved.
@@ -387,25 +427,21 @@ This release completes multi-framework support with comprehensive remote operati
 ### Added
 
 - **`warden upgrade` Command:**
-
   - New command to upgrade framework versions with intelligent dependency management.
   - Magento 2: Fetch-merge-relax strategy for `composer.json`, automatic PHP/Redis/Varnish version updates.
   - Laravel/Symfony/WordPress: Composer-based upgrade workflows.
 
 - **`warden open` Command (Laravel, Symfony, WordPress):**
-
   - Access local and remote services: `db`, `shell`, `sftp`, `admin`, `elasticsearch`.
   - Remote database access via SSH tunnel with automatic credential parsing.
   - Supports `.env` (Laravel), `.env.local`/`.env` (Symfony), and `wp-config.php` (WordPress).
 
 - **`warden db-dump` Command (Laravel, Symfony, WordPress):**
-
   - Remote database dumping via SSH with automatic gzip compression.
   - Parses credentials from remote configuration files.
   - Robust quote handling for `.env` values.
 
 - **`warden db-import` Command Enhancements:**
-
   - Standardized implementation across all environments.
   - Automatic database container startup if not running.
   - Progress visualization with `pv`.
@@ -420,13 +456,11 @@ This release completes multi-framework support with comprehensive remote operati
 ### Changed
 
 - **Standardized Argument Parsing:**
-
   - Unified `-f|--file` and `-p|--path` argument handling across all commands.
   - Proper error messages for missing arguments.
   - Support for both space-separated (`-f file`) and equals-separated (`-f=file`) formats.
 
 - **Removed Cloud Logic from Non-Magento Adapters:**
-
   - Cleaned up `CLOUD_PROJECT` related code from Laravel, Symfony, and WordPress adapters.
 
 - **Magento 2 Improvements:**

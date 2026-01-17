@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -u
+# Strict mode inherited from env-variables
 
 # Ensure SSH_OPTS is set (fallback to WARDEN_SSH_OPTS)
 SSH_OPTS=${SSH_OPTS:-${WARDEN_SSH_OPTS:-}}
@@ -19,7 +19,6 @@ source "${SCRIPT_DIR}/utils.sh"
 
 IGNORED_TABLES=(
 )
-
 
 function dump_local () {
     # Single Docker exec call instead of 3 separate calls
@@ -50,10 +49,9 @@ function dump_local () {
     printf "✅ \033[32mDatabase dump complete! File: %s\033[0m\n" "${DUMP_FILENAME}"
 }
 
-
 function dump_premise () {
     # Fetch DB creds via SSH
-    local db_vars=$(get_remote_db_info "${ENV_SOURCE_HOST}" "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}" "${ENV_SOURCE_DIR}")
+    local db_vars=$(get_remote_db_info "${ENV_SOURCE_DIR}")
     
     # Parse the output
     local db_host=$(printf "%s" "${db_vars}" | grep "^DB_HOST=" | tail -n 1 | cut -d= -f2- | tr -d '"'"'")
@@ -85,7 +83,7 @@ function dump_premise () {
         printf "⌛ \033[1;32mDumping \033[33m%s\033[1;32m database from \033[33m%s\033[1;32m to local...\033[0m\n" "${db_name}" "${ENV_SOURCE_HOST}"
 
         local db_dump="export MYSQL_PWD='${db_pass}'; \$(command -v mariadb-dump || echo mysqldump) --no-tablespaces --single-transaction --routines ${ignored_opts} -h${db_host} -P${db_port} -u${db_user} ${db_name} 2> >(grep -v 'Deprecated program name' >&2) | ${sed_filters} | gzip"
-        ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "set -o pipefail; ${db_dump}" > "${DUMP_FILENAME}"
+        warden remote-exec -e "${ENV_SOURCE}" -- bash -c "set -o pipefail; ${db_dump}" > "${DUMP_FILENAME}"
 
         printf "✅ \033[32mDatabase dump complete! File: %s\033[0m\n" "${DUMP_FILENAME}"
     else
@@ -108,7 +106,7 @@ function dump_premise () {
             \$(command -v mariadb-dump || echo mysqldump) --no-tablespaces --single-transaction --routines ${ignored_opts} -h${db_host} -P${db_port} -u${db_user} ${db_name} 2> >(grep -v 'Deprecated program name' >&2) | ${sed_filters} | gzip > \"${remote_cmd_file}\"
         "
         
-        if ! ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "${dump_cmd}"; then
+        if ! warden remote-exec -e "${ENV_SOURCE}" -- bash -c "${dump_cmd}"; then
             printf "\033[31mError: Database dump failed on remote.\033[0m\n" >&2
             return 1
         fi

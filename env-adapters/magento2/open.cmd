@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -u
+# Strict mode inherited from env-variables
 
 # env-variables is already sourced by the root dispatcher
 
@@ -8,7 +8,9 @@ source "${SCRIPT_DIR}/utils.sh"
 
 function open_link() {
     if [[ "${OPEN_CL:-0}" -eq "1" ]]; then
-        local OPEN=$(command -v xdg-open || command -v open || command -v start || true)
+        # Detect available opener command
+        local OPEN
+        OPEN=$(command -v xdg-open || command -v open || command -v start || true)
         if [[ -n "${OPEN:-}" ]]; then
             "${OPEN}" "${1}"
         fi
@@ -48,7 +50,7 @@ function get_db_info() {
 }
 
 function remote_db () {
-    local db_info=$(get_remote_db_info "${ENV_SOURCE_HOST}" "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}" "${ENV_SOURCE_DIR}")
+    local db_info=$(get_remote_db_info "${ENV_SOURCE_DIR}")
     local db_host=$(echo "${db_info}" | grep "^DB_HOST=" | cut -d= -f2-)
     local db_port=$(echo "${db_info}" | grep "^DB_PORT=" | cut -d= -f2-)
     local db_user=$(echo "${db_info}" | grep "^DB_USERNAME=" | cut -d= -f2-)
@@ -68,6 +70,7 @@ function remote_db () {
 
     open_link "${DB}"
 
+    # SSH tunnel - user terminates with Ctrl+C, non-zero exit is expected
     ssh ${SSH_OPTS} -L "${LOCAL_PORT}:${db_host}:${db_port}" -N -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" || true
 }
 
@@ -94,6 +97,7 @@ function local_db() {
 
     open_link "${DB}"
 
+    # SSH tunnel - user terminates with Ctrl+C, non-zero exit is expected
     ssh ${SSH_OPTS} -L "${LOCAL_PORT}:${DB_ENV_NAME}:${REMOTE_PORT}" -N -p 2222 -i ~/.warden/tunnel/ssh_key user@tunnel.warden.test || true
 }
 
@@ -106,7 +110,7 @@ function local_shell() {
 }
 
 function remote_shell() {
-    ssh ${SSH_OPTS} -t -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "cd ${ENV_SOURCE_DIR}; bash"
+    warden remote-exec -e "${ENV_SOURCE_VAR}" -- bash
 }
 
 function cloud_shell() {
@@ -137,7 +141,7 @@ function local_admin() {
 }
 
 function remote_admin() {
-    local admin_path=$(ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" 'php -r "\$a=include \"'"${ENV_SOURCE_DIR}"'/app/etc/env.php\"; echo \$a[\"backend\"][\"frontName\"];"')
+    local admin_path=$(warden remote-exec -e "${ENV_SOURCE_VAR}" -- php -r "\$a=include \"${ENV_SOURCE_DIR}/app/etc/env.php\"; echo \$a[\"backend\"][\"frontName\"];")
     printf "\033[32m%s\033[0m admin at: \033[32m%s%s\033[0m\n" "${ENV_SOURCE_VAR}" "${ENV_SOURCE_URL}" "${admin_path}"
     if [[ -n "${ENV_SOURCE_URL:-}" ]]; then
         open_link "${ENV_SOURCE_URL}${admin_path}"
@@ -175,6 +179,7 @@ function local_elasticsearch() {
 
     open_link "${ES}"
 
+    # SSH tunnel - user terminates with Ctrl+C, non-zero exit is expected
     ssh ${SSH_OPTS} -L "${LOCAL_PORT}:${ES_ENV_NAME}:${REMOTE_PORT}" -N -p 2222 -i ~/.warden/tunnel/ssh_key user@tunnel.warden.test || true
 }
 

@@ -7,7 +7,6 @@ Custom commands that extend Warden's functionality for multiple framework types.
 ### Prerequisites
 
 1. **Docker Desktop** or **Docker Engine**
-
    - [Docker Desktop for Mac](https://hub.docker.com/editions/community/docker-ce-desktop-mac) 2.2.0.0 or later
    - [Docker for Linux](https://docs.docker.com/install/) (tested on Fedora 29 and Ubuntu 18.10)
    - [Docker for Windows](https://docs.docker.com/desktop/windows/install/)
@@ -209,6 +208,13 @@ commands/
 
 ## Commands Reference
 
+### Global Options
+
+Most commands support the following global flags:
+
+- `-v`, `--verbose`: Enable verbose output (detailed logs).
+- `-vv`: Enable debug mode (prints shell commands during execution).
+
 ### Common Commands
 
 #### `warden sync`
@@ -303,6 +309,8 @@ Initialize a new Magento 2 environment with all dependencies and configuration.
 - `--env-type=<type>` - Initialize environment with specified type
 - `--clean-install` - Create fresh Magento project
 - `--version=<version>` - Magento version for clean install (e.g., 2.4.8)
+- `--mage-username=<username>` - Magento Marketplace Public Key
+- `--mage-password=<password>` - Magento Marketplace Private Key
 - `--include-sample` - Include sample data (clean install)
 
 - `--no-stream-db` - Use intermediate dump file instead of streaming (default: streaming enabled)
@@ -774,10 +782,17 @@ warden upgrade --version=6.4.3 --dry-run
 
 Update custom commands from git repository.
 
+**Options:**
+
+- `-f, --force` - Force update even if uncommitted changes (or unknown patches) are present.
+- `--dry-run` - Simulate the update process to see what would happen.
+
 **Example:**
 
 ```bash
 warden self-update
+warden self-update --dry-run
+warden self-update --force
 ```
 
 #### `warden setup-remotes`
@@ -795,6 +810,26 @@ Interactive wizard to configure remote environment connection details (Dev, Stag
 ```bash
 warden setup-remotes
 warden setup-remotes --help
+```
+
+#### `warden remote-exec`
+
+Run arbitrary commands on a remote environment via SSH.
+
+**Options:**
+
+- `-h, --help` - Display help menu
+- `-e, --environment` - Remote environment to execute on (default: `staging`)
+- `-v, --verbose` - Print the command execution details for debugging
+
+**Example:**
+
+```bash
+# Run command on staging (default)
+warden remote-exec bin/magento cache:flush
+
+# Run command on production
+warden remote-exec -e production bin/magento indexer:reindex
 ```
 
 ## Adding New Environment Support

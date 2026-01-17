@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -u
+# Strict mode inherited from env-variables
 [[ ! "${WARDEN_DIR:-}" ]] && >&2 printf "\033[31mThis script is not intended to be run directly!\033[0m\n" && exit 1
 
 START_TIME=$(date +%s)
@@ -67,6 +67,15 @@ while (( "$#" )); do
             ;;
     esac
 done
+
+## Auto-detect clean install if composer.json is missing
+if [[ ! -f "composer.json" ]] && [[ -z "${DOWNLOAD_SOURCE:-}" ]] && [[ -z "${CLEAN_INSTALL:-}" ]] && [[ -z "${DB_DUMP:-}" ]] && [[ -z "${DB_IMPORT:-}" ]]; then
+    echo "No composer.json found. Assuming --clean-install mode."
+    CLEAN_INSTALL=1
+    COMPOSER_INSTALL=
+    DB_IMPORT=
+    SKIP_MIGRATE=1
+fi
 
 ## Run fix-deps if flag is set
 if [[ -n "${FIX_DEPS}" ]]; then
@@ -138,7 +147,7 @@ if [[ ! -f ${WARDEN_HOME_DIR:-~/.warden}/ssl/certs/${TRAEFIK_DOMAIN:-test.test}.
 fi
 
 :: Initializing environment
-warden env up
+warden env up --remove-orphans
 
 ## wait for database to start
 warden shell -c "while ! nc -z db 3306 </dev/null; do sleep 2; done"
@@ -251,6 +260,12 @@ if [[ "${WARDEN_REDIS}" == "1" ]]; then
             echo 'REDIS_URL=redis://redis:6379' >> \"\$ENV_FILE\"
         fi
     "
+fi
+
+# Ensure checks for autoload
+if ! warden env exec php-fpm test -f vendor/autoload.php; then
+    :: "Installing dependencies (autoload missing)"
+    warden env exec php-fpm composer install --no-scripts
 fi
 
 # Run composer auto-scripts now that database is configured

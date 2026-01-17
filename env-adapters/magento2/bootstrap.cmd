@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -u
+# Strict mode inherited from env-variables
 [[ ! "${WARDEN_DIR:-}" ]] && >&2 printf "\033[31mThis script is not intended to be run directly!\033[0m\n" && exit 1
 
 START_TIME=$(date +%s)
@@ -23,7 +23,8 @@ ENV_REQUIRED=
 FIX_DEPS=
 HYVA_INSTALL=
 HYVA_TOKEN=
-
+MAGE_USERNAME=
+MAGE_PASSWORD=
 
 ## argument parsing
 while [[ "$#" -gt 0 ]]; do
@@ -101,17 +102,40 @@ while [[ "$#" -gt 0 ]]; do
             STREAM_DB=
             shift
             ;;
-
         --hyva-install)
             HYVA_INSTALL=1
             shift
             ;;
-
+        --mage-username)
+            MAGE_USERNAME="$2"
+            shift 2
+            ;;
+        --mage-username=*)
+            MAGE_USERNAME="${1#*=}"
+            shift
+            ;;
+        --mage-password)
+            MAGE_PASSWORD="$2"
+            shift 2
+            ;;
+        --mage-password=*)
+            MAGE_PASSWORD="${1#*=}"
+            shift
+            ;;
         *)
             shift
             ;;
     esac
 done
+
+## Auto-detect clean install if composer.json is missing
+if [[ ! -f "${WARDEN_ENV_PATH}/composer.json" ]] && [[ -z "${DOWNLOAD_SOURCE:-}" ]] && [[ -z "${CLEAN_INSTALL:-}" ]] && [[ -z "${DB_DUMP:-}" ]] && [[ -z "${DB_IMPORT:-}" ]]; then
+    echo "No composer.json found. Assuming --clean-install mode."
+    CLEAN_INSTALL=1
+    COMPOSER_INSTALL=
+    DB_IMPORT=
+    MEDIA_SYNC=
+fi
 
 ## Run fix-deps if flag is set (when .env was just created)
 if [[ -n "${FIX_DEPS}" ]]; then
@@ -155,19 +179,73 @@ if [[ "${ENV_REQUIRED:-}" ]] && [[ -z "${!ENV_SOURCE_HOST_VAR+x}" ]]; then
     exit 2
 fi
 
-## create an auth.json file in case it is missing during a clean installation
-if [[ ! -f "${WARDEN_ENV_PATH}/auth.json" ]] && [[ "${CLEAN_INSTALL:-}" ]]; then
+## create an auth.json file in case it is missing (clean install or otherwise)
+if [[ ! -f "${WARDEN_ENV_PATH}/auth.json" ]]; then
     echo "Creating auth.json since it’s missing..."
-    cat << EOT > "${WARDEN_ENV_PATH}/auth.json"
+
+    # Check if credentials provided via arguments
+    if [[ -z "${MAGE_USERNAME:-}" ]] || [[ -z "${MAGE_PASSWORD:-}" ]]; then
+        # Check for global composer auth.json
+        GLOBAL_AUTH_JSON="${HOME}/.composer/auth.json"
+        
+        if [[ -f "${GLOBAL_AUTH_JSON}" ]]; then
+            # Simple check if it contains repo.magento.com
+            if grep -q "repo.magento.com" "${GLOBAL_AUTH_JSON}"; then
+                echo "Found global auth.json at ${GLOBAL_AUTH_JSON}"
+                # Ask user if they want to use it (default: Yes), or auto-accept if -y flag was used
+                if [[ "${YES_TO_ALL:-0}" == "1" ]]; then
+                    USE_GLOBAL_AUTH="Y"
+                    echo "Using global auth.json (auto-accepted via -y flag)"
+                else
+                    read -p "Use credentials from global auth.json? [Y/n] " USE_GLOBAL_AUTH
+                    USE_GLOBAL_AUTH=${USE_GLOBAL_AUTH:-Y}
+                fi
+                
+                if [[ "${USE_GLOBAL_AUTH}" =~ ^[Yy]$ ]]; then
+                    cp "${GLOBAL_AUTH_JSON}" "${WARDEN_ENV_PATH}/auth.json"
+                    echo "Copied global auth.json."
+                fi
+            fi
+        fi
+    fi
+
+    # If auth.json still doesn't exist (didn't copy or declined), prompt
+    if [[ ! -f "${WARDEN_ENV_PATH}/auth.json" ]]; then
+        # Validating input
+        if [[ -z "${MAGE_USERNAME:-}" ]]; then
+            echo ""
+            echo "Please enter your Magento Marketplace credentials (public/private keys):"
+            echo "https://commercemarketplace.adobe.com/customer/accessKeys/"
+            read -p "Public Key (Username): " MAGE_USERNAME
+        fi
+        
+        if [[ -z "${MAGE_PASSWORD:-}" ]]; then
+             read -p "Private Key (Password): " MAGE_PASSWORD
+        fi
+        
+        if [[ -n "${MAGE_USERNAME}" ]] && [[ -n "${MAGE_PASSWORD}" ]]; then
+            cat << EOT > "${WARDEN_ENV_PATH}/auth.json"
 {
     "http-basic": {
         "repo.magento.com": {
-            "username": "b5f6ec5124c74fac2776b140628592f4",
-            "password": "bbeaea9cdaecaa3f4805e2fc622d8058"
+            "username": "${MAGE_USERNAME}",
+            "password": "${MAGE_PASSWORD}"
         }
     }
 }
 EOT
+        else
+            echo "⚠ No credentials provided. Composer install may fail if authentication is required."
+        fi
+    fi
+    
+    # Add to .gitignore if not present
+    if [[ -f "${WARDEN_ENV_PATH}/.gitignore" ]]; then
+        if ! grep -q "auth.json" "${WARDEN_ENV_PATH}/.gitignore"; then
+            echo "" >> "${WARDEN_ENV_PATH}/.gitignore"
+            echo "/auth.json" >> "${WARDEN_ENV_PATH}/.gitignore"
+        fi
+    fi
 fi
 
 if [[ "${DOWNLOAD_SOURCE:-}" ]]; then
@@ -175,13 +253,14 @@ if [[ "${DOWNLOAD_SOURCE:-}" ]]; then
     warden sync --file --source="${ENV_SOURCE}"
     
     # Combined file operations to reduce container exec overhead
+    # May fail if directories don't exist yet - that's expected
     warden env exec php-fpm sh -c "
         rm -rf /var/www/html/app/etc/env.php && \
         mkdir -p /var/www/html/generated \
                  /var/www/html/pub/media \
                  /var/www/html/pub/static \
                  /var/www/html/var
-    " || true
+    " 2>/dev/null || true
 fi
 
 ## include check for DB_DUMP file only when database import is expected
@@ -209,7 +288,8 @@ for DEP_NAME in warden mutagen pv; do
 done
 
 ## verify mutagen version constraint
-MUTAGEN_VERSION=$(mutagen version 2>/dev/null) || true
+# mutagen may not be installed on non-macOS systems
+MUTAGEN_VERSION=$(mutagen version 2>/dev/null) || MUTAGEN_VERSION=""
 MUTAGEN_REQUIRE=0.11.4
 if [[ $OSTYPE =~ ^darwin ]] && ! test $(version ${MUTAGEN_VERSION}) -ge $(version ${MUTAGEN_REQUIRE}); then
     error "Mutagen ${MUTAGEN_REQUIRE} or greater is required (version ${MUTAGEN_VERSION} is installed)"
@@ -234,7 +314,7 @@ if [[ ! -f ${WARDEN_HOME_DIR}/ssl/certs/${TRAEFIK_DOMAIN}.crt.pem ]]; then
 fi
 
 :: Initializing environment
-warden env up
+warden env up --remove-orphans
 
 ## wait for mariadb to start listening for connections
 warden shell -c "while ! nc -z db 3306 </dev/null; do sleep 2; done"
@@ -329,7 +409,7 @@ return [
     'cache_types' => [
         'config' => 1,
         'layout' => 1,
-        'block_html' => 0,
+        'block_html' => 1,
         'collections' => 1,
         'reflection' => 1,
         'db_ddl' => 1,
@@ -338,7 +418,7 @@ return [
         'customer_notification' => 1,
         'config_integration' => 1,
         'config_integration_api' => 1,
-        'full_page' => 0,
+        'full_page' => 1,
         'config_webservice' => 1,
         'translate' => 1
     ],
@@ -426,7 +506,7 @@ if [[ ${CLEAN_INSTALL} ]] && [[ ! -f "${WARDEN_WEB_ROOT}/composer.json" ]]; then
         --${SEARCH_COMMAND}-port=9200 \
         --${SEARCH_COMMAND}-index-prefix=magento2 \
         --${SEARCH_COMMAND}-enable-auth=0 \
-        --${SEARCH_COMMAND}-timeout=15 || true
+        --${SEARCH_COMMAND}-timeout=15
 fi
 
 warden set-config
@@ -443,22 +523,29 @@ if [[ "${CLEAN_INSTALL:-}" ]] && [[ "${INCLUDE_SAMPLE:-}" ]]; then
 fi
 
 if [[ "${CLEAN_INSTALL:-}" ]] && [[ "${HYVA_INSTALL:-}" ]]; then
-    HYVA_THEME_ID=$(warden env exec -T php-fpm bash -c "\$(command -v mariadb || echo mysql) -u \"${DB_USER}\" -p\"${DB_PASS}\" -h \"${DB_HOST_NAME}\" \"${DB_NAME}\" -N -s -e \"SELECT theme_id FROM theme WHERE code = 'hyva/default'\"" 2>/dev/null || echo "")
+    # Query may fail if theme not installed - capture output safely
+    HYVA_THEME_ID=$(warden env exec -T php-fpm bash -c "\$(command -v mariadb || echo mysql) -u \"${DB_USER}\" -p\"${DB_PASS}\" -h \"${DB_HOST_NAME}\" \"${DB_NAME}\" -N -s -e \"SELECT theme_id FROM theme WHERE code = 'hyva/default'\"" 2>/dev/null) || HYVA_THEME_ID=""
     if [[ -n "${HYVA_THEME_ID}" ]]; then
         :: Activating Hyvä theme
-        warden env exec php-fpm bin/magento config:set design/theme/theme_id "${HYVA_THEME_ID}" || true
+        # config:set may fail if path doesn't exist yet
+        if ! warden env exec php-fpm bin/magento config:set design/theme/theme_id "${HYVA_THEME_ID}" 2>/dev/null; then
+            warning "Could not set Hyvä theme (non-fatal)"
+        fi
         warden env exec php-fpm bin/magento cache:flush
     fi
 fi
 
 if [[ "${ADMIN_CREATE:-}" == "1" ]]; then
     :: Creating admin user
-    warden env exec php-fpm bin/magento admin:user:create \
+    # Admin user may already exist - that's expected and non-fatal
+    if ! warden env exec php-fpm bin/magento admin:user:create \
         --admin-user=admin \
         --admin-password=Admin123$ \
         --admin-firstname=Admin \
         --admin-lastname=User \
-        --admin-email="admin@${TRAEFIK_SUBDOMAIN}.${TRAEFIK_DOMAIN}" || true
+        --admin-email="admin@${TRAEFIK_SUBDOMAIN}.${TRAEFIK_DOMAIN}" 2>/dev/null; then
+        info "Admin user already exists or could not be created"
+    fi
 fi
 
 if [[ "${MEDIA_SYNC:-}" ]]; then

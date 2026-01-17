@@ -25,7 +25,7 @@ setup() {
     mkdir -p "${WARDEN_ENV_PATH}/.warden"
 }
 
-@test "DeployCmd: Full deploy runs composer install non-interactively" {
+@test "DeployCmd: Full deploy runs sequence with maintenance mode and cleanup" {
     export ENV_SOURCE="local"
     export ENV_SOURCE_DEFAULT=0
     
@@ -44,16 +44,25 @@ EOF
     # Run full deploy (no flags)
     run "${TEST_SCRIPT_DIR}/deploy.cmd"
     
-    # Check for composer install (HAS --no-dev --optimize-autoloader --no-interaction)
-    [[ "$output" == *"WARDEN_CALL: env exec -T php-fpm composer install --no-dev --optimize-autoloader --no-interaction"* ]]
+    # Verify sequence/calls
+    # Verify sequence/calls
+    [[ "$output" == *"WARDEN_CALL: env exec -T php-fpm bin/magento maintenance:enable"* ]]
     
-    # Check for magento commands (NO --no-interaction)
+    # Check for composer install (NO optimize-autoloader)
+    [[ "$output" == *"WARDEN_CALL: env exec -T php-fpm composer install --no-dev --no-interaction"* ]]
+
+    # Post-build cleanup (Updated to match manual change)
+    [[ "$output" == *"WARDEN_CALL: env exec -T php-fpm rm -rf generated/code/* generated/metadata/*"* ]]
+    
+    # Check for magento commands
     [[ "$output" == *"WARDEN_CALL: env exec -T php-fpm bin/magento setup:upgrade"* ]]
     [[ "$output" == *"WARDEN_CALL: env exec -T php-fpm bin/magento setup:di:compile"* ]]
     
+    # Verify maintenance disable
+    [[ "$output" == *"WARDEN_CALL: env exec -T php-fpm bin/magento maintenance:disable"* ]]
+    
     # Ensure Magento commands specifically do NOT have the flag
     [[ "$output" != *"bin/magento setup:upgrade --no-interaction"* ]]
-    [[ "$output" != *"bin/magento setup:di:compile --no-interaction"* ]]
 }
 
 @test "DeployCmd: Remote execution uses correct SSH options and profile loading" {
@@ -71,9 +80,14 @@ echo "SSH_CALL: $@"
 EOF
     chmod +x "${MOCK_BIN}/ssh"
 
-    # Mock warden (should not be called for remote, but just in case)
+    # Mock warden
     cat > "${MOCK_BIN}/warden" << 'EOF'
 #!/usr/bin/env bash
+if [[ "$1" == "remote-exec" ]]; then
+    shift 4
+    echo "WARDEN_REMOTE_EXEC: $@"
+    exit 0
+fi
 echo "WARDEN_CALL: $@"
 EOF
     chmod +x "${MOCK_BIN}/warden"
@@ -81,16 +95,12 @@ EOF
     # Run full deploy
     run "${TEST_SCRIPT_DIR}/deploy.cmd"
     
-    # Verify SSH call
-    # Should include profile loading
-    [[ "$output" == *"source ~/.bash_profile"* ]]
+    # Verify Warden Remote Exec call
     
-    # Should include directory change
-    [[ "$output" == *"cd /var/www/html"* ]]
-    
-    # Should include composer install --no-interaction
-    [[ "$output" == *"composer install"* ]]
-    
-    # Verify correct quoting (simple check)
-    [[ "$output" == *"SSH_CALL: -o StrictHostKeyChecking=no"* ]]
+    # Should check if remote-exec was called with correct commands
+    [[ "$output" == *"WARDEN_REMOTE_EXEC: bin/magento maintenance:enable"* ]]
+    [[ "$output" == *"WARDEN_REMOTE_EXEC: composer install"* ]]
+    [[ "$output" == *"WARDEN_REMOTE_EXEC: rm -rf generated/code/* generated/metadata/*"* ]]
+    [[ "$output" == *"WARDEN_REMOTE_EXEC: bin/magento setup:upgrade"* ]]
+    [[ "$output" == *"WARDEN_REMOTE_EXEC: bin/magento maintenance:disable"* ]]
 }

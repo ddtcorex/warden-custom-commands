@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -u
+# Strict mode inherited from env-variables
 
 # env-variables is already sourced by the root dispatcher
 
@@ -115,7 +115,7 @@ function local_elasticsearch() {
 
 function remote_db() {
     # Symfony uses .env for DB config (usually DATABASE_URL). We fetch it via helper.
-    local db_info=$(get_remote_db_info "${ENV_SOURCE_HOST}" "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}" "${ENV_SOURCE_DIR}")
+    local db_info=$(get_remote_db_info "${ENV_SOURCE_DIR}")
     
     local db_host=$(echo "${db_info}" | grep "^DB_HOST=" | cut -d= -f2-)
     local db_port=$(echo "${db_info}" | grep "^DB_PORT=" | cut -d= -f2-)
@@ -140,7 +140,7 @@ function remote_db() {
 }
 
 function remote_shell() {
-    ssh ${SSH_OPTS} -t -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "cd ${ENV_SOURCE_DIR}; bash"
+    warden remote-exec -e "${ENV_SOURCE_VAR}" -- bash
 }
 
 function remote_sftp() {

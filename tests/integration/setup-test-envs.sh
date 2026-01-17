@@ -95,7 +95,6 @@ REMOTE_STAGING_PATH=/var/www/html
 EOF
 echo "  ${ENV_TYPE}-local: Added REMOTE_* variables (Dev IP: ${DEV_IP_DETECTED}, Staging IP: ${STAGING_IP_DETECTED})"
 
-
 # Step 5: SSH Server (Parallel)
 echo ""
 echo "Step 5: Installing SSH server on dev/staging..."

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -u
+# Strict mode inherited from env-variables
 
 # env-variables is already sourced by the root dispatcher
 
@@ -46,10 +46,11 @@ fi
 
 # Ensure the database service is started for this environment
 launched_database_container=0
-DB_CONTAINER_ID=$(warden env ps --filter status=running -q db 2>/dev/null || true)
+# Container check may return empty if not running - that's expected
+DB_CONTAINER_ID=$(warden env ps --filter status=running -q db 2>/dev/null) || DB_CONTAINER_ID=""
 if [[ -z "${DB_CONTAINER_ID}" ]]; then
     warden env up db
-    DB_CONTAINER_ID=$(warden env ps --filter status=running -q db 2>/dev/null || true)
+    DB_CONTAINER_ID=$(warden env ps --filter status=running -q db 2>/dev/null) || DB_CONTAINER_ID=""
     if [[ -z "${DB_CONTAINER_ID}" ]]; then
         printf "😮 \033[31mDatabase container failed to start\033[0m\n" >&2
         exit 1
@@ -81,7 +82,7 @@ if [[ "${STREAM_DB}" -eq 1 ]]; then
 
     # Streaming database from remote (direct import)
     # Get remote DB credentials from env.php via helper
-    db_info=$(get_remote_db_info "${ENV_SOURCE_HOST}" "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}" "${ENV_SOURCE_DIR}")
+    db_info=$(get_remote_db_info "${ENV_SOURCE_DIR}")
     db_host=$(echo "${db_info}" | grep "^DB_HOST=" | cut -d= -f2-)
     db_port=$(echo "${db_info}" | grep "^DB_PORT=" | cut -d= -f2-)
     db_user=$(echo "${db_info}" | grep "^DB_USERNAME=" | cut -d= -f2-)
@@ -89,7 +90,7 @@ if [[ "${STREAM_DB}" -eq 1 ]]; then
     db_name=$(echo "${db_info}" | grep "^DB_DATABASE=" | cut -d= -f2-)
     
     printf "Streaming mysqldump from %s:%s ...\n" "${ENV_SOURCE_HOST}" "${db_name}"
-    ssh ${SSH_OPTS} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" \
+    warden remote-exec -e "${ENV_SOURCE}" -- bash -c \
         "export MYSQL_PWD='${db_pass}'; \$(command -v mariadb-dump || echo mysqldump) --single-transaction --no-tablespaces --routines -h${db_host} -P${db_port} -u${db_user} ${db_name}" \
         | sed "${SED_FILTERS[@]}" \
         | warden env exec -T db bash -c 'export MYSQL_PWD="$MYSQL_PASSWORD"; { echo "SET FOREIGN_KEY_CHECKS=0; SET UNIQUE_CHECKS=0; SET SQL_MODE='\''NO_AUTO_VALUE_ON_ZERO'\'';"; cat; } | $(command -v mariadb || echo mysql) -hdb -u"$MYSQL_USER" "$MYSQL_DATABASE" -f'

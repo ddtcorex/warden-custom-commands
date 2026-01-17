@@ -24,6 +24,21 @@ setup() {
     
     function warden() {
         echo "warden $*" >> "$MOCK_LOG"
+        if [[ "$1" == "remote-exec" ]]; then
+            shift 4
+            echo "warden-remote-exec $*" >> "$MOCK_LOG"
+            if [[ "$*" == *"php -r"* ]] && [[ "$*" == *"json_encode"* ]]; then
+                 # Return base64 json for db info
+                 echo "eyJob3N0IjoicmVtb3RlLWRiOjMzMDYiLCJ1c2VybmFtZSI6InJlbW90ZV91c2VyIiwicGFzc3dvcmQiOiJyZW1vdGVfcGFzcyIsImRibmFtZSI6InJlbW90ZV9kYiJ9"
+            elif [[ "$*" == *"php -r"* ]]; then
+                # Admin path
+                echo "admin"
+            elif [[ "$*" == *"bash"* ]]; then
+                echo "Remote shell opened"
+            fi
+            return 0
+        fi
+
         if [[ "$*" == *"printenv MYSQL_USER"* ]]; then
             echo "local_user"
         elif [[ "$*" == *"printenv MYSQL_PASSWORD"* ]]; then
@@ -42,21 +57,12 @@ exit 1
 EOF
     chmod +x "${MOCK_BIN}/lsof"
     
-    # Mock ssh returning base64 for util
+    # Mock ssh
     cat > "${MOCK_BIN}/ssh" << 'EOF'
 #!/usr/bin/env bash
 echo "ssh $*" >> "${MOCK_LOG}"
 if [[ "$*" == *"-L"* ]]; then
     echo "Tunnel opened"
-elif [[ "$*" == *"php -r"* ]] && [[ "$*" == *"json_encode"* ]]; then
-    echo "eyJob3N0IjoicmVtb3RlLWRiOjMzMDYiLCJ1c2VybmFtZSI6InJlbW90ZV91c2VyIiwicGFzc3dvcmQiOiJyZW1vdGVfcGFzcyIsImRibmFtZSI6InJlbW90ZV9kYiJ9"
-elif [[ "$*" == *"php -r"* ]]; then
-    echo "admin"
-else
-    entry="$*"
-    if [[ "$entry" =~ "cd /var/www/html" ]]; then
-        echo "Remote shell opened"
-    fi
 fi
 EOF
     chmod +x "${MOCK_BIN}/ssh"
@@ -131,5 +137,5 @@ run_open() {
     
     run run_open "shell"
     
-    grep -q "ssh .* -t -p 22 user@example.com .* bash" "$MOCK_LOG"
+    grep -q "warden-remote-exec.*bash" "$MOCK_LOG"
 }

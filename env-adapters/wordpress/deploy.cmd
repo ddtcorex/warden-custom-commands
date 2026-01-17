@@ -1,34 +1,12 @@
 #!/usr/bin/env bash
-set -u
+# Strict mode inherited from env-variables
 
-# env-variables is already sourced by the root dispatcher
-
-# Helper for remote execution
-function remote_exec() {
-    # Default to LOCAL if no -e specified or -e local
-    local TARGET_ENV="${ENV_SOURCE:-local}"
-    if [[ "${ENV_SOURCE_DEFAULT:-0}" -eq "1" ]] || [[ "${TARGET_ENV}" == "local" ]]; then
-        warden env exec -T php-fpm "$@"
-    elif [[ -n "${ENV_SOURCE_HOST:-}" ]]; then
-        local cmd_args=""
-        for arg in "$@"; do
-            cmd_args="${cmd_args} $(printf %q "${arg}")"
-        done
-
-        local SSH_TTY_OPT=""
-        if [ -t 1 ]; then
-            SSH_TTY_OPT="-t"
-        fi
-
-        # Try to load user profile to ensure correct PHP version/PATH
-        local LOAD_PROFILE="source ~/.bash_profile 2>/dev/null || source ~/.bashrc 2>/dev/null || source ~/.profile 2>/dev/null || true"
-
-        ssh ${SSH_OPTS} ${SSH_TTY_OPT} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "${LOAD_PROFILE}; cd \"${ENV_SOURCE_DIR}\" && ${cmd_args}"
-    else
-        printf "Invalid environment '%s'\n" "${TARGET_ENV}" >&2
-        exit 2
-    fi
-}
+# Determine execution prefix based on target environment
+if [[ "${ENV_SOURCE_DEFAULT:-0}" -eq "1" ]] || [[ "${ENV_SOURCE:-local}" == "local" ]]; then
+    EXEC_PREFIX="warden env exec -T php-fpm"
+else
+    EXEC_PREFIX="warden remote-exec -e ${ENV_SOURCE} --"
+fi
 
 # Hooks
 function after_deploy_static() { :; }
@@ -59,8 +37,8 @@ function deploy_static() {
     printf "⌛ \033[1;32mFlushing Cache...\033[0m\n"
     
     # Check if wp-cli is available
-    if remote_exec wp --info >/dev/null 2>&1; then
-        remote_exec wp cache flush
+    if ${EXEC_PREFIX} wp --info >/dev/null 2>&1; then
+        ${EXEC_PREFIX} wp cache flush
     else
         echo "Warning: WP-CLI not found, skipping cache flush."
     fi
@@ -76,17 +54,17 @@ function deploy_full() {
     printf "⌛ \033[1;32mInstalling dependencies...\033[0m\n"
     
     # Check if composer.json exists
-    if remote_exec test -f composer.json; then
-        remote_exec composer install --no-dev --optimize-autoloader --no-interaction
+    if ${EXEC_PREFIX} test -f composer.json; then
+        ${EXEC_PREFIX} composer install --no-dev --optimize-autoloader --no-interaction
     else
         echo "No composer.json found, skipping dependency installation."
     fi
 
     printf "\n"
     printf "⌛ \033[1;32mUpdating Database...\033[0m\n"
-    if remote_exec wp --info >/dev/null 2>&1; then
+    if ${EXEC_PREFIX} wp --info >/dev/null 2>&1; then
          # Run database updates
-        remote_exec wp core update-db
+        ${EXEC_PREFIX} wp core update-db
     fi
 
     deploy_static

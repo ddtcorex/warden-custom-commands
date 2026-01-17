@@ -77,7 +77,6 @@ EOF
     [[ "$output" =~ "env exec -T php-fpm /home/www-data/.composer/vendor/bin/dep deploy localhost -f deploy.php" ]]
 }
 
-
 @test "DeployCmd: Deployer strategy installs deployer if missing" {
     unset -f warden
     export DEPLOY_STRATEGY="deployer"
