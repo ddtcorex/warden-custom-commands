@@ -20,9 +20,17 @@ while [[ "$#" -gt 0 ]]; do
     shift
 done
 
+PATCH_FILE="${SUBCOMMAND_DIR}/patches/warden-fix-file-permissions.patch"
+PATCH_TARGET_FILES=""
+if [[ -f "${PATCH_FILE}" ]]; then
+    # Extract list of files modified by the patch (ignoring /dev/null for new files if any, but simplistic grep works for modified)
+    PATCH_TARGET_FILES=$(grep "^+++ b/" "${PATCH_FILE}" | sed 's|^+++ b/||' | tr '\n' ' ')
+fi
+
 function update_git_repo() {
     local dir="$1"
     local name="$2"
+    local allowed_dirty_files="${3:-}"
 
     if [[ ! -d "${dir}/.git" ]]; then
         warning "Directory '${dir}' is not a git repository. Skipping update for ${name}."
@@ -45,22 +53,41 @@ function update_git_repo() {
     info "Converting ${name} on branch '${branch}'..."
 
     # Check for uncommitted changes
-    local dirty_files
-    dirty_files=$(git -C "${dir}" status --porcelain)
+    local dirty_status
+    dirty_status=$(git -C "${dir}" status --porcelain)
     
-    if [[ -n "${dirty_files}" ]]; then
-        # Check if the only modified file is commands/env.cmd (target of our patch)
-        # We assume if that's the only change, it's our patch, so we can overwrite it (re-applying later)
-        local status_clean=$(echo "${dirty_files}" | grep -v "commands/env.cmd" || true)
+    if [[ -n "${dirty_status}" ]]; then
+        local unexpected_changes=0
         
-        if [[ -z "${status_clean}" ]]; then
-             warning "Detected modification to commands/env.cmd (likely auto-patch). Proceeding with reset/update."
+        # Check each dirty file
+        while IFS= read -r line; do
+            # Extract path (skip status columns)
+            local path="${line:3}"
+            path="${path%\"}" # Remove trailing quote
+            path="${path#\"}" # Remove leading quote
+            
+            local is_allowed=0
+            if [[ -n "${allowed_dirty_files}" ]]; then
+                for allowed in ${allowed_dirty_files}; do
+                    if [[ "${path}" == "${allowed}" ]]; then
+                        is_allowed=1
+                        break
+                    fi
+                done
+            fi
+            
+            if [[ "${is_allowed}" -eq 0 ]]; then
+                unexpected_changes=1
+            fi
+        done <<< "${dirty_status}"
+        
+        if [[ "${unexpected_changes}" -eq 0 ]]; then
+             warning "Detected uncommitted changes in allowed files (likely patches). Proceeding with reset/update."
         elif [[ "${FORCE}" -eq 1 ]]; then
             warning "Force enabled: Overwriting uncommitted changes in ${name}."
         else
             error "Uncommitted changes detected in ${name} (${dir}). Aborting. Use --force to discard changes and update."
-            # Detailed output of what's dirty
-            echo "${dirty_files}" | sed 's/^/  /' >&2
+            echo "${dirty_status}" | sed 's/^/  /' >&2
             return 1
         fi
     fi
@@ -78,7 +105,7 @@ function update_git_repo() {
 
 # 1. Update Warden Core
 if [[ -d "${WARDEN_DIR}" ]]; then
-    update_git_repo "${WARDEN_DIR}" "Warden Core" || exit 1
+    update_git_repo "${WARDEN_DIR}" "Warden Core" "${PATCH_TARGET_FILES}" || exit 1
     
     if [[ "${DRY_RUN}" -eq 1 ]]; then
         info "[Dry Run] Would run: warden svc pull && warden svc up --remove-orphans"
@@ -91,7 +118,6 @@ else
 fi
 
 # 2. Update Custom Commands (this repository)
-# Usually WARDEN_HOME_DIR/commands maps to this repo
 COMMANDS_DIR="${WARDEN_HOME_DIR}/commands"
 if [[ -d "${COMMANDS_DIR}" ]]; then
     update_git_repo "${COMMANDS_DIR}" "Custom Commands" || exit 1
@@ -100,22 +126,27 @@ else
 fi
 
 # 3. Apply Patches
-PATCH_FILE="${COMMANDS_DIR}/patches/warden-fix-file-permissions.patch"
-TARGET_FILE="${WARDEN_DIR}/commands/env.cmd"
-
-if [[ -f "${PATCH_FILE}" ]] && [[ -f "${TARGET_FILE}" ]]; then
+if [[ -f "${PATCH_FILE}" ]]; then
+    # Target file is relative to WARDEN_DIR in the patch?
+    # Actually patch file paths are relative to where patch is run.
+    # The patch file header says "diff --git a/commands/env.cmd".
+    # WARDEN_DIR contains "commands" dir?
+    # Yes, lines 24 of original script: `patch -N "${WARDEN_DIR}/commands/env.cmd" ...`
+    # Our generic logic below logic iterates targets?
+    
+    # We just apply the patch file as a whole to WARDEN_DIR?
+    # Previous logic applied it to a specific file.
+    
     if [[ "${DRY_RUN}" -eq 1 ]]; then
         info "[Dry Run] Would apply patch: ${PATCH_FILE}"
     else
-        # Apply patch if not already applied
-        if ! patch -N "${TARGET_FILE}" < "${PATCH_FILE}" 2>/dev/null; then
-             # patch exits with 1 if forwarded patch fails (already applied often implies rejection or fail in some patch versions)
-             # But -N is supposed to ignore patches already applied? 
-             # Actually, if it's already applied, it might fail to apply again.
-             # We assume failure means "already applied" or "not applicable", logging as info.
-             info "Patch for ${TARGET_FILE} already applied or not needed."
+        # Try to apply patch to WARDEN_DIR
+        # Use -d to set working dir for patch
+        # Use -p1 to strip a/ b/ prefixes
+        if ! patch -d "${WARDEN_DIR}" -p1 -N -r - < "${PATCH_FILE}" >/dev/null 2>&1; then
+             info "Patch for ${PATCH_FILE} already applied or not needed."
         else
-             success "Applied patch to ${TARGET_FILE}."
+             success "Applied patch: ${PATCH_FILE}"
         fi
     fi
 fi
