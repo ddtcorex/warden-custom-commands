@@ -10,7 +10,8 @@ Deploy Magento locally. By default, runs a full deployment.
 
 \033[33mOptions:\033[0m
   -h, --help                Display this help menu
-  -v, --verbose             Print the command being executed
+  -v, --verbose             Enable verbose output (detailed logs)
+  -vv                       Enable debug mode (set -x)
 
 \033[33mArguments:\033[0m
   -e, --environment=<env>   Remote environment to deploy to (e.g. staging, prod). Default: local

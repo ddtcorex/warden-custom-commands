@@ -65,10 +65,10 @@ function deploy_static() {
     fi
     
     if [[ "${IS_MODERN_MAGENTO}" -eq 1 ]]; then
-        ${EXEC_PREFIX} bin/magento setup:static-content:deploy -f --jobs=${DEPLOY_JOBS:-4}
+        ${EXEC_PREFIX} bin/magento setup:static-content:deploy -f --jobs=${DEPLOY_JOBS:-4} ${VERBOSE_FLAG}
     else
         printf "Note: --jobs not supported on Magento < 2.2, using sequential deployment\n"
-        ${EXEC_PREFIX} bin/magento setup:static-content:deploy -f
+        ${EXEC_PREFIX} bin/magento setup:static-content:deploy -f ${VERBOSE_FLAG}
     fi
     
     after_deploy_static
@@ -84,7 +84,7 @@ function deploy_full() {
 
     printf "\n"
     printf "⌛ \033[1;32mInstalling dependencies...\033[0m\n"
-    ${EXEC_PREFIX} composer install --no-dev --no-interaction
+    ${EXEC_PREFIX} composer install --no-dev --no-interaction ${VERBOSE_FLAG}
     
     # Apply patches if ece-tools is installed
     if ${EXEC_PREFIX} test -f vendor/bin/ece-patches; then
@@ -99,17 +99,17 @@ function deploy_full() {
 
     printf "\n"
     printf "⌛ \033[1;32mRunning setup:upgrade...\033[0m\n"
-    ${EXEC_PREFIX} bin/magento setup:upgrade
+    ${EXEC_PREFIX} bin/magento setup:upgrade ${VERBOSE_FLAG}
 
     printf "\n"
     printf "⌛ \033[1;32mRunning setup:di:compile...\033[0m\n"
-    ${EXEC_PREFIX} bin/magento setup:di:compile
+    ${EXEC_PREFIX} bin/magento setup:di:compile ${VERBOSE_FLAG}
     
     deploy_static
 
     printf "\n"
     printf "⌛ \033[1;32mFlushing cache...\033[0m\n"
-    ${EXEC_PREFIX} bin/magento cache:flush
+    ${EXEC_PREFIX} bin/magento cache:flush ${VERBOSE_FLAG}
 
     printf "\n"
     printf "⌛ \033[1;32mDisabling maintenance mode...\033[0m\n"
@@ -219,7 +219,7 @@ function deploy_with_deployer() {
     warden env exec -T php-fpm bash -c "mkdir -p ~/.ssh; grep -q 'StrictHostKeyChecking no' ~/.ssh/config 2>/dev/null || printf 'Host *\n    StrictHostKeyChecking no\n    UserKnownHostsFile /dev/null\n' >> ~/.ssh/config; chmod 600 ~/.ssh/config"
     
     # Execute deployer inside the warden container
-    warden env exec -T php-fpm "${dep_bin}" deploy "${stage}" -f "${config}"
+    warden env exec -T php-fpm "${dep_bin}" deploy "${stage}" -f "${config}" ${VERBOSE_FLAG}
     
     printf "\n"
     printf "✅ \033[32mDeployer deploy complete!\033[0m\n"

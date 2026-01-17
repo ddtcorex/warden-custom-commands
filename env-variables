@@ -105,12 +105,25 @@ for (( i=1; i <= "$#"; i++ )); do
             SKIP_INDICES+=($i $j)
             ;;
         -v|--verbose)
-            export VERBOSE=1
-            export VERBOSE_FLAG="-v"
+            export VERBOSE=$((VERBOSE + 1))
+            SKIP_INDICES+=($i)
+            ;;
+        -vv)
+            export VERBOSE=$((VERBOSE + 2))
             SKIP_INDICES+=($i)
             ;;
     esac
 done
+
+# Set VERBOSE_FLAG and debug mode based on cumulative verbosity
+if [[ "${VERBOSE}" -ge 2 ]]; then
+    export VERBOSE_FLAG="-vv"
+    set -x
+elif [[ "${VERBOSE}" -eq 1 ]]; then
+    export VERBOSE_FLAG="-v"
+else
+    export VERBOSE_FLAG=""
+fi
 
 # Build filtered args (excluding source/destination flags)
 for (( i=1; i <= "$#"; i++ )); do

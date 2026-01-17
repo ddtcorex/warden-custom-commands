@@ -137,6 +137,12 @@ function sync_database() {
         return 0
     fi
 
+
+    local ERROR_REDIR="2>/dev/null"
+    if [[ "${VERBOSE:-0}" -ge 1 ]]; then
+        ERROR_REDIR=""
+    fi
+
     local SED_FILTERS=(
         -e '/999999.*sandbox/d'
         -e 's/DEFINER=[^*]*\*/\*/g'
@@ -187,7 +193,7 @@ function sync_database() {
         local local_tmp_file="var/${WARDEN_ENV_NAME}_${SYNC_SOURCE}-to-local-$(date +%Y%m%dT%H%M%S).sql.gz"
         printf "  Streaming sync: %s -> %s (through local)...\n" "${SYNC_SOURCE}" "${SYNC_DESTINATION}"
         
-        local dump_cmd="export MYSQL_PWD='${src_db_pass}'; { \$(command -v mariadb-dump || echo mysqldump) --force --single-transaction --no-tablespaces --no-data --routines -h${src_db_host} -P${src_db_port} -u${src_db_user} ${src_db_name} 2>/dev/null; \$(command -v mariadb-dump || echo mysqldump) --force --single-transaction --no-tablespaces --skip-triggers --no-create-info -h${src_db_host} -P${src_db_port} -u${src_db_user} ${src_db_name} 2>/dev/null; } | gzip"
+        local dump_cmd="export MYSQL_PWD='${src_db_pass}'; { \$(command -v mariadb-dump || echo mysqldump) --force --single-transaction --no-tablespaces --no-data --routines -h${src_db_host} -P${src_db_port} -u${src_db_user} ${src_db_name} ${ERROR_REDIR}; \$(command -v mariadb-dump || echo mysqldump) --force --single-transaction --no-tablespaces --skip-triggers --no-create-info -h${src_db_host} -P${src_db_port} -u${src_db_user} ${src_db_name} ${ERROR_REDIR}; } | gzip"
         local import_cmd="export MYSQL_PWD='${dest_db_pass}'; { echo \"SET FOREIGN_KEY_CHECKS=0; SET UNIQUE_CHECKS=0; SET SQL_MODE='NO_AUTO_VALUE_ON_ZERO';\"; gunzip -c; } | \$(command -v mariadb || echo mysql) -h${dest_db_host} -P${dest_db_port} -u${dest_db_user} ${dest_db_name} -f"
         local pv_cmd="cat"
         if [[ "${PV}" == "pv" ]]; then pv_cmd="pv -N Syncing"; fi
@@ -297,8 +303,13 @@ function sync_database() {
         return 1
     fi
 
+    local ERROR_REDIR="2>/dev/null"
+    if [[ "${VERBOSE:-0}" -ge 1 ]]; then
+        ERROR_REDIR=""
+    fi
+
     local sed_filters="sed -e '/999999.*enable the sandbox mode/d' -e 's/DEFINER=[^*]*\\*/\\*/g' -e 's/ROW_FORMAT=FIXED//g'"
-    local dump_cmd="export MYSQL_PWD='${db_pass}'; { \$(command -v mariadb-dump || echo mysqldump) --force --single-transaction --no-tablespaces --no-data --routines -h${db_host} -P${db_port} -u${db_user} ${db_name} 2>/dev/null | ${sed_filters}; \$(command -v mariadb-dump || echo mysqldump) --force --single-transaction --no-tablespaces --skip-triggers --no-create-info -h${db_host} -P${db_port} -u${db_user} ${db_name} 2>/dev/null | ${sed_filters}; } | gzip"
+    local dump_cmd="export MYSQL_PWD='${db_pass}'; { \$(command -v mariadb-dump || echo mysqldump) --force --single-transaction --no-tablespaces --no-data --routines -h${db_host} -P${db_port} -u${db_user} ${db_name} ${ERROR_REDIR} | ${sed_filters}; \$(command -v mariadb-dump || echo mysqldump) --force --single-transaction --no-tablespaces --skip-triggers --no-create-info -h${db_host} -P${db_port} -u${db_user} ${db_name} ${ERROR_REDIR} | ${sed_filters}; } | gzip"
 
     PV=$(command -v pv || echo cat)
     printf "Streaming gzipped mysqldump from %s:%s ...\n" "${ENV_SOURCE_HOST}" "${db_name}"
