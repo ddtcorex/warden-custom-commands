@@ -7,7 +7,6 @@ Custom commands that extend Warden's functionality for multiple framework types.
 ### Prerequisites
 
 1. **Docker Desktop** or **Docker Engine**
-
    - [Docker Desktop for Mac](https://hub.docker.com/editions/community/docker-ce-desktop-mac) 2.2.0.0 or later
    - [Docker for Linux](https://docs.docker.com/install/) (tested on Fedora 29 and Ubuntu 18.10)
    - [Docker for Windows](https://docs.docker.com/desktop/windows/install/)
@@ -303,6 +302,8 @@ Initialize a new Magento 2 environment with all dependencies and configuration.
 - `--env-type=<type>` - Initialize environment with specified type
 - `--clean-install` - Create fresh Magento project
 - `--version=<version>` - Magento version for clean install (e.g., 2.4.8)
+- `--mage-username=<username>` - Magento Marketplace Public Key
+- `--mage-password=<password>` - Magento Marketplace Private Key
 - `--include-sample` - Include sample data (clean install)
 
 - `--no-stream-db` - Use intermediate dump file instead of streaming (default: streaming enabled)

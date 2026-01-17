@@ -68,6 +68,15 @@ while (( "$#" )); do
     esac
 done
 
+## Auto-detect clean install if wp-config.php and index.php are missing
+if [[ ! -f "wp-config.php" ]] && [[ ! -f "index.php" ]] && [[ -z "${DOWNLOAD_SOURCE:-}" ]] && [[ -z "${CLEAN_INSTALL:-}" ]] && [[ -z "${DB_DUMP:-}" ]] && [[ -z "${DB_IMPORT:-}" ]]; then
+    echo "No WordPress installation found. Assuming --clean-install mode."
+    CLEAN_INSTALL=1
+    COMPOSER_INSTALL=
+    DB_IMPORT=
+fi
+
+
 ## Run fix-deps if flag is set
 if [[ -n "${FIX_DEPS}" ]]; then
     :: Running fix-deps to set correct dependency versions
