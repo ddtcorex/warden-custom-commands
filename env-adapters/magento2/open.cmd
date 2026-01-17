@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -u
+# Strict mode inherited from env-variables
 
 # env-variables is already sourced by the root dispatcher
 
@@ -8,7 +8,9 @@ source "${SCRIPT_DIR}/utils.sh"
 
 function open_link() {
     if [[ "${OPEN_CL:-0}" -eq "1" ]]; then
-        local OPEN=$(command -v xdg-open || command -v open || command -v start || true)
+        # Detect available opener command
+        local OPEN
+        OPEN=$(command -v xdg-open || command -v open || command -v start || true)
         if [[ -n "${OPEN:-}" ]]; then
             "${OPEN}" "${1}"
         fi
@@ -68,6 +70,7 @@ function remote_db () {
 
     open_link "${DB}"
 
+    # SSH tunnel - user terminates with Ctrl+C, non-zero exit is expected
     ssh ${SSH_OPTS} -L "${LOCAL_PORT}:${db_host}:${db_port}" -N -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" || true
 }
 
@@ -94,6 +97,7 @@ function local_db() {
 
     open_link "${DB}"
 
+    # SSH tunnel - user terminates with Ctrl+C, non-zero exit is expected
     ssh ${SSH_OPTS} -L "${LOCAL_PORT}:${DB_ENV_NAME}:${REMOTE_PORT}" -N -p 2222 -i ~/.warden/tunnel/ssh_key user@tunnel.warden.test || true
 }
 
@@ -175,6 +179,7 @@ function local_elasticsearch() {
 
     open_link "${ES}"
 
+    # SSH tunnel - user terminates with Ctrl+C, non-zero exit is expected
     ssh ${SSH_OPTS} -L "${LOCAL_PORT}:${ES_ENV_NAME}:${REMOTE_PORT}" -N -p 2222 -i ~/.warden/tunnel/ssh_key user@tunnel.warden.test || true
 }
 

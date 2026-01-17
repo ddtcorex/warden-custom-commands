@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -u
+# Strict mode inherited from env-variables
 [[ ! "${WARDEN_DIR:-}" ]] && >&2 printf "\033[31mThis script is not intended to be run directly!\033[0m\n" && exit 1
 
 START_TIME=$(date +%s)
@@ -175,13 +175,14 @@ if [[ "${DOWNLOAD_SOURCE:-}" ]]; then
     warden sync --file --source="${ENV_SOURCE}"
     
     # Combined file operations to reduce container exec overhead
+    # May fail if directories don't exist yet - that's expected
     warden env exec php-fpm sh -c "
         rm -rf /var/www/html/app/etc/env.php && \
         mkdir -p /var/www/html/generated \
                  /var/www/html/pub/media \
                  /var/www/html/pub/static \
                  /var/www/html/var
-    " || true
+    " 2>/dev/null || true
 fi
 
 ## include check for DB_DUMP file only when database import is expected
@@ -209,7 +210,8 @@ for DEP_NAME in warden mutagen pv; do
 done
 
 ## verify mutagen version constraint
-MUTAGEN_VERSION=$(mutagen version 2>/dev/null) || true
+# mutagen may not be installed on non-macOS systems
+MUTAGEN_VERSION=$(mutagen version 2>/dev/null) || MUTAGEN_VERSION=""
 MUTAGEN_REQUIRE=0.11.4
 if [[ $OSTYPE =~ ^darwin ]] && ! test $(version ${MUTAGEN_VERSION}) -ge $(version ${MUTAGEN_REQUIRE}); then
     error "Mutagen ${MUTAGEN_REQUIRE} or greater is required (version ${MUTAGEN_VERSION} is installed)"
@@ -426,7 +428,7 @@ if [[ ${CLEAN_INSTALL} ]] && [[ ! -f "${WARDEN_WEB_ROOT}/composer.json" ]]; then
         --${SEARCH_COMMAND}-port=9200 \
         --${SEARCH_COMMAND}-index-prefix=magento2 \
         --${SEARCH_COMMAND}-enable-auth=0 \
-        --${SEARCH_COMMAND}-timeout=15 || true
+        --${SEARCH_COMMAND}-timeout=15
 fi
 
 warden set-config
@@ -443,22 +445,29 @@ if [[ "${CLEAN_INSTALL:-}" ]] && [[ "${INCLUDE_SAMPLE:-}" ]]; then
 fi
 
 if [[ "${CLEAN_INSTALL:-}" ]] && [[ "${HYVA_INSTALL:-}" ]]; then
-    HYVA_THEME_ID=$(warden env exec -T php-fpm bash -c "\$(command -v mariadb || echo mysql) -u \"${DB_USER}\" -p\"${DB_PASS}\" -h \"${DB_HOST_NAME}\" \"${DB_NAME}\" -N -s -e \"SELECT theme_id FROM theme WHERE code = 'hyva/default'\"" 2>/dev/null || echo "")
+    # Query may fail if theme not installed - capture output safely
+    HYVA_THEME_ID=$(warden env exec -T php-fpm bash -c "\$(command -v mariadb || echo mysql) -u \"${DB_USER}\" -p\"${DB_PASS}\" -h \"${DB_HOST_NAME}\" \"${DB_NAME}\" -N -s -e \"SELECT theme_id FROM theme WHERE code = 'hyva/default'\"" 2>/dev/null) || HYVA_THEME_ID=""
     if [[ -n "${HYVA_THEME_ID}" ]]; then
         :: Activating Hyvä theme
-        warden env exec php-fpm bin/magento config:set design/theme/theme_id "${HYVA_THEME_ID}" || true
+        # config:set may fail if path doesn't exist yet
+        if ! warden env exec php-fpm bin/magento config:set design/theme/theme_id "${HYVA_THEME_ID}" 2>/dev/null; then
+            warning "Could not set Hyvä theme (non-fatal)"
+        fi
         warden env exec php-fpm bin/magento cache:flush
     fi
 fi
 
 if [[ "${ADMIN_CREATE:-}" == "1" ]]; then
     :: Creating admin user
-    warden env exec php-fpm bin/magento admin:user:create \
+    # Admin user may already exist - that's expected and non-fatal
+    if ! warden env exec php-fpm bin/magento admin:user:create \
         --admin-user=admin \
         --admin-password=Admin123$ \
         --admin-firstname=Admin \
         --admin-lastname=User \
-        --admin-email="admin@${TRAEFIK_SUBDOMAIN}.${TRAEFIK_DOMAIN}" || true
+        --admin-email="admin@${TRAEFIK_SUBDOMAIN}.${TRAEFIK_DOMAIN}" 2>/dev/null; then
+        info "Admin user already exists or could not be created"
+    fi
 fi
 
 if [[ "${MEDIA_SYNC:-}" ]]; then

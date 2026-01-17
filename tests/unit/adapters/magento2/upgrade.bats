@@ -25,20 +25,36 @@ setup() {
     # Create dummy help file
     mkdir -p "${WARDEN_HOME_DIR}/commands"
     echo "Usage info" > "${WARDEN_HOME_DIR}/commands/upgrade.help"
+    
+    # Create dummy composer.json for the merge test
+    cd "${TEST_SCRIPT_DIR}"
+    echo '{"name": "test/project", "require": {}}' > composer.json
+    echo '{"name": "test/project", "require": {}}' > composer.new.json
 
-    # Mock wardens output for version detection
+    # Mock wardens output for version detection and various commands
     function warden() {
+        echo "warden $*" >> "$MOCK_LOG"
+        
         if [[ "$*" == *"php bin/magento --version"* ]]; then
             echo "Magento CLI 2.4.5"
             return 0
         fi
-        echo "warden $*" >> "$MOCK_LOG"
+        
+        # Mock cat composer.json
+        if [[ "$*" == *"cat composer.json"* ]]; then
+            echo '{"name": "test/project", "require": {}}'
+            return 0
+        fi
+        
         return 0
     }
     export -f warden
     
-    # Mock other commands
-    function jq() { echo "{}"; }
+    # Mock jq to create a valid merged file
+    function jq() {
+        # Create a non-empty merged file
+        echo '{"name": "test/project", "require": {"magento/product-community-edition": "2.4.6"}}'
+    }
     export -f jq
     
     function sleep() { return 0; }

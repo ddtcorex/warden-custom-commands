@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
+set -euo pipefail
 [[ ! "${WARDEN_DIR:-}" ]] && >&2 printf "\033[31mThis script is not intended to be run directly!\033[0m\n" && exit 1
+
+SUBCOMMAND_DIR=$(dirname "${BASH_SOURCE[0]}")
+
+# Source error handling utilities
+source "${SUBCOMMAND_DIR}/lib/error-handling.sh"
 
 # Check if .env exists
 if [[ ! -f .env ]]; then

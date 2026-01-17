@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -u
+# Strict mode inherited from env-variables
 
 # Variable checks
 if [ -z "${ENV_SOURCE_HOST_VAR+x}" ]; then
