@@ -147,7 +147,7 @@ if [[ ! -f ${WARDEN_HOME_DIR:-~/.warden}/ssl/certs/${TRAEFIK_DOMAIN:-test.test}.
 fi
 
 :: Initializing environment
-warden env up
+warden env up --remove-orphans
 
 ## wait for database to start
 warden env exec -T php-fpm sh -c "while ! nc -z db 3306 </dev/null; do sleep 2; done"
@@ -279,6 +279,12 @@ if warden env exec -T php-fpm test -f .env.php; then
     warden env exec -T php-fpm sed -i "s/['\"]DATABASE_NAME['\"][[:space:]]*=>.*/'DATABASE_NAME' => '${DB_NAME}',/" .env.php
     warden env exec -T php-fpm sed -i "s/['\"]DATABASE_USER['\"][[:space:]]*=>.*/'DATABASE_USER' => '${DB_USER}',/" .env.php
     warden env exec -T php-fpm sed -i "s/['\"]DATABASE_PASSWORD['\"][[:space:]]*=>.*/'DATABASE_PASSWORD' => '${DB_PASS}',/" .env.php
+fi
+
+# Ensure dependencies are installed before running artisan
+if ! warden env exec -T php-fpm test -f "vendor/autoload.php"; then
+    :: "Missing vendor/autoload.php - Installing dependencies"
+    warden env exec -T php-fpm composer install
 fi
 
 # Generate application key if missing

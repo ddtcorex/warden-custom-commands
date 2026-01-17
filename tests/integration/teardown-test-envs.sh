@@ -23,5 +23,6 @@ shopt -u nullglob
 echo ""
 echo "All test environments stopped."
 echo ""
-echo "To remove environment directories completely, run:"
-echo "  rm -rf tests/*-local tests/*-dev tests/*-staging"
+echo "Removing environment directories..."
+rm -rf "${TEST_DIR}"/*-local "${TEST_DIR}"/*-dev "${TEST_DIR}"/*-staging
+echo "Cleanup complete."

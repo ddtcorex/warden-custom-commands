@@ -147,7 +147,7 @@ if [[ ! -f ${WARDEN_HOME_DIR:-~/.warden}/ssl/certs/${TRAEFIK_DOMAIN:-test.test}.
 fi
 
 :: Initializing environment
-warden env up
+warden env up --remove-orphans
 
 ## wait for database to start
 warden shell -c "while ! nc -z db 3306 </dev/null; do sleep 2; done"

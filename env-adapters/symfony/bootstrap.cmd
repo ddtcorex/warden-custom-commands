@@ -147,7 +147,7 @@ if [[ ! -f ${WARDEN_HOME_DIR:-~/.warden}/ssl/certs/${TRAEFIK_DOMAIN:-test.test}.
 fi
 
 :: Initializing environment
-warden env up
+warden env up --remove-orphans
 
 ## wait for database to start
 warden shell -c "while ! nc -z db 3306 </dev/null; do sleep 2; done"
@@ -260,6 +260,12 @@ if [[ "${WARDEN_REDIS}" == "1" ]]; then
             echo 'REDIS_URL=redis://redis:6379' >> \"\$ENV_FILE\"
         fi
     "
+fi
+
+# Ensure checks for autoload
+if ! warden env exec php-fpm test -f vendor/autoload.php; then
+    :: "Installing dependencies (autoload missing)"
+    warden env exec php-fpm composer install --no-scripts
 fi
 
 # Run composer auto-scripts now that database is configured

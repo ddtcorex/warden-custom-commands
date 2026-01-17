@@ -68,7 +68,7 @@ fi
 echo "Navigating to local environment: ${LOCAL_ENV}"
 cd "${LOCAL_ENV}"
 
-echo "Running: warden bootstrap --download-source --source=staging --db-dump"
+echo "Running: warden bootstrap --download-source --source=staging"
 
 if warden bootstrap --download-source --source=staging; then
     pass "warden bootstrap --download-source executed successfully"

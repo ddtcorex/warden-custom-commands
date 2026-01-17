@@ -309,7 +309,7 @@ if [[ ! -f ${WARDEN_HOME_DIR}/ssl/certs/${TRAEFIK_DOMAIN}.crt.pem ]]; then
 fi
 
 :: Initializing environment
-warden env up
+warden env up --remove-orphans
 
 ## wait for mariadb to start listening for connections
 warden shell -c "while ! nc -z db 3306 </dev/null; do sleep 2; done"
