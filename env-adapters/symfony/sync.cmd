@@ -318,11 +318,13 @@ if [[ "${SYNC_DRY_RUN:-0}" -eq 0 ]]; then
     else
         printf "🧹 \033[1;32mClearing Cache ...\033[0m\n"
         if [[ "${SYNC_REMOTE_TO_REMOTE:-0}" -eq 1 ]]; then
-        if warden remote-exec -e "${SYNC_DESTINATION}" -- bash -c "cd \"${DEST_REMOTE_DIR}\" && if [ -f bin/console ]; then php bin/console cache:clear; fi" || true; then
-            :
-        fi
+            warden remote-exec -e "${SYNC_DESTINATION}" -- bash -c "cd \"${DEST_REMOTE_DIR}\" && if [ -f vendor/autoload.php ]; then php bin/console cache:clear; fi" || true
         else
-            warden env exec -T php-fpm bash -c "[[ -f bin/console ]] && bin/console cache:clear || true"
+            if warden env exec -T php-fpm test -f "vendor/autoload.php"; then
+                warden env exec -T php-fpm bin/console cache:clear || true
+            else
+                printf "⚠️ \033[33mvendor/autoload.php not found. Skipping cache clear.\033[0m\n"
+            fi
         fi
     fi
 fi

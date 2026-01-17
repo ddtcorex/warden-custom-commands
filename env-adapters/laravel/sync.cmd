@@ -320,11 +320,16 @@ if [[ "${SYNC_DRY_RUN:-0}" -eq 0 ]]; then
         printf "🚀 \033[1;32mTriggering redeploy on %s ...\033[0m\n" "${SYNC_DESTINATION}"
         if ! warden deploy -e "${SYNC_DESTINATION}"; then exit 1; fi
     else
-        printf "🧹 \033[1;32mClearing Cache ...\033[0m\n"
         if [[ "${SYNC_REMOTE_TO_REMOTE:-0}" -eq 1 ]]; then
+            printf "🧹 \033[1;32mClearing Cache ...\033[0m\n"
             warden remote-exec -e "${SYNC_DESTINATION}" -- "php artisan cache:clear" || true
         else
-            warden env exec -T php-fpm php artisan cache:clear || true
+            if warden env exec -T php-fpm test -f "vendor/autoload.php"; then
+                printf "🧹 \033[1;32mClearing Cache ...\033[0m\n"
+                warden env exec -T php-fpm php artisan cache:clear || true
+            else
+                printf "⚠️ \033[33mvendor/autoload.php not found. Skipping cache clear.\033[0m\n"
+            fi
         fi
     fi
 fi
