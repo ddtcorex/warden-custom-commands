@@ -45,11 +45,22 @@ function update_git_repo() {
     info "Converting ${name} on branch '${branch}'..."
 
     # Check for uncommitted changes
-    if [[ -n $(git -C "${dir}" status --porcelain) ]]; then
-        if [[ "${FORCE}" -eq 1 ]]; then
+    local dirty_files
+    dirty_files=$(git -C "${dir}" status --porcelain)
+    
+    if [[ -n "${dirty_files}" ]]; then
+        # Check if the only modified file is commands/env.cmd (target of our patch)
+        # We assume if that's the only change, it's our patch, so we can overwrite it (re-applying later)
+        local status_clean=$(echo "${dirty_files}" | grep -v "commands/env.cmd" || true)
+        
+        if [[ -z "${status_clean}" ]]; then
+             warning "Detected modification to commands/env.cmd (likely auto-patch). Proceeding with reset/update."
+        elif [[ "${FORCE}" -eq 1 ]]; then
             warning "Force enabled: Overwriting uncommitted changes in ${name}."
         else
             error "Uncommitted changes detected in ${name} (${dir}). Aborting. Use --force to discard changes and update."
+            # Detailed output of what's dirty
+            echo "${dirty_files}" | sed 's/^/  /' >&2
             return 1
         fi
     fi
