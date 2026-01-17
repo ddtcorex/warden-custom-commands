@@ -10,8 +10,6 @@ fi
 SUBCOMMAND_DIR=$(dirname "${BASH_SOURCE[0]}")
 source "${SUBCOMMAND_DIR}"/env-variables
 
-
-
 if [[ "${1:-}" == "--" ]]; then
     shift
 fi
@@ -42,7 +40,7 @@ run_remote() {
         SSH_TTY_OPT="-t"
     fi
 
-    ssh ${SSH_OPTS} ${SSH_TTY_OPT} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "${LOAD_PROFILE}; cd ${ENV_SOURCE_DIR} && ${CMD}"
+    ssh ${SSH_OPTS} ${SSH_TTY_OPT} -p "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}" "${LOAD_PROFILE}; export VERBOSE=${VERBOSE}; cd ${ENV_SOURCE_DIR} && ${CMD}"
 }
 
 run_remote

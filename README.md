@@ -208,6 +208,13 @@ commands/
 
 ## Commands Reference
 
+### Global Options
+
+Most commands support the following global flags:
+
+- `-v`, `--verbose`: Enable verbose output (detailed logs).
+- `-vv`: Enable debug mode (prints shell commands during execution).
+
 ### Common Commands
 
 #### `warden sync`
