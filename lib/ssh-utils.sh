@@ -61,7 +61,7 @@ function get_remote_env() {
     local url_var="REMOTE_${prefix}_URL"
     
     # We use indirect reference to check if the HOST variable exists
-    if [[ -n "${!host_var+x}" ]]; then
+    if [[ -n "${!host_var:-}" ]]; then
         echo "export ${var_prefix}_HOST='${!host_var}'"
         echo "export ${var_prefix}_USER='${!user_var:-}'"
         echo "export ${var_prefix}_PORT='${!port_var:-22}'"

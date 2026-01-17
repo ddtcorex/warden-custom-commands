@@ -17,7 +17,7 @@ SYNC_DELETE=0
 SYNC_REMOTE_TO_REMOTE=0
 SYNC_INCLUDE_PRODUCT=0
 SYNC_REDEPLOY=0
-SYNC_ASSUME_YES=0
+SYNC_ASSUME_YES="${YES_TO_ALL:-0}"
 SYNC_BACKUP=0
 SYNC_BACKUP_DIR="~/backup"
 
@@ -78,10 +78,6 @@ while (( "$#" )); do
             ;;
         --redeploy)
             SYNC_REDEPLOY=1
-            shift
-            ;;
-        -y|--yes)
-            SYNC_ASSUME_YES=1
             shift
             ;;
         --backup)

@@ -170,8 +170,7 @@ ENV_SOURCE=$(printf "%s" "${ENV_SOURCE_VAR}" | tr '[:upper:]' '[:lower:]')
 export ENV_SOURCE_HOST_VAR="REMOTE_${ENV_SOURCE_VAR}_HOST"
 
 # Helper: Export remote variables (HOST, USER, PORT, etc.)
-# Helper: Export remote variables (HOST, USER, PORT, etc.)
-eval "$(get_remote_env "${ENV_SOURCE_VAR}")"
+eval "$(get_remote_env "${ENV_SOURCE_VAR}")" || true
 
 if [[ -n "${ENV_SOURCE_HOST:-}" ]]; then
     # Use shared builder for SSH options
