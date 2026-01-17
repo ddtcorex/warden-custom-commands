@@ -126,7 +126,7 @@ if [[ "${SYNC_DESTINATION}" != "local" && "${SYNC_SOURCE}" != "local" ]]; then
     DIRECTION="remote-to-remote"
     
     # Load Source details
-    local norm_src=$(normalize_env_name "${SYNC_SOURCE}")
+    norm_src=$(normalize_env_name "${SYNC_SOURCE}")
     eval "$(get_remote_env "${norm_src}" "SOURCE_REMOTE")"
 
     if [[ -z "${SOURCE_REMOTE_HOST:-}" ]]; then
@@ -135,7 +135,7 @@ if [[ "${SYNC_DESTINATION}" != "local" && "${SYNC_SOURCE}" != "local" ]]; then
     fi
 
     # Load Destination details
-    local norm_dest=$(normalize_env_name "${SYNC_DESTINATION}")
+    norm_dest=$(normalize_env_name "${SYNC_DESTINATION}")
     eval "$(get_remote_env "${norm_dest}" "DEST_REMOTE")"
 
     if [[ -z "${DEST_REMOTE_HOST:-}" ]]; then
