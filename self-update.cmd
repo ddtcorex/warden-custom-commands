@@ -99,7 +99,7 @@ function update_git_repo() {
         git -C "${dir}" fetch origin
         git -C "${dir}" reset --hard "origin/${branch}"
         git -C "${dir}" clean -fd
-        success "Updated ${name} successfully."
+        info "Updated ${name} successfully."
     fi
 }
 
@@ -146,7 +146,7 @@ if [[ -f "${PATCH_FILE}" ]]; then
         if ! patch -d "${WARDEN_DIR}" -p1 -N -r - < "${PATCH_FILE}" >/dev/null 2>&1; then
              info "Patch for ${PATCH_FILE} already applied or not needed."
         else
-             success "Applied patch: ${PATCH_FILE}"
+             info "Applied patch: ${PATCH_FILE}"
         fi
     fi
 fi
