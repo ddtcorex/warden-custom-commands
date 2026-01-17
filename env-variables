@@ -77,6 +77,8 @@ ENV_SOURCE_DEFAULT=${ENV_SOURCE_DEFAULT:-0}
 ENV_SOURCE="${ENV_SOURCE:-}"
 ENV_DESTINATION="${ENV_DESTINATION:-}"
 
+export YES_TO_ALL="${YES_TO_ALL:-0}"
+
 export VERBOSE="${VERBOSE:-0}"
 export VERBOSE_FLAG="${VERBOSE_FLAG:-}"
 
@@ -111,6 +113,10 @@ for (( i=1; i <= "$#"; i++ )); do
             fi
             ENV_DESTINATION="${!j}"
             SKIP_INDICES+=($i $j)
+            ;;
+        -y|--yes)
+            export YES_TO_ALL=1
+            SKIP_INDICES+=($i)
             ;;
         -v|--verbose)
             export VERBOSE=$((VERBOSE + 1))

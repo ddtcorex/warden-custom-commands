@@ -192,9 +192,14 @@ if [[ ! -f "${WARDEN_ENV_PATH}/auth.json" ]]; then
             # Simple check if it contains repo.magento.com
             if grep -q "repo.magento.com" "${GLOBAL_AUTH_JSON}"; then
                 echo "Found global auth.json at ${GLOBAL_AUTH_JSON}"
-                # Ask user if they want to use it (default: Yes)
-                read -p "Use credentials from global auth.json? [Y/n] " USE_GLOBAL_AUTH
-                USE_GLOBAL_AUTH=${USE_GLOBAL_AUTH:-Y}
+                # Ask user if they want to use it (default: Yes), or auto-accept if -y flag was used
+                if [[ "${YES_TO_ALL:-0}" == "1" ]]; then
+                    USE_GLOBAL_AUTH="Y"
+                    echo "Using global auth.json (auto-accepted via -y flag)"
+                else
+                    read -p "Use credentials from global auth.json? [Y/n] " USE_GLOBAL_AUTH
+                    USE_GLOBAL_AUTH=${USE_GLOBAL_AUTH:-Y}
+                fi
                 
                 if [[ "${USE_GLOBAL_AUTH}" =~ ^[Yy]$ ]]; then
                     cp "${GLOBAL_AUTH_JSON}" "${WARDEN_ENV_PATH}/auth.json"

@@ -30,11 +30,11 @@ echo "Cleaning existing Magento files for fresh installation..."
 docker exec --workdir / -u www-data "${STAGING_PHP}" bash -c "rm -rf /var/www/html/{app,bin,dev,generated,lib,phpserver,pub,setup,var,vendor} /var/www/html/composer.* 2>/dev/null" || true
 
 # Run clean install (using latest stable version for PHP 8.4 compatibility)
-echo "Running: warden bootstrap --clean-install --meta-version=2.4.8 --skip-admin-create"
-if warden bootstrap --clean-install --meta-version=2.4.8 --skip-admin-create; then
-    pass "warden bootstrap --clean-install executed successfully"
+echo "Running: warden bootstrap --clean-install -y --meta-version=2.4.8 --skip-admin-create"
+if warden bootstrap --clean-install -y --meta-version=2.4.8 --skip-admin-create; then
+    pass "warden bootstrap --clean-install -y executed successfully"
 else
-    fail "warden bootstrap --clean-install failed" "Exit code $?"
+    fail "warden bootstrap --clean-install -y failed" "Exit code $?"
 fi
 
 # Assertions - Check composer.json exists
