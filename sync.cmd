@@ -126,26 +126,22 @@ if [[ "${SYNC_DESTINATION}" != "local" && "${SYNC_SOURCE}" != "local" ]]; then
     DIRECTION="remote-to-remote"
     
     # Load Source details
-    SOURCE_DETAILS=$(get_remote_details "${SYNC_SOURCE}")
-    if [[ -z "${SOURCE_DETAILS}" ]]; then
+    norm_src=$(normalize_env_name "${SYNC_SOURCE}")
+    eval "$(get_remote_env "${norm_src}" "SOURCE_REMOTE")"
+
+    if [[ -z "${SOURCE_REMOTE_HOST:-}" ]]; then
         printf "\033[31mError: Source environment details not found for '%s'.\033[0m\n" "${SYNC_SOURCE}" >&2
         exit 1
     fi
-    export SOURCE_REMOTE_HOST=$(printf "%s" "${SOURCE_DETAILS}" | cut -d'|' -f1)
-    export SOURCE_REMOTE_USER=$(printf "%s" "${SOURCE_DETAILS}" | cut -d'|' -f2)
-    export SOURCE_REMOTE_PORT=$(printf "%s" "${SOURCE_DETAILS}" | cut -d'|' -f3)
-    export SOURCE_REMOTE_DIR=$(printf "%s" "${SOURCE_DETAILS}" | cut -d'|' -f4)
 
     # Load Destination details
-    DEST_DETAILS=$(get_remote_details "${SYNC_DESTINATION}")
-    if [[ -z "${DEST_DETAILS}" ]]; then
+    norm_dest=$(normalize_env_name "${SYNC_DESTINATION}")
+    eval "$(get_remote_env "${norm_dest}" "DEST_REMOTE")"
+
+    if [[ -z "${DEST_REMOTE_HOST:-}" ]]; then
         printf "\033[31mError: Destination environment details not found for '%s'.\033[0m\n" "${SYNC_DESTINATION}" >&2
         exit 1
     fi
-    export DEST_REMOTE_HOST=$(printf "%s" "${DEST_DETAILS}" | cut -d'|' -f1)
-    export DEST_REMOTE_USER=$(printf "%s" "${DEST_DETAILS}" | cut -d'|' -f2)
-    export DEST_REMOTE_PORT=$(printf "%s" "${DEST_DETAILS}" | cut -d'|' -f3)
-    export DEST_REMOTE_DIR=$(printf "%s" "${DEST_DETAILS}" | cut -d'|' -f4)
 
     REMOTE_ENV="${SYNC_DESTINATION}" # Used for Warden's global context (destination is usually where we flush cache)
 elif [[ "${SYNC_DESTINATION}" != "local" ]]; then

@@ -29,7 +29,7 @@ setup() {
     # Ensure auth.json does not exist
     rm -f "${WARDEN_ENV_PATH}/auth.json"
     
-    run "$BOOTSTRAP_CMD" --clean-install --skip-admin-create --skip-composer-install --skip-db-import --skip-media-sync
+    run "$BOOTSTRAP_CMD" --clean-install --mage-username="user" --mage-password="pw" --skip-admin-create --skip-composer-install --skip-db-import --skip-media-sync
     
     [ "$status" -eq 0 ]
     [ -f "${WARDEN_ENV_PATH}/auth.json" ]
