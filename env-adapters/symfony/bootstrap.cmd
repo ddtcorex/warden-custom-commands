@@ -68,6 +68,15 @@ while (( "$#" )); do
     esac
 done
 
+## Auto-detect clean install if composer.json is missing
+if [[ ! -f "composer.json" ]] && [[ -z "${DOWNLOAD_SOURCE:-}" ]] && [[ -z "${CLEAN_INSTALL:-}" ]] && [[ -z "${DB_DUMP:-}" ]] && [[ -z "${DB_IMPORT:-}" ]]; then
+    echo "No composer.json found. Assuming --clean-install mode."
+    CLEAN_INSTALL=1
+    COMPOSER_INSTALL=
+    DB_IMPORT=
+    SKIP_MIGRATE=1
+fi
+
 ## Run fix-deps if flag is set
 if [[ -n "${FIX_DEPS}" ]]; then
     :: Running fix-deps to set correct dependency versions

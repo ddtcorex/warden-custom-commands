@@ -23,7 +23,8 @@ ENV_REQUIRED=
 FIX_DEPS=
 HYVA_INSTALL=
 HYVA_TOKEN=
-
+MAGE_USERNAME=
+MAGE_PASSWORD=
 
 ## argument parsing
 while [[ "$#" -gt 0 ]]; do
@@ -101,17 +102,40 @@ while [[ "$#" -gt 0 ]]; do
             STREAM_DB=
             shift
             ;;
-
         --hyva-install)
             HYVA_INSTALL=1
             shift
             ;;
-
+        --mage-username)
+            MAGE_USERNAME="$2"
+            shift 2
+            ;;
+        --mage-username=*)
+            MAGE_USERNAME="${1#*=}"
+            shift
+            ;;
+        --mage-password)
+            MAGE_PASSWORD="$2"
+            shift 2
+            ;;
+        --mage-password=*)
+            MAGE_PASSWORD="${1#*=}"
+            shift
+            ;;
         *)
             shift
             ;;
     esac
 done
+
+## Auto-detect clean install if composer.json is missing
+if [[ ! -f "${WARDEN_ENV_PATH}/composer.json" ]] && [[ -z "${DOWNLOAD_SOURCE:-}" ]] && [[ -z "${CLEAN_INSTALL:-}" ]] && [[ -z "${DB_DUMP:-}" ]] && [[ -z "${DB_IMPORT:-}" ]]; then
+    echo "No composer.json found. Assuming --clean-install mode."
+    CLEAN_INSTALL=1
+    COMPOSER_INSTALL=
+    DB_IMPORT=
+    MEDIA_SYNC=
+fi
 
 ## Run fix-deps if flag is set (when .env was just created)
 if [[ -n "${FIX_DEPS}" ]]; then
@@ -155,19 +179,68 @@ if [[ "${ENV_REQUIRED:-}" ]] && [[ -z "${!ENV_SOURCE_HOST_VAR+x}" ]]; then
     exit 2
 fi
 
-## create an auth.json file in case it is missing during a clean installation
-if [[ ! -f "${WARDEN_ENV_PATH}/auth.json" ]] && [[ "${CLEAN_INSTALL:-}" ]]; then
+## create an auth.json file in case it is missing (clean install or otherwise)
+if [[ ! -f "${WARDEN_ENV_PATH}/auth.json" ]]; then
     echo "Creating auth.json since it’s missing..."
-    cat << EOT > "${WARDEN_ENV_PATH}/auth.json"
+
+    # Check if credentials provided via arguments
+    if [[ -z "${MAGE_USERNAME:-}" ]] || [[ -z "${MAGE_PASSWORD:-}" ]]; then
+        # Check for global composer auth.json
+        GLOBAL_AUTH_JSON="${HOME}/.composer/auth.json"
+        
+        if [[ -f "${GLOBAL_AUTH_JSON}" ]]; then
+            # Simple check if it contains repo.magento.com
+            if grep -q "repo.magento.com" "${GLOBAL_AUTH_JSON}"; then
+                echo "Found global auth.json at ${GLOBAL_AUTH_JSON}"
+                # Ask user if they want to use it (default: Yes)
+                read -p "Use credentials from global auth.json? [Y/n] " USE_GLOBAL_AUTH
+                USE_GLOBAL_AUTH=${USE_GLOBAL_AUTH:-Y}
+                
+                if [[ "${USE_GLOBAL_AUTH}" =~ ^[Yy]$ ]]; then
+                    cp "${GLOBAL_AUTH_JSON}" "${WARDEN_ENV_PATH}/auth.json"
+                    echo "Copied global auth.json."
+                fi
+            fi
+        fi
+    fi
+
+    # If auth.json still doesn't exist (didn't copy or declined), prompt
+    if [[ ! -f "${WARDEN_ENV_PATH}/auth.json" ]]; then
+        # Validating input
+        if [[ -z "${MAGE_USERNAME:-}" ]]; then
+            echo ""
+            echo "Please enter your Magento Marketplace credentials (public/private keys):"
+            echo "https://commercemarketplace.adobe.com/customer/accessKeys/"
+            read -p "Public Key (Username): " MAGE_USERNAME
+        fi
+        
+        if [[ -z "${MAGE_PASSWORD:-}" ]]; then
+             read -p "Private Key (Password): " MAGE_PASSWORD
+        fi
+        
+        if [[ -n "${MAGE_USERNAME}" ]] && [[ -n "${MAGE_PASSWORD}" ]]; then
+            cat << EOT > "${WARDEN_ENV_PATH}/auth.json"
 {
     "http-basic": {
         "repo.magento.com": {
-            "username": "b5f6ec5124c74fac2776b140628592f4",
-            "password": "bbeaea9cdaecaa3f4805e2fc622d8058"
+            "username": "${MAGE_USERNAME}",
+            "password": "${MAGE_PASSWORD}"
         }
     }
 }
 EOT
+        else
+            echo "⚠ No credentials provided. Composer install may fail if authentication is required."
+        fi
+    fi
+    
+    # Add to .gitignore if not present
+    if [[ -f "${WARDEN_ENV_PATH}/.gitignore" ]]; then
+        if ! grep -q "auth.json" "${WARDEN_ENV_PATH}/.gitignore"; then
+            echo "" >> "${WARDEN_ENV_PATH}/.gitignore"
+            echo "/auth.json" >> "${WARDEN_ENV_PATH}/.gitignore"
+        fi
+    fi
 fi
 
 if [[ "${DOWNLOAD_SOURCE:-}" ]]; then

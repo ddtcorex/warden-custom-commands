@@ -14,6 +14,9 @@ WARDEN_USAGE=$(cat <<EOF
   --meta-package=PACKAGE   Magento meta package (magento/project-community-edition, magento/project-enterprise-edition)
   --meta-version=VERSION   Magento version
 
+  --mage-username=USERNAME    Magento Marketplace Public Key (Username)
+  --mage-password=PASSWORD    Magento Marketplace Private Key (Password)
+
   --include-sample        Include sample data into the installation
 
   --skip-db-import        Skips over db import (assume db has already been imported).
