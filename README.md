@@ -775,10 +775,17 @@ warden upgrade --version=6.4.3 --dry-run
 
 Update custom commands from git repository.
 
+**Options:**
+
+- `-f, --force` - Force update even if uncommitted changes (or unknown patches) are present.
+- `--dry-run` - Simulate the update process to see what would happen.
+
 **Example:**
 
 ```bash
 warden self-update
+warden self-update --dry-run
+warden self-update --force
 ```
 
 #### `warden setup-remotes`
