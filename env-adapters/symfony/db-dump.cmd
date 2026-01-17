@@ -20,7 +20,6 @@ source "${SCRIPT_DIR}/utils.sh"
 IGNORED_TABLES=(
 )
 
-
 function dump_local () {
     # Extract local DB info
     local db_info=$(warden env exec -T db bash -c 'echo "MYSQL_USER=$MYSQL_USER"; echo "MYSQL_PASSWORD=$MYSQL_PASSWORD"; echo "MYSQL_DATABASE=$MYSQL_DATABASE"')

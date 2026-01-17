@@ -240,7 +240,6 @@ FULL_DUMP=0
 EXCLUDE_SENSITIVE_DATA=0
 LOCAL_DOWNLOAD=0
 
-
 while (( "$#" )); do
     case "$1" in
 

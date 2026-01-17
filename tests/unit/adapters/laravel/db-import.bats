@@ -35,5 +35,3 @@ setup() {
     grep -Fq 'SET FOREIGN_KEY_CHECKS=0' "$MOCK_LOG"
     grep -Fq 'mariadb || echo mysql' "$MOCK_LOG"
 }
-
-

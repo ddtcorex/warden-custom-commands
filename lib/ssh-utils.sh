@@ -29,7 +29,7 @@ function build_ssh_opts() {
 function normalize_env_name() {
     local input="${1}"
     local upper
-    upper=$(printf "%s" "${input}" | tr '[:lower:]' '[:upper:]')
+    upper=$(printf "%s" "${input}" | tr '[:lower:]' '[:upper:]' | tr -c '[:alnum:]_' '_')
     
     case "${upper}" in
         PRODUCTION)

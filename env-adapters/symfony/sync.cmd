@@ -9,7 +9,6 @@ fi
 # Ensure SSH_OPTS is set (fallback to WARDEN_SSH_OPTS)
 SSH_OPTS=${SSH_OPTS:-${WARDEN_SSH_OPTS:-}}
 
-
 # Determine RSYNC options
 RSYNC_OPTS="-azvPLk --force"
 if [[ "${SYNC_DRY_RUN:-0}" -eq 1 ]]; then
