@@ -17,6 +17,8 @@ printf "\033[33mUsage:\033[0m
   --backup             Create a backup of the destination database before syncing (if db is synced)
   --backup-dir=PATH    Path to store backups (default: ~/backup on destination)
   -y, --yes            Assume 'yes' to all prompts and run non-interactively
+  -v, --verbose        Enable verbose output
+  -vv                  Enable debug mode (set -x)
   -h, --help           Display this help message
 
 \033[33mExamples:\033[0m
