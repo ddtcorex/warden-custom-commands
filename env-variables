@@ -10,7 +10,12 @@ set -euo pipefail
 SUBCOMMAND_DIR="${SUBCOMMAND_DIR:-${WARDEN_HOME_DIR}/commands}"
 
 # Source error handling utilities
+# Source error handling utilities
 source "${SUBCOMMAND_DIR}/lib/error-handling.sh"
+
+# Source shared SSH utilities
+# shellcheck source=lib/ssh-utils.sh
+source "${SUBCOMMAND_DIR}/lib/ssh-utils.sh"
 
 function :: {
     printf "\n"
@@ -132,42 +137,17 @@ if [[ -z "${ENV_SOURCE:-}" ]]; then
     ENV_SOURCE_DEFAULT=1
 fi
 
-ENV_SOURCE_ORIG="${ENV_SOURCE}"
-ENV_SOURCE_VAR=$(printf "%s" "${ENV_SOURCE}" | tr '[:lower:]' '[:upper:]')
-
-if [[ "${ENV_SOURCE_VAR}" == "PRODUCTION" ]]; then
-    ENV_SOURCE_VAR="PROD"
-elif [[ "${ENV_SOURCE_VAR}" == "STAG" || "${ENV_SOURCE_VAR}" == "STG" || "${ENV_SOURCE_VAR}" == "PREPROD" ]]; then
-    ENV_SOURCE_VAR="STAGING"
-elif [[ "${ENV_SOURCE_VAR}" == "DEVELOP" || "${ENV_SOURCE_VAR}" == "DEVELOPER" || "${ENV_SOURCE_VAR}" == "DEVELOPMENT" ]]; then
-    ENV_SOURCE_VAR="DEV"
-fi
-
+# Normalize ENVIRONMENT name (e.g. STAG -> STAGING)
+ENV_SOURCE_VAR=$(normalize_env_name "${ENV_SOURCE}")
 ENV_SOURCE=$(printf "%s" "${ENV_SOURCE_VAR}" | tr '[:upper:]' '[:lower:]')
-ENV_SOURCE_HOST_VAR="REMOTE_${ENV_SOURCE_VAR}_HOST"
 
-if [[ -n "${!ENV_SOURCE_HOST_VAR+x}" ]]; then
-    VAR_USER="REMOTE_${ENV_SOURCE_VAR}_USER"
-    VAR_PORT="REMOTE_${ENV_SOURCE_VAR}_PORT"
-    VAR_PATH="REMOTE_${ENV_SOURCE_VAR}_PATH"
-    VAR_URL="REMOTE_${ENV_SOURCE_VAR}_URL"
+# Helper: Export remote variables (HOST, USER, PORT, etc.)
+# Helper: Export remote variables (HOST, USER, PORT, etc.)
+eval "$(get_remote_env "${ENV_SOURCE_VAR}")"
 
-    ENV_SOURCE_HOST="${!ENV_SOURCE_HOST_VAR}"
-    ENV_SOURCE_USER="${!VAR_USER:-}"
-    ENV_SOURCE_PORT="${!VAR_PORT:-22}"
-    ENV_SOURCE_DIR="${!VAR_PATH:-}"
-    ENV_SOURCE_URL="${!VAR_URL:-}"
-
-    SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -o BatchMode=yes"
-    if [[ -n "${SSH_AUTH_SOCK:-}" ]]; then
-        SSH_OPTS="${SSH_OPTS} -A"
-    fi
-    if [[ "${WARDEN_SSH_IDENTITIES_ONLY:-0}" -eq 1 ]]; then
-        SSH_OPTS="${SSH_OPTS} -o IdentitiesOnly=yes"
-    fi
-    if [[ -n "${WARDEN_SSH_IDENTITY_FILE:-}" ]]; then
-        SSH_OPTS="${SSH_OPTS} -i ${WARDEN_SSH_IDENTITY_FILE}"
-    fi
+if [[ -n "${ENV_SOURCE_HOST:-}" ]]; then
+    # Use shared builder for SSH options
+    SSH_OPTS=$(build_ssh_opts)
 elif [[ "${ENV_SOURCE_DEFAULT:-0}" -eq 0 ]] && [[ "${ENV_SOURCE_VAR}" != "LOCAL" ]]; then
     printf "\033[31mError: Environment details not found for '%s'. Check your .env file.\033[0m\n" "${ENV_SOURCE}" >&2
     exit 1
