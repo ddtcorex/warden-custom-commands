@@ -70,3 +70,63 @@ setup() {
     # Should use --local in db-dump
     grep -E -q "warden db-dump --local --file=.* -e wordpress" "${MOCK_LOG}"
 }
+
+@test "WordPress: Clone mode runs env up before sync and runs composer install" {
+    export ENV_SOURCE="staging"
+    export ENV_SOURCE_HOST="mock-host"
+    export CLONE_MODE="1"
+    
+    mkdir -p "${WARDEN_ENV_PATH}"
+    touch "${WARDEN_ENV_PATH}/.env"
+    
+    # Ensure composer.json exists so composer install triggers
+    touch "composer.json"
+
+    run "$BOOTSTRAP_CMD" --clone --source=staging --skip-db-import --skip-wp-install
+    
+    [ "$status" -eq 0 ]
+    
+    local svc_up_line=$(grep -n "warden svc up" "$MOCK_LOG" | cut -d: -f1 | head -1)
+    local sync_line=$(grep -n "warden sync" "$MOCK_LOG" | cut -d: -f1 | head -1)
+    
+    [ -n "$svc_up_line" ]
+    [ -n "$sync_line" ]
+    [ "$svc_up_line" -lt "$sync_line" ]
+    
+    assert_command_called "warden env exec -T php-fpm composer install"
+}
+@test "WordPress: Clone mode patches existing wp-config.php" {
+    cd "${WARDEN_ENV_PATH}"
+    
+    # Create a mock wp-config.php with remote values
+    cat <<EOT > "wp-config.php"
+define( 'DB_NAME', 'remote_db' );
+define( 'DB_USER', 'remote_user' );
+define( 'DB_PASSWORD', 'remote_pass' );
+define( 'DB_HOST', 'remote_host' );
+EOT
+
+    # We need to mock environment variables for the bootstrap
+    export ENV_SOURCE="staging"
+    export ENV_SOURCE_HOST="mock-host"
+    export REMOTE_STAGING_HOST="mock-host"
+
+    # We need to mock warden to report that wp-config.php EXISTS
+    function warden() {
+        echo "warden $*" >> "$MOCK_LOG"
+        if [[ "$*" == *"test -f wp-config.php" ]]; then
+            return 0 # Found
+        fi
+        return 0
+    }
+    export -f warden
+
+    run "$BOOTSTRAP_CMD" --clone --source=staging --skip-db-import --skip-wp-install
+    
+    [ "$status" -eq 0 ]
+    
+    # Verify sed was called for DB_NAME
+    assert_command_called "sed -i"
+    assert_command_called "DB_NAME"
+    assert_command_called "DB_HOST"
+}

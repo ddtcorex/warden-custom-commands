@@ -7,11 +7,12 @@ START_TIME=$(date +%s)
 # env-variables is already sourced by the root dispatcher
 
 ## configure command defaults
-CLEAN_INSTALL=
+FRESH_INSTALL=
+CLONE_MODE=
+CODE_ONLY=
 COMPOSER_INSTALL=1
 SKIP_WP_INSTALL=
 FIX_DEPS=
-DOWNLOAD_SOURCE=
 DB_DUMP=
 DB_IMPORT=1
 STREAM_DB=1
@@ -20,29 +21,44 @@ ENV_REQUIRED=
 ## argument parsing
 while (( "$#" )); do
     case "$1" in
-        --clean-install)
-            CLEAN_INSTALL=1
+        # New simplified flags
+        -c|--clone)
+            CLONE_MODE=1
+            ENV_REQUIRED=1
+            shift
+            ;;
+        --code-only)
+            CODE_ONLY=1
+            shift
+            ;;
+        --fresh)
+            FRESH_INSTALL=1
             COMPOSER_INSTALL=
             DB_IMPORT=
             shift
             ;;
-        --fix-deps)
-            FIX_DEPS=1
+        --no-db)
+            DB_IMPORT=
+            shift
+            ;;
+        --no-composer)
+            COMPOSER_INSTALL=
+            shift
+            ;;
+        --no-wp-install)
+            SKIP_WP_INSTALL=1
+            shift
+            ;;
+        # Backward compatibility aliases (hidden from help)
+        --clean-install)
+            FRESH_INSTALL=1
+            COMPOSER_INSTALL=
+            DB_IMPORT=
             shift
             ;;
         --download-source)
-            DOWNLOAD_SOURCE=1
+            CLONE_MODE=1
             COMPOSER_INSTALL=
-            ENV_REQUIRED=1
-            shift
-            ;;
-        --db-dump)
-            DB_DUMP="$2"
-            ENV_REQUIRED=1
-            shift 2
-            ;;
-        --db-dump=*)
-            DB_DUMP="${1#*=}"
             ENV_REQUIRED=1
             shift
             ;;
@@ -58,6 +74,21 @@ while (( "$#" )); do
             SKIP_WP_INSTALL=1
             shift
             ;;
+        # Standard options
+        --fix-deps)
+            FIX_DEPS=1
+            shift
+            ;;
+        --db-dump)
+            DB_DUMP="$2"
+            ENV_REQUIRED=1
+            shift 2
+            ;;
+        --db-dump=*)
+            DB_DUMP="${1#*=}"
+            ENV_REQUIRED=1
+            shift
+            ;;
         --no-stream-db)
             STREAM_DB=
             shift
@@ -67,6 +98,15 @@ while (( "$#" )); do
             ;;
     esac
 done
+
+# Clone mode with --code-only disables DB sync
+if [[ -n "${CLONE_MODE}" ]] && [[ -n "${CODE_ONLY}" ]]; then
+    DB_IMPORT=
+fi
+
+# For backward compatibility
+CLEAN_INSTALL="${FRESH_INSTALL}"
+DOWNLOAD_SOURCE="${CLONE_MODE}"
 
 ## Auto-detect clean install if wp-config.php and index.php are missing
 if [[ ! -f "wp-config.php" ]] && [[ ! -f "index.php" ]] && [[ -z "${DOWNLOAD_SOURCE:-}" ]] && [[ -z "${CLEAN_INSTALL:-}" ]] && [[ -z "${DB_DUMP:-}" ]] && [[ -z "${DB_IMPORT:-}" ]]; then
@@ -87,6 +127,12 @@ if [[ -n "${FIX_DEPS}" ]]; then
         DETECTED_VERSION=""
         if [[ -f "wp-includes/version.php" ]]; then
             DETECTED_VERSION=$(grep "\$wp_version = " wp-includes/version.php | grep -oP "'\K[^']+" | grep -oP '^\d+\.\d+' || echo "")
+        fi
+        
+        # Try to detect from remote
+        if [[ -z "${DETECTED_VERSION}" ]] && [[ -n "${CLONE_MODE}" ]] && [[ -n "${ENV_SOURCE}" ]]; then
+             echo "Auto-detecting WordPress version from remote '${ENV_SOURCE}'..."
+             DETECTED_VERSION=$(detect_remote_version "wordpress" "${ENV_SOURCE}")
         fi
         
         if [[ -n "${DETECTED_VERSION}" ]]; then
@@ -128,22 +174,13 @@ fi
 if [[ "${ENV_REQUIRED:-}" ]] && [[ -z "${ENV_SOURCE_HOST+x}" ]]; then
     printf "Invalid environment '%s' or missing REMOTE_*_HOST configuration\n" "${ENV_SOURCE}" >&2
     exit 2
-fi
-
-## download files from the remote
-if [[ "${DOWNLOAD_SOURCE:-}" ]]; then
-    warden sync --file --source="${ENV_SOURCE}"
-    
-    # Clean up for fresh start
-    warden env exec -T php-fpm sh -c "
-        rm -rf wp-content/cache/* 2>/dev/null || true
-    " || true
+    exit 2
 fi
 
 :: Starting Warden
 warden svc up
-if [[ ! -f ${WARDEN_HOME_DIR:-~/.warden}/ssl/certs/${TRAEFIK_DOMAIN:-test.test}.crt.pem ]]; then
-    warden sign-certificate ${TRAEFIK_DOMAIN:-test.test}
+if [[ ! -f ${WARDEN_HOME_DIR}/ssl/certs/${TRAEFIK_DOMAIN}.crt.pem ]]; then
+    warden sign-certificate ${TRAEFIK_DOMAIN}
 fi
 
 :: Initializing environment
@@ -151,6 +188,28 @@ warden env up --remove-orphans
 
 ## wait for database to start
 warden shell -c "while ! nc -z db 3306 </dev/null; do sleep 2; done"
+
+## download files from the remote
+if [[ "${CLONE_MODE:-}" ]]; then
+    # Backup local .env to prevent overwrite
+    cp .env .env.warden-local
+    
+    warden sync --file --source="${ENV_SOURCE}"
+    
+    # If remote had .env, save it as reference
+    if [[ -f .env ]] && ! cmp -s .env .env.warden-local; then
+        mv .env .env.remote-source
+        printf "ℹ️  Remote .env saved as .env.remote-source\n"
+    fi
+    
+    # Restore local .env
+    mv .env.warden-local .env
+    
+    # Clean up for fresh start
+    warden env exec -T php-fpm sh -c "
+        rm -rf wp-content/cache/* 2>/dev/null || true
+    " || true
+fi
 
 # Clean install - download WordPress
 if [[ "${CLEAN_INSTALL:-}" ]]; then
@@ -223,20 +282,20 @@ if [[ "${DB_IMPORT:-}" ]] && [[ ! "${CLEAN_INSTALL:-}" ]]; then
     fi
 fi
 
-# Create wp-config.php
+# Get actual database credentials from the db container
+DB_USER=$(warden env exec -T db printenv MYSQL_USER 2>/dev/null)
+DB_PASS=$(warden env exec -T db printenv MYSQL_PASSWORD 2>/dev/null)
+DB_NAME=$(warden env exec -T db printenv MYSQL_DATABASE 2>/dev/null)
+
+# Use defaults if not available
+DB_USER=${DB_USER:-wordpress}
+DB_PASS=${DB_PASS:-wordpress}
+DB_NAME=${DB_NAME:-wordpress}
+
+# Create or Update wp-config.php
 if ! warden env exec -T php-fpm test -f wp-config.php; then
     if warden env exec -T php-fpm test -f wp-config-sample.php; then
         :: Creating wp-config.php
-        
-        # Get actual database credentials from the db container
-        DB_USER=$(warden env exec -T db printenv MYSQL_USER 2>/dev/null)
-        DB_PASS=$(warden env exec -T db printenv MYSQL_PASSWORD 2>/dev/null)
-        DB_NAME=$(warden env exec -T db printenv MYSQL_DATABASE 2>/dev/null)
-        
-        # Use defaults if not available
-        DB_USER=${DB_USER:-wordpress}
-        DB_PASS=${DB_PASS:-wordpress}
-        DB_NAME=${DB_NAME:-wordpress}
         
         # Generate keys
         SALT=$(curl -s https://api.wordpress.org/secret-key/1.1/salt/)
@@ -282,6 +341,16 @@ EOF
         
         echo "✅ wp-config.php created with database credentials"
     fi
+elif [[ -n "${CLONE_MODE}" ]]; then
+    :: Patching existing wp-config.php for Warden
+    # Use sed to update values while preserving other settings. Handles ' and " quotes.
+    DB_HOST_NAME="db"
+    warden env exec -T php-fpm sed -i "s/define( *['\"]DB_NAME['\"] *, *['\"][^'\"]*['\"] *);/define( 'DB_NAME', '${DB_NAME}' );/" wp-config.php
+    warden env exec -T php-fpm sed -i "s/define( *['\"]DB_USER['\"] *, *['\"][^'\"]*['\"] *);/define( 'DB_USER', '${DB_USER}' );/" wp-config.php
+    warden env exec -T php-fpm sed -i "s/define( *['\"]DB_PASSWORD['\"] *, *['\"][^'\"]*['\"] *);/define( 'DB_PASSWORD', '${DB_PASS}' );/" wp-config.php
+    warden env exec -T php-fpm sed -i "s/define( *['\"]DB_HOST['\"] *, *['\"][^'\"]*['\"] *);/define( 'DB_HOST', '${DB_HOST_NAME}' );/" wp-config.php
+    
+    echo "✅ wp-config.php patched with Warden database credentials"
 fi
 
 # Ensure database is empty for clean install

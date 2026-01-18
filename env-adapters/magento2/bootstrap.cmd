@@ -8,11 +8,12 @@ START_TIME=$(date +%s)
 
 ## configure command defaults
 REQUIRED_FILES=("${WARDEN_ENV_PATH}/auth.json")
-CLEAN_INSTALL=
+FRESH_INSTALL=
 META_PACKAGE="magento/project-community-edition"
 META_VERSION=""
 INCLUDE_SAMPLE=
-DOWNLOAD_SOURCE=
+CLONE_MODE=
+CODE_ONLY=
 DB_DUMP=
 DB_IMPORT=1
 STREAM_DB=1
@@ -29,47 +30,52 @@ MAGE_PASSWORD=
 ## argument parsing
 while [[ "$#" -gt 0 ]]; do
     case "$1" in
-        --clean-install)
-            CLEAN_INSTALL=1
+        # New simplified flags
+        -c|--clone)
+            CLONE_MODE=1
+            ENV_REQUIRED=1
+            shift
+            ;;
+        --code-only)
+            CODE_ONLY=1
+            shift
+            ;;
+        --fresh)
+            FRESH_INSTALL=1
             COMPOSER_INSTALL=
             DB_IMPORT=
             MEDIA_SYNC=
             shift
             ;;
-        --fix-deps)
-            FIX_DEPS=1
+        --no-db)
+            DB_IMPORT=
             shift
             ;;
-        -p|--meta-package)
-            META_PACKAGE="$2"
-            shift 2
-            ;;
-        -p=*|--meta-package=*)
-            META_PACKAGE="${1#*=}"
+        --no-media)
+            MEDIA_SYNC=
             shift
             ;;
-        -v|--meta-version|--version)
-            META_VERSION="$2"
-            if ! test $(version "${META_VERSION}") -ge "$(version 2.0.0)" && [[ ! "${META_VERSION}" =~ ^2\.[0-9]+\.x$ ]]; then
-                fatal "Invalid version ${META_VERSION} specified (valid values are 2.0.0 or later)"
-            fi
-            shift 2
-            ;;
-        -v=*|--meta-version=*|--version=*)
-            META_VERSION="${1#*=}"
-            if ! test $(version "${META_VERSION}") -ge "$(version 2.0.0)" && [[ ! "${META_VERSION}" =~ ^2\.[0-9]+\.x$ ]]; then
-                fatal "Invalid version ${META_VERSION} specified (valid values are 2.0.0 or later)"
-            fi
+        --no-composer)
+            COMPOSER_INSTALL=
             shift
             ;;
-        --include-sample)
-            INCLUDE_SAMPLE=1
+        --no-admin)
+            ADMIN_CREATE=
+            shift
+            ;;
+        # Backward compatibility aliases (hidden from help)
+        --clean-install)
+            FRESH_INSTALL=1
+            COMPOSER_INSTALL=
+            DB_IMPORT=
+            MEDIA_SYNC=
             shift
             ;;
         --download-source)
-            DOWNLOAD_SOURCE=1
-            COMPOSER_INSTALL=
+            CLONE_MODE=1
             ENV_REQUIRED=1
+            DB_IMPORT=
+            MEDIA_SYNC=
             shift
             ;;
         --skip-db-import)
@@ -86,6 +92,37 @@ while [[ "$#" -gt 0 ]]; do
             ;;
         --skip-admin-create)
             ADMIN_CREATE=
+            shift
+            ;;
+        # Standard options
+        --fix-deps)
+            FIX_DEPS=1
+            shift
+            ;;
+        -p|--meta-package)
+            META_PACKAGE="$2"
+            shift 2
+            ;;
+        -p=*|--meta-package=*)
+            META_PACKAGE="${1#*=}"
+            shift
+            ;;
+        --meta-version|--version)
+            META_VERSION="$2"
+            if ! test $(version "${META_VERSION}") -ge "$(version 2.0.0)" && [[ ! "${META_VERSION}" =~ ^2\.[0-9]+\.x$ ]]; then
+                fatal "Invalid version ${META_VERSION} specified (valid values are 2.0.0 or later)"
+            fi
+            shift 2
+            ;;
+        --meta-version=*|--version=*)
+            META_VERSION="${1#*=}"
+            if ! test $(version "${META_VERSION}") -ge "$(version 2.0.0)" && [[ ! "${META_VERSION}" =~ ^2\.[0-9]+\.x$ ]]; then
+                fatal "Invalid version ${META_VERSION} specified (valid values are 2.0.0 or later)"
+            fi
+            shift
+            ;;
+        --include-sample)
+            INCLUDE_SAMPLE=1
             shift
             ;;
         --db-dump)
@@ -128,8 +165,17 @@ while [[ "$#" -gt 0 ]]; do
     esac
 done
 
+# Clone mode with --code-only disables DB and media sync
+if [[ -n "${CLONE_MODE}" ]] && [[ -n "${CODE_ONLY}" ]]; then
+    DB_IMPORT=
+    MEDIA_SYNC=
+fi
+
+# For backward compatibility: map CLEAN_INSTALL alias
+CLEAN_INSTALL="${FRESH_INSTALL}"
+
 ## Auto-detect clean install if composer.json is missing
-if [[ ! -f "${WARDEN_ENV_PATH}/composer.json" ]] && [[ -z "${DOWNLOAD_SOURCE:-}" ]] && [[ -z "${CLEAN_INSTALL:-}" ]] && [[ -z "${DB_DUMP:-}" ]] && [[ -z "${DB_IMPORT:-}" ]]; then
+if [[ ! -f "${WARDEN_ENV_PATH}/composer.json" ]] && [[ -z "${CLONE_MODE:-}" ]] && [[ -z "${CLEAN_INSTALL:-}" ]] && [[ -z "${DB_DUMP:-}" ]] && [[ -z "${DB_IMPORT:-}" ]]; then
     echo "No composer.json found. Assuming --clean-install mode."
     CLEAN_INSTALL=1
     COMPOSER_INSTALL=
@@ -144,6 +190,19 @@ if [[ -n "${FIX_DEPS}" ]]; then
     SCRIPT_DIR=$(dirname "${BASH_SOURCE[0]}")
     if [[ -f "${SCRIPT_DIR}/fix-deps.cmd" ]]; then
         # Run fix-deps (it will auto-detect version or use META_VERSION)
+        
+        # Try to auto-detect from remote if cloning and version not specified
+        if [[ -z "${META_VERSION:-}" ]] && [[ -n "${CLONE_MODE}" ]] && [[ -n "${ENV_SOURCE}" ]]; then
+             printf "Auto-detecting Magento version from remote '%s'...\n" "${ENV_SOURCE}"
+             DETECTED_VERSION=$(detect_remote_version "magento2" "${ENV_SOURCE}")
+             if [[ -n "${DETECTED_VERSION}" ]]; then
+                  printf "  \033[32mDetected version: %s\033[0m\n" "${DETECTED_VERSION}"
+                  META_VERSION="${DETECTED_VERSION}"
+             else
+                  printf "  \033[33mCould not auto-detect version.\033[0m\n"
+             fi
+        fi
+
         if [[ -n "${META_VERSION:-}" ]]; then
             source "${SCRIPT_DIR}/fix-deps.cmd" --version="${META_VERSION}" 2>&1 | grep -v "\[DRY RUN\]\|Run without"
         else
@@ -178,6 +237,18 @@ if [[ "${ENV_REQUIRED:-}" ]] && [[ -z "${!ENV_SOURCE_HOST_VAR+x}" ]]; then
     printf "Invalid environment '%s'\n" "${ENV_SOURCE}" >&2
     exit 2
 fi
+
+:: Starting Warden
+warden svc up
+if [[ ! -f ${WARDEN_HOME_DIR}/ssl/certs/${TRAEFIK_DOMAIN}.crt.pem ]]; then
+    warden sign-certificate ${TRAEFIK_DOMAIN}
+fi
+
+:: Initializing environment
+warden env up --remove-orphans
+
+## wait for database to start
+warden shell -c "while ! nc -z db 3306 </dev/null; do sleep 2; done"
 
 ## create an auth.json file in case it is missing (clean install or otherwise)
 if [[ ! -f "${WARDEN_ENV_PATH}/auth.json" ]]; then
@@ -248,14 +319,26 @@ EOT
     fi
 fi
 
-if [[ "${DOWNLOAD_SOURCE:-}" ]]; then
+if [[ "${CLONE_MODE:-}" ]]; then
     ## download files from the remote
+    
+    # Backup local .env to prevent overwrite
+    cp .env .env.warden-local
+    
     warden sync --file --source="${ENV_SOURCE}"
+    
+    # If remote had .env, save it as reference
+    if [[ -f .env ]] && ! cmp -s .env .env.warden-local; then
+        mv .env .env.remote-source
+        printf "ℹ️  Remote .env saved as .env.remote-source\n"
+    fi
+    
+    # Restore local .env
+    mv .env.warden-local .env
     
     # Combined file operations to reduce container exec overhead
     # May fail if directories don't exist yet - that's expected
     warden env exec php-fpm sh -c "
-        rm -rf /var/www/html/app/etc/env.php && \
         mkdir -p /var/www/html/generated \
                  /var/www/html/pub/media \
                  /var/www/html/pub/static \
@@ -307,18 +390,6 @@ done
 ## exit script if there are any missing dependencies or configuration files
 [[ ${INIT_ERROR} ]] && exit 1
 
-:: Starting Warden
-warden svc up
-if [[ ! -f ${WARDEN_HOME_DIR}/ssl/certs/${TRAEFIK_DOMAIN}.crt.pem ]]; then
-    warden sign-certificate ${TRAEFIK_DOMAIN}
-fi
-
-:: Initializing environment
-warden env up --remove-orphans
-
-## wait for mariadb to start listening for connections
-warden shell -c "while ! nc -z db 3306 </dev/null; do sleep 2; done"
-
 if [[ "${COMPOSER_INSTALL:-}" ]]; then
     :: Installing dependencies
     warden env exec php-fpm composer install
@@ -361,6 +432,15 @@ DB_NAME=${DB_NAME:-magento}
 
 # Determine database host
 DB_HOST_NAME="db"
+
+# If we have an existing env.php, try to use its crypt key as fallback for WARDEN_ENCRYPT_KEY
+if [[ -f "${WARDEN_ENV_PATH}/app/etc/env.php" ]] && [[ "${ENCRYPT_KEY}" == "00000000000000000000000000000000" ]]; then
+    EXTRACTED_KEY=$(warden env exec -T php-fpm php -r '$c = @include "app/etc/env.php"; echo (is_array($c) && isset($c["crypt"]["key"])) ? $c["crypt"]["key"] : "";' 2>/dev/null)
+    if [[ -n "${EXTRACTED_KEY}" ]]; then
+        ENCRYPT_KEY="${EXTRACTED_KEY}"
+        printf "ℹ️  Using crypt/key extracted from remote env.php\n"
+    fi
+fi
 
 if [ ! -f "${WARDEN_ENV_PATH}/app/etc/env.php" ] && [ ! $CLEAN_INSTALL ]; then
     :: Configuring environment variables
@@ -428,6 +508,15 @@ return [
 ];
 
 EOT
+elif [ -n "${CLONE_MODE}" ] && [ -f "${WARDEN_ENV_PATH}/app/etc/env.php" ]; then
+    :: Patching existing env.php for Warden
+    # Update DB config via setup:config:set to preserve other settings like crypt/key
+    warden env exec -T php-fpm bin/magento setup:config:set \
+        --db-host="${DB_HOST_NAME}" \
+        --db-name="${DB_NAME}" \
+        --db-user="${DB_USER}" \
+        --db-password="${DB_PASS}" \
+        --no-interaction || warning "Failed to patch env.php database configuration"
 fi
 
 if [[ ${CLEAN_INSTALL} ]] && [[ ! -f "${WARDEN_WEB_ROOT}/composer.json" ]]; then
