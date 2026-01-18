@@ -31,11 +31,11 @@ docker exec --workdir / -u www-data "${STAGING_PHP}" bash -c "rm -rf /var/www/ht
 run_db_query "${STAGING_PHP}" "DROP DATABASE IF EXISTS magento; CREATE DATABASE magento;" > /dev/null
 
 # Run clean install (using latest stable version for PHP 8.4 compatibility)
-echo "Running: warden bootstrap --clean-install -y --meta-version=2.4.8 --skip-admin-create"
-if warden bootstrap --clean-install -y --meta-version=2.4.8 --skip-admin-create; then
-    pass "warden bootstrap --clean-install -y executed successfully"
+echo "Running: warden bootstrap --fresh -y --meta-version=2.4.8 --no-admin"
+if warden bootstrap --fresh -y --meta-version=2.4.8 --no-admin; then
+    pass "warden bootstrap --fresh -y executed successfully"
 else
-    fail "warden bootstrap --clean-install -y failed" "Exit code $?"
+    fail "warden bootstrap --fresh -y failed" "Exit code $?"
 fi
 
 # Assertions - Check composer.json exists
@@ -153,4 +153,55 @@ if echo "$ENV_PHP_CONTENT" | grep -q "'key'"; then
     pass "env.php contains encryption key (proper install)"
 else
     fail "env.php missing encryption key" "Indicates setup:install did not complete properly"
+fi
+
+# -----------------------------------------------------
+# Scenario 4: Clone Mode Interaction
+# Tests the interactive flow of -c/--clone including:
+# - Pre-configuration of remotes
+# - Persistence of remote details to .env
+# -----------------------------------------------------
+header "Scenario 4: Clone Mode Interaction (Magento 2)"
+
+# Use Dev environment for this test
+cd "${DEV_ENV}"
+# Clean slate
+echo "Cleaning dev environment..."
+rm -rf .env var vendor app bin dev generated lib phpserver pub setup || true
+
+# Inputs for interactive prompts:
+# 1. Host: example.com
+# 2. User: deploy
+# 3. Port: 22
+# 4. Path: /var/www/html
+# 5. URL: https://example.com
+# 6. Env Type: 1 (magento2) [Fallback if auto-detect fails]
+# 7. Version: 2.4.6 [Fallback if auto-detect fails]
+# Note: ConnectTimeout=5 in detection ensures this doesn't hang forever
+INPUTS="example.com\ndeploy\n22\n/var/www/html\nhttps://example.com\n1\n2.4.6"
+    
+echo "Running interactive clone bootstrap (dry-run inputs)..."
+# We expect this might fail at 'warden sync' or 'ssh' steps since example.com isn't reachable,
+# but we are testing the FLOW and .env generation.
+echo -e "$INPUTS" | warden bootstrap -c -e dev || true
+
+# Assertions
+if [[ -f .env ]]; then
+    pass ".env file created"
+    
+    # Check if remote details were saved
+    if grep -q "REMOTE_DEV_HOST=example.com" .env; then
+        pass "Remote details persisted to .env"
+    else
+        fail "Remote details missing from .env"
+    fi
+    
+    # Check if environment type was set (means flow completed at least past env-init)
+    if grep -q "WARDEN_ENV_TYPE=magento2" .env; then
+        pass "Environment initialized as magento2"
+    else
+        fail "Environment initialization failed"
+    fi
+else
+    fail ".env file was not created"
 fi

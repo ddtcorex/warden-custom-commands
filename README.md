@@ -57,7 +57,7 @@ source ~/.zshrc
 
 ```bash
 # Clone this repository to ~/.warden/commands
-git clone https://github.com/KaiDo92/warden-custom-commands.git ~/.warden/commands
+git clone https://github.com/ddtcorex/warden-custom-commands.git ~/.warden/commands
 
 # Make commands executable
 chmod +x ~/.warden/commands/*.cmd
@@ -302,32 +302,49 @@ The unified synchronization command for files, media, and databases.
 
 Initialize a new Magento 2 environment with all dependencies and configuration.
 
-**Options:**
+**Clone Options:**
 
-- `-h, --help` - Display help menu
-- `--env-name=<name>` - Initialize environment with specified name
-- `--env-type=<type>` - Initialize environment with specified type
-- `--clean-install` - Create fresh Magento project
-- `--version=<version>` - Magento version for clean install (e.g., 2.4.8)
+- `-c, --clone` - Clone project from remote (source + DB + media)
+- `--code-only` - With --clone: skip DB and media sync
+
+**Install Options:**
+
+- `--fresh` - Create fresh Magento project (replaces `--clean-install`)
+- `--version=<version>` - Magento version for fresh install (e.g., 2.4.8)
 - `--mage-username=<username>` - Magento Marketplace Public Key
 - `--mage-password=<password>` - Magento Marketplace Private Key
-- `--include-sample` - Include sample data (clean install)
+- `--include-sample` - Include sample data (fresh install)
+- `--hyva-install` - Install Hyvä theme (fresh install)
 
-- `--no-stream-db` - Use intermediate dump file instead of streaming (default: streaming enabled)
-- `--download-source` - Download source code from remote
+**Skip Options:**
+
+- `--no-db` - Skip database import
+- `--no-media` - Skip media sync from remote
+- `--no-composer` - Skip composer install
+- `--no-admin` - Skip admin user creation
+- `--no-stream-db` - Use intermediate dump file instead of streaming
+
+**Other Options:**
+
+- `-e, --environment=<env>` - Source environment (default: staging)
 - `--db-dump=<file>` - Use specific database dump file
-- `--skip-db-import` - Skip database import
-- `--skip-media-sync` - Skip media sync from remote
-- `--skip-composer-install` - Skip composer install
-- `--skip-admin-create` - Skip admin user creation
 - `--fix-deps` - Auto-fix dependency versions for framework
+- `-y, --yes` - Non-interactive mode
 
 **Example:**
 
 ```bash
+# Standard bootstrap from staging
 warden bootstrap
-warden bootstrap --clean-install --version=2.4.8
-warden bootstrap --download-source -e production
+
+# Clone project from production (one-command setup)
+warden bootstrap -c -e prod
+
+# Clone code only, skip DB and media
+warden bootstrap -c --code-only -e staging
+
+# Fresh Magento installation
+warden bootstrap --fresh --version=2.4.8
 ```
 
 #### Magento 2: `warden db-dump`
@@ -457,26 +474,35 @@ warden upgrade --version=2.4.8-p3 --skip-db-upgrade
 
 Initialize Laravel environment with dependencies and database.
 
-**Options:**
+**Clone Options:**
 
-- `--clean-install` - Create fresh Laravel project
-- `--download-source` - Download source code from remote environment
+- `-c, --clone` - Clone project from remote (source + DB)
+- `--code-only` - With --clone: skip DB sync
+
+**Install Options:**
+
+- `--fresh` - Create fresh Laravel project
+- `--fix-deps` - Auto-fix dependency versions
+
+**Skip Options:**
+
+- `--no-db` - Skip database import
+- `--no-composer` - Skip composer install
+- `--no-migrate` - Skip database migrations
+- `--no-stream-db` - Use intermediate dump file instead of streaming
+
+**Other Options:**
+
+- `-e, --environment=<env>` - Source environment (default: staging)
 - `--db-dump=<file>` - Use specific database dump file
-- `--skip-db-import` - Skip database import
-- `--no-stream-db` - Use intermediate dump file instead of streaming (default: streaming enabled)
-- `--env-name=<name>` - Initialize environment with specified name
-- `--env-type=<type>` - Initialize environment with specified type
-- `--skip-composer-install` - Skip composer install
-- `--skip-migrate` - Skip database migrations
-- `--fix-deps` - Auto-fix dependency versions for framework
+- `-y, --yes` - Non-interactive mode
 
 **Example:**
 
 ```bash
-warden bootstrap
-warden bootstrap --clean-install
-warden bootstrap --download-source -e production
-warden bootstrap --db-dump=backup.sql.gz
+warden bootstrap                    # Standard bootstrap
+warden bootstrap -c -e prod         # Clone from production
+warden bootstrap --fresh            # Create new Laravel project
 ```
 
 #### Laravel: `warden db-dump`
@@ -562,27 +588,35 @@ warden upgrade --version=10.x --dry-run
 
 Initialize Symfony environment with dependencies and database.
 
-**Options:**
+**Clone Options:**
 
-- `-h, --help` - Display help menu
-- `--clean-install` - Create fresh Symfony project from scratch
-- `--download-source` - Download source code from remote environment
+- `-c, --clone` - Clone project from remote (source + DB)
+- `--code-only` - With --clone: skip DB sync
+
+**Install Options:**
+
+- `--fresh` - Create fresh Symfony project
+- `--fix-deps` - Auto-fix dependency versions
+
+**Skip Options:**
+
+- `--no-db` - Skip database import
+- `--no-composer` - Skip composer install
+- `--no-migrate` - Skip database migrations
+- `--no-stream-db` - Use intermediate dump file instead of streaming
+
+**Other Options:**
+
+- `-e, --environment=<env>` - Source environment (default: staging)
 - `--db-dump=<file>` - Use specific database dump file
-- `--skip-db-import` - Skip database import
-- `--no-stream-db` - Use intermediate dump file instead of streaming (default: streaming enabled)
-- `--env-name=<name>` - Initialize environment with specified name
-- `--env-type=<type>` - Initialize environment with specified type
-- `--skip-composer-install` - Skip composer install
-- `--skip-migrate` - Skip database migrations
-- `--fix-deps` - Auto-fix dependency versions for framework
+- `-y, --yes` - Non-interactive mode
 
 **Example:**
 
 ```bash
-warden bootstrap
-warden bootstrap --clean-install
-warden bootstrap --download-source -e staging
-warden bootstrap --db-dump=var/backup.sql.gz
+warden bootstrap                    # Standard bootstrap
+warden bootstrap -c -e prod         # Clone from production
+warden bootstrap --fresh            # Create new Symfony project
 ```
 
 #### Symfony: `warden db-dump`
@@ -668,30 +702,38 @@ warden upgrade --version=6.4 --dry-run
 
 Initialize WordPress environment with complete installation.
 
-**Options:**
+**Clone Options:**
 
-- `-h, --help` - Display help menu
-- `--clean-install` - Download WordPress core and install
-- `--download-source` - Download source code from remote environment
+- `-c, --clone` - Clone project from remote (source + DB)
+- `--code-only` - With --clone: skip DB sync
+
+**Install Options:**
+
+- `--fresh` - Download fresh WordPress installation
+- `--fix-deps` - Auto-fix dependency versions
+
+**Skip Options:**
+
+- `--no-db` - Skip database import
+- `--no-composer` - Skip composer install
+- `--no-wp-install` - Skip WordPress installation wizard
+- `--no-stream-db` - Use intermediate dump file instead of streaming
+
+**Other Options:**
+
+- `-e, --environment=<env>` - Source environment (default: staging)
 - `--db-dump=<file>` - Use specific database dump file
-- `--skip-db-import` - Skip database import
-- `--no-stream-db` - Use intermediate dump file instead of streaming (default: streaming enabled)
-- `--env-name=<name>` - Initialize environment with specified name
-- `--env-type=<type>` - Initialize environment with specified type
-- `--skip-composer-install` - Skip composer install
-- `--skip-wp-install` - Skip WordPress installation
-- `--fix-deps` - Auto-fix dependency versions for framework
+- `-y, --yes` - Non-interactive mode
 
 **Example:**
 
 ```bash
-warden bootstrap
-warden bootstrap --clean-install
-warden bootstrap --download-source -e production
-warden bootstrap --db-dump=wp-content/backup.sql.gz
+warden bootstrap                    # Standard bootstrap
+warden bootstrap -c -e prod         # Clone from production
+warden bootstrap --fresh            # Download fresh WordPress
 ```
 
-**Note:** With `--clean-install`, WordPress will be downloaded, wp-config.php created, and the site installed with admin credentials displayed.
+**Note:** With `--fresh`, WordPress will be downloaded, wp-config.php created, and the site installed with admin credentials displayed.
 
 #### WordPress: `warden db-dump`
 

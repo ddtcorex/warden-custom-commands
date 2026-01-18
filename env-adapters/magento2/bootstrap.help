@@ -3,33 +3,44 @@
 
 WARDEN_USAGE=$(cat <<EOF
 \033[33mUsage:\033[0m
-  bootstrap [-e|--environment=<env>] [--no-pull] [--skip-db-import] [--skip-media-sync] [--skip-composer-install] [--skip-admin-create] [--db-dump=<file>]
+  bootstrap [-e|--environment=<env>] [options]
 
-\033[33mOptions:\033[0m
-  -h, --help              Display this help menu
+\033[33mClone Options:\033[0m
+  -c, --clone             Clone project from remote (source + DB + media)
+  --code-only             With --clone: skip DB and media sync
 
-  --clean-install         Perform clean installation
-  --hyva-install          Perform Hyvä installation (requires --clean-install)
+\033[33mInstall Options:\033[0m
+  --fresh                 Fresh Magento installation (create new project)
+  --hyva-install          Install Hyvä theme (with --fresh only)
+  --include-sample        Include sample data (with --fresh only)
 
-  --meta-package=PACKAGE   Magento meta package (magento/project-community-edition, magento/project-enterprise-edition)
-  --meta-version=VERSION   Magento version
+  --meta-package=PKG      Magento package (magento/project-community-edition)
+  --meta-version=VER      Magento version (e.g., 2.4.7)
 
-  --mage-username=USERNAME    Magento Marketplace Public Key (Username)
-  --mage-password=PASSWORD    Magento Marketplace Private Key (Password)
+  --mage-username=KEY     Magento Marketplace Public Key
+  --mage-password=KEY     Magento Marketplace Private Key
 
-  --include-sample        Include sample data into the installation
+\033[33mSkip Options:\033[0m
+  --no-db                 Skip database import
+  --no-media              Skip media sync
+  --no-composer           Skip composer install
+  --no-admin              Skip admin user creation
+  --no-stream-db          Download dump file instead of streaming
 
-  --skip-db-import        Skips over db import (assume db has already been imported).
+\033[33mDatabase Options:\033[0m
+  --db-dump=FILE          Use local SQL dump file for import
 
-  --skip-media-sync       Skips over media sync.
+\033[33mCommon Options:\033[0m
+  -e, --environment=NAME  Source environment (staging, prod, dev). Default: staging
+  -y, --yes               Non-interactive mode
+  -h, --help              Display this help
 
-  --skip-composer-install Skips over composer install.
-
-  --skip-admin-create     Skips over admin user create.
-
-\033[33mArguments:\033[0m
-  -e, --environment=NAME    Environment to sync media from. Default: staging
-  --db-dump=FILE            Expects path to .sql.gz file for import during init
+\033[33mExamples:\033[0m
+  warden bootstrap                           # Standard bootstrap from staging
+  warden bootstrap -c -e prod                # Clone from production
+  warden bootstrap -c --code-only -e staging # Clone code only, skip DB/media
+  warden bootstrap --fresh --meta-version=2.4.7  # Fresh Magento 2.4.7 install
 
 EOF
 )
+

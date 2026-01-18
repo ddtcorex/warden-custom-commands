@@ -71,3 +71,25 @@ setup() {
     # Should use --local indb-dump
     grep -E -q "warden db-dump --local --file=.* -e laravel" "${MOCK_LOG}"
 }
+
+@test "Laravel: Clone mode runs env up before sync and runs composer install" {
+    export ENV_SOURCE="staging"
+    export ENV_SOURCE_HOST="mock-host"
+    export CLONE_MODE="1"
+    
+    mkdir -p "${WARDEN_ENV_PATH}"
+    touch "${WARDEN_ENV_PATH}/.env"
+
+    run "$BOOTSTRAP_CMD" --clone --source=staging --skip-db-import --skip-migrate
+    
+    [ "$status" -eq 0 ]
+    
+    local svc_up_line=$(grep -n "warden svc up" "$MOCK_LOG" | cut -d: -f1 | head -1)
+    local sync_line=$(grep -n "warden sync" "$MOCK_LOG" | cut -d: -f1 | head -1)
+    
+    [ -n "$svc_up_line" ]
+    [ -n "$sync_line" ]
+    [ "$svc_up_line" -lt "$sync_line" ]
+    
+    assert_command_called "warden env exec -T php-fpm composer install"
+}
