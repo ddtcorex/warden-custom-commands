@@ -17,7 +17,6 @@ function mage_config_optional() {
 
 ENV_HOOKS_FILE="${WARDEN_ENV_PATH}/.warden/hooks"
 if [ -f "${ENV_HOOKS_FILE}" ]; then
-    # shellcheck source=/dev/null
     source "${ENV_HOOKS_FILE}"
 fi
 

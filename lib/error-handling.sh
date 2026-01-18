@@ -104,7 +104,6 @@ function detect_command() {
 function source_if_exists() {
     for file in "$@"; do
         if [[ -f "$file" ]]; then
-            # shellcheck source=/dev/null
             source "$file" 2>/dev/null && return 0
         fi
     done

@@ -13,7 +13,6 @@ SUBCOMMAND_DIR="${SUBCOMMAND_DIR:-${WARDEN_HOME_DIR}/commands}"
 source "${SUBCOMMAND_DIR}/lib/error-handling.sh"
 
 # Source shared SSH utilities
-# shellcheck source=lib/ssh-utils.sh
 source "${SUBCOMMAND_DIR}/lib/ssh-utils.sh"
 
 function :: {
