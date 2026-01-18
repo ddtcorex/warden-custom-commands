@@ -21,7 +21,7 @@ ENV_REQUIRED=
 ## argument parsing
 while (( "$#" )); do
     case "$1" in
-        # New simplified flags
+        # Primary Features
         -c|--clone)
             CLONE_MODE=1
             ENV_REQUIRED=1
@@ -31,66 +31,52 @@ while (( "$#" )); do
             CODE_ONLY=1
             shift
             ;;
-        --fresh)
+        --fresh|--clean-install|--fresh-install)
             FRESH_INSTALL=1
             COMPOSER_INSTALL=
             DB_IMPORT=
             shift
             ;;
-        --no-db)
+
+        # Disable/Skip Options
+        --no-db|--skip-db-import)
             DB_IMPORT=
             shift
             ;;
-        --no-composer)
+        --no-composer|--skip-composer-install)
             COMPOSER_INSTALL=
             shift
             ;;
-        --no-migrate)
+        --no-migrate|--skip-migrate)
             SKIP_MIGRATE=1
-            shift
-            ;;
-        # Backward compatibility aliases (hidden from help)
-        --clean-install)
-            FRESH_INSTALL=1
-            COMPOSER_INSTALL=
-            DB_IMPORT=
-            shift
-            ;;
-        --download-source)
-            CLONE_MODE=1
-            COMPOSER_INSTALL=
-            ENV_REQUIRED=1
-            shift
-            ;;
-        --skip-db-import)
-            DB_IMPORT=
-            shift
-            ;;
-        --skip-composer-install)
-            COMPOSER_INSTALL=
-            shift
-            ;;
-        --skip-migrate)
-            SKIP_MIGRATE=1
-            shift
-            ;;
-        # Standard options
-        --fix-deps)
-            FIX_DEPS=1
-            shift
-            ;;
-        --db-dump)
-            DB_DUMP="$2"
-            ENV_REQUIRED=1
-            shift 2
-            ;;
-        --db-dump=*)
-            DB_DUMP="${1#*=}"
-            ENV_REQUIRED=1
             shift
             ;;
         --no-stream-db)
             STREAM_DB=
+            shift
+            ;;
+
+        # Presets & Legacy
+        --download-source)
+            CLONE_MODE=1
+            CODE_ONLY=1
+            ENV_REQUIRED=1
+            shift
+            ;;
+
+        # Database Configuration
+        --db-dump|--db-dump=*)
+            [[ "$1" == *=* ]] && DB_DUMP="${1#*=}" || { DB_DUMP="${2:-}"; shift; }
+            shift
+            ;;
+
+        # Internal / Flags
+        --fix-deps)
+            FIX_DEPS=1
+            shift
+            ;;
+        -y|--yes)
+            export YES_TO_ALL=1
             shift
             ;;
         *)

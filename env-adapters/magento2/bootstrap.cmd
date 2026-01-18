@@ -30,7 +30,7 @@ MAGE_PASSWORD=
 ## argument parsing
 while [[ "$#" -gt 0 ]]; do
     case "$1" in
-        # New simplified flags
+        # Primary Features
         -c|--clone)
             CLONE_MODE=1
             ENV_REQUIRED=1
@@ -40,123 +40,88 @@ while [[ "$#" -gt 0 ]]; do
             CODE_ONLY=1
             shift
             ;;
-        --fresh)
+        --fresh|--clean-install|--fresh-install)
             FRESH_INSTALL=1
             COMPOSER_INSTALL=
             DB_IMPORT=
             MEDIA_SYNC=
-            shift
-            ;;
-        --no-db)
-            DB_IMPORT=
-            shift
-            ;;
-        --no-media)
-            MEDIA_SYNC=
-            shift
-            ;;
-        --no-composer)
-            COMPOSER_INSTALL=
-            shift
-            ;;
-        --no-admin)
-            ADMIN_CREATE=
-            shift
-            ;;
-        # Backward compatibility aliases (hidden from help)
-        --clean-install)
-            FRESH_INSTALL=1
-            COMPOSER_INSTALL=
-            DB_IMPORT=
-            MEDIA_SYNC=
-            shift
-            ;;
-        --download-source)
-            CLONE_MODE=1
-            ENV_REQUIRED=1
-            DB_IMPORT=
-            MEDIA_SYNC=
-            shift
-            ;;
-        --skip-db-import)
-            DB_IMPORT=
-            shift
-            ;;
-        --skip-media-sync)
-            MEDIA_SYNC=
-            shift
-            ;;
-        --skip-composer-install)
-            COMPOSER_INSTALL=
-            shift
-            ;;
-        --skip-admin-create)
-            ADMIN_CREATE=
-            shift
-            ;;
-        # Standard options
-        --fix-deps)
-            FIX_DEPS=1
-            shift
-            ;;
-        -p|--meta-package)
-            META_PACKAGE="$2"
-            shift 2
-            ;;
-        -p=*|--meta-package=*)
-            META_PACKAGE="${1#*=}"
-            shift
-            ;;
-        --meta-version|--version)
-            META_VERSION="$2"
-            if ! test $(version "${META_VERSION}") -ge "$(version 2.0.0)" && [[ ! "${META_VERSION}" =~ ^2\.[0-9]+\.x$ ]]; then
-                fatal "Invalid version ${META_VERSION} specified (valid values are 2.0.0 or later)"
-            fi
-            shift 2
-            ;;
-        --meta-version=*|--version=*)
-            META_VERSION="${1#*=}"
-            if ! test $(version "${META_VERSION}") -ge "$(version 2.0.0)" && [[ ! "${META_VERSION}" =~ ^2\.[0-9]+\.x$ ]]; then
-                fatal "Invalid version ${META_VERSION} specified (valid values are 2.0.0 or later)"
-            fi
-            shift
-            ;;
-        --include-sample)
-            INCLUDE_SAMPLE=1
-            shift
-            ;;
-        --db-dump)
-            DB_DUMP="$2"
-            ENV_REQUIRED=1
-            shift 2
-            ;;
-        --db-dump=*)
-            DB_DUMP="${1#*=}"
-            ENV_REQUIRED=1
-            shift
-            ;;
-        --no-stream-db)
-            STREAM_DB=
             shift
             ;;
         --hyva-install)
             HYVA_INSTALL=1
             shift
             ;;
-        --mage-username)
-            MAGE_USERNAME="$2"
-            shift 2
-            ;;
-        --mage-username=*)
-            MAGE_USERNAME="${1#*=}"
+        --include-sample)
+            INCLUDE_SAMPLE=1
             shift
             ;;
-        --mage-password)
-            MAGE_PASSWORD="$2"
-            shift 2
+
+        # Disable/Skip Options
+        --no-db|--skip-db-import)
+            DB_IMPORT=
+            shift
             ;;
-        --mage-password=*)
-            MAGE_PASSWORD="${1#*=}"
+        --no-media|--skip-media-sync)
+            MEDIA_SYNC=
+            shift
+            ;;
+        --no-composer|--skip-composer-install)
+            COMPOSER_INSTALL=
+            shift
+            ;;
+        --no-admin|--skip-admin-create)
+            ADMIN_CREATE=
+            shift
+            ;;
+        --no-stream-db)
+            STREAM_DB=
+            shift
+            ;;
+
+        # Presets & Legacy
+        --download-source)
+            CLONE_MODE=1
+            CODE_ONLY=1
+            ENV_REQUIRED=1
+            shift
+            ;;
+
+        # Valued Options (Package / Version)
+        -p|--meta-package|-p=*|--meta-package=*)
+            [[ "$1" == *=* ]] && META_PACKAGE="${1#*=}" || { META_PACKAGE="${2:-}"; shift; }
+            shift
+            ;;
+        --version|--meta-version|--version=*|--meta-version=*)
+            [[ "$1" == *=* ]] && META_VERSION="${1#*=}" || { META_VERSION="${2:-}"; shift; }
+            if [[ -n "${META_VERSION}" ]] && ! test $(version "${META_VERSION}") -ge "$(version 2.0.0)" && [[ ! "${META_VERSION}" =~ ^2\.[0-9]+\.x$ ]]; then
+                fatal "Invalid version ${META_VERSION} specified (valid values are 2.0.0 or later)"
+            fi
+            shift
+            ;;
+
+        # Database Configuration
+        --db-dump|--db-dump=*)
+            [[ "$1" == *=* ]] && DB_DUMP="${1#*=}" || { DB_DUMP="${2:-}"; shift; }
+            shift
+            ;;
+
+        # Credentials
+        --mage-username|--mage-username=*)
+            [[ "$1" == *=* ]] && MAGE_USERNAME="${1#*=}" || { MAGE_USERNAME="${2:-}"; shift; }
+            shift
+            ;;
+        --mage-password|--mage-password=*)
+            [[ "$1" == *=* ]] && MAGE_PASSWORD="${1#*=}" || { MAGE_PASSWORD="${2:-}"; shift; }
+            shift
+            ;;
+
+        # Internal / Flags
+        --fix-deps)
+            FIX_DEPS=1
+            shift
+            ;;
+        -y|--yes)
+            export YES_TO_ALL=1
             shift
             ;;
         *)
