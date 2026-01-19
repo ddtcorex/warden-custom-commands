@@ -82,3 +82,71 @@ setup() {
     
     grep -E -q "warden db-dump --local --file=.* -e staging" "$MOCK_LOG"
 }
+
+@test "Magento2: Clone mode runs env up before sync and runs composer install" {
+    export ENV_SOURCE="staging"
+    export ENV_SOURCE_HOST="mock-host"
+    
+    # Mocks for remote config
+    mkdir -p "${WARDEN_ENV_PATH}"
+    touch "${WARDEN_ENV_PATH}/.env"
+    
+    run "$BOOTSTRAP_CMD" --clone --source=staging --skip-db-import --skip-media-sync --skip-admin-create
+    
+    [ "$status" -eq 0 ]
+    
+    # Check order: warden svc up BEFORE warden sync
+    local svc_up_line=$(grep -n "warden svc up" "$MOCK_LOG" | cut -d: -f1 | head -1)
+    local sync_line=$(grep -n "warden sync" "$MOCK_LOG" | cut -d: -f1 | head -1)
+    
+    [ -n "$svc_up_line" ]
+    [ -n "$sync_line" ]
+    [ "$svc_up_line" -lt "$sync_line" ]
+    
+    # Check composer install is called (it was re-enabled)
+    # The command in script is: warden env exec php-fpm composer install --no-interaction --no-dev --optimize-autoloader --no-scripts
+    # But assert_command_called matches partials usually
+    assert_command_called "warden env exec php-fpm composer install"
+}
+@test "Magento2: Clone mode patches existing env.php and extracts crypt key" {
+    # This test needs to run in a directory where env.php exists
+    cd "${WARDEN_ENV_PATH}"
+    
+    mkdir -p "app/etc"
+    cat <<EOT > "app/etc/env.php"
+<?php
+return [
+    'crypt' => [
+        'key' => 'extracted-key-from-remote'
+    ]
+];
+EOT
+
+    # Export variables needed for clone mode
+    export CLONE_MODE=1
+    export ENV_SOURCE="staging"
+    export ENV_SOURCE_HOST="mock-host"
+
+    # We need a custom warden mock to simulate the crypt key extraction output
+    function warden() {
+        if [[ "$1" == "env" ]] && [[ "$2" == "exec" ]] && [[ "$*" == *"php -r"* ]]; then
+            echo "extracted-key-from-remote"
+            return 0
+        fi
+        
+        # Fallback to standard mock behavior (appending to log)
+        echo "warden $*" >> "$MOCK_LOG"
+        return 0
+    }
+    export -f warden
+
+    run "$BOOTSTRAP_CMD" --clone --source=staging --skip-db-import --skip-composer-install --skip-admin-create --skip-media-sync
+    
+    [ "$status" -eq 0 ]
+    
+    # Verify extraction message
+    [[ "$output" == *"Using crypt/key extracted from remote env.php"* ]]
+    
+    # Verify patch command was called
+    assert_command_called "bin/magento setup:config:set --db-host=db"
+}

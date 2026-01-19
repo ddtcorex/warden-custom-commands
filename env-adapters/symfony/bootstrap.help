@@ -1,47 +1,38 @@
 #!/usr/bin/env bash
 [[ ! ${WARDEN_DIR} ]] && >&2 echo -e "\033[31mThis script is not intended to be run directly!\033[0m" && exit 1
 
-WARDEN_USAGE=$(cat <<HELP
-## bootstrap
+WARDEN_USAGE=$(cat <<EOF
+\033[33mUsage:\033[0m
+  bootstrap [-e|--environment=<env>] [options]
 
-Initializes a Symfony development environment.
+\033[33mClone Options:\033[0m
+  -c, --clone             Clone project from remote (source + DB)
+  --code-only             With --clone: skip DB sync
 
-### Synopsis
+\033[33mInstall Options:\033[0m
+  --fresh                 Create new Symfony project from scratch
+  --fix-deps              Auto-detect version and set PHP/MySQL versions
 
-    warden bootstrap [options]
+\033[33mSkip Options:\033[0m
+  --no-db                 Skip database import
+  --no-composer           Skip composer install
+  --no-migrate            Skip database migrations
+  --no-stream-db          Download dump file instead of streaming
 
-### Options
+\033[33mDatabase Options:\033[0m
+  --db-dump=FILE          Use local SQL dump file for import
 
-    --clean-install           Create a new Symfony project from scratch
-    --fix-deps                Auto-detect Symfony version and set correct PHP/MySQL/Redis versions
-    --download-source         Download source code from remote environment
-    --db-dump=FILE            Use a specific database dump file
-    --skip-db-import          Skip importing the database
-    --skip-composer-install   Skip running composer install
-    --skip-migrate            Skip running database migrations
-    --no-stream-db            Use intermediate dump file instead of streaming (default: streaming enabled)
+\033[33mCommon Options:\033[0m
+  -e, --environment=NAME  Source environment (staging, prod, dev). Default: staging
+  -y, --yes               Non-interactive mode
+  -h, --help              Display this help
 
-### Description
+\033[33mExamples:\033[0m
+  warden bootstrap                    # Standard bootstrap from staging
+  warden bootstrap -c -e prod         # Clone from production
+  warden bootstrap --fresh            # Create new Symfony project
+  warden bootstrap --no-migrate       # Skip migrations
 
-The bootstrap command sets up a complete Symfony development environment:
-- Starts Warden services
-- Generates SSL certificates if needed
-- Creates new Symfony project (with --clean-install) or runs composer install
-- Configures database connection (DATABASE_URL in .env)
-- Runs Doctrine migrations
-
-### Examples
-
-    # Full bootstrap
-    warden bootstrap
-
-    # Create new Symfony project
-    warden bootstrap --clean-install
-
-    # Skip composer install (dependencies already installed)
-    warden bootstrap --skip-composer-install
-
-    # Skip migrations
-    warden bootstrap --skip-migrate
-HELP
+EOF
 )
+

@@ -1,41 +1,38 @@
 #!/usr/bin/env bash
 [[ ! ${WARDEN_DIR} ]] && >&2 echo -e "\033[31mThis script is not intended to be run directly!\033[0m" && exit 1
 
-WARDEN_USAGE=$(cat <<HELP
-## bootstrap
+WARDEN_USAGE=$(cat <<EOF
+\033[33mUsage:\033[0m
+  bootstrap [-e|--environment=<env>] [options]
 
-Initializes a WordPress development environment.
+\033[33mClone Options:\033[0m
+  -c, --clone             Clone project from remote (source + DB)
+  --code-only             With --clone: skip DB sync
 
-### Synopsis
+\033[33mInstall Options:\033[0m
+  --fresh                 Download fresh WordPress installation
+  --fix-deps              Auto-detect version and set PHP/MySQL versions
 
-    warden bootstrap [options]
+\033[33mSkip Options:\033[0m
+  --no-db                 Skip database import
+  --no-composer           Skip composer install
+  --no-wp-install         Skip WordPress installation wizard
+  --no-stream-db          Download dump file instead of streaming
 
-### Options
+\033[33mDatabase Options:\033[0m
+  --db-dump=FILE          Use local SQL dump file for import
 
-    --clean-install           Download fresh WordPress installation
-    --fix-deps                Auto-detect WordPress version and set correct PHP/MySQL versions
-    --download-source         Download source code from remote environment
-    --db-dump=FILE            Use a specific database dump file
-    --skip-db-import          Skip importing the database
-    --skip-composer-install   Skip running composer install
-    --skip-wp-install         Skip WordPress installation wizard
-    --no-stream-db            Use intermediate dump file instead of streaming (default: streaming enabled)
+\033[33mCommon Options:\033[0m
+  -e, --environment=NAME  Source environment (staging, prod, dev). Default: staging
+  -y, --yes               Non-interactive mode
+  -h, --help              Display this help
 
-### Description
+\033[33mExamples:\033[0m
+  warden bootstrap                    # Standard bootstrap from staging
+  warden bootstrap -c -e prod         # Clone from production
+  warden bootstrap --fresh            # Download fresh WordPress
+  warden bootstrap --no-composer      # Skip composer install
 
-The bootstrap command sets up a complete WordPress development environment:
-- Starts Warden services
-- Generates SSL certificates if needed
-- Runs composer install (if composer.json exists)
-- Creates wp-config.php if missing
-- Configures database connection
-
-### Examples
-
-    # Full bootstrap
-    warden bootstrap
-
-    # Skip composer install
-    warden bootstrap --skip-composer-install
-HELP
+EOF
 )
+

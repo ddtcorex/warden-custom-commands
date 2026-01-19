@@ -21,12 +21,12 @@ header "Scenario 1: Clean Install in Staging (Symfony)"
 echo "Navigating to staging environment: ${STAGING_ENV}"
 cd "${STAGING_ENV}"
 
-# Run clean install
-echo "Running: warden bootstrap --clean-install"
-if warden bootstrap --clean-install; then
-    pass "warden bootstrap --clean-install executed successfully"
+# Run fresh install
+echo "Running: warden bootstrap --fresh"
+if warden bootstrap --fresh; then
+    pass "warden bootstrap --fresh executed successfully"
 else
-    fail "warden bootstrap --clean-install failed" "Exit code $?"
+    fail "warden bootstrap --fresh failed" "Exit code $?"
 fi
 
 # Assertions
@@ -70,12 +70,12 @@ fi
 echo "Navigating to local environment: ${LOCAL_ENV}"
 cd "${LOCAL_ENV}"
 
-echo "Running: warden bootstrap --download-source --source=staging"
+echo "Running: warden bootstrap -c --source=staging"
 
-if warden bootstrap --download-source --source=staging; then
-    pass "warden bootstrap --download-source executed successfully"
+if warden bootstrap -c --source=staging; then
+    pass "warden bootstrap -c (clone) executed successfully"
 else
-    fail "warden bootstrap --download-source failed" "Exit code $?"
+    fail "warden bootstrap -c (clone) failed" "Exit code $?"
 fi
 
 # Assertions

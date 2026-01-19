@@ -7,11 +7,12 @@ START_TIME=$(date +%s)
 # env-variables is already sourced by the root dispatcher
 
 ## configure command defaults
-CLEAN_INSTALL=
+FRESH_INSTALL=
+CLONE_MODE=
+CODE_ONLY=
 COMPOSER_INSTALL=1
 SKIP_MIGRATE=
 FIX_DEPS=
-DOWNLOAD_SOURCE=
 DB_DUMP=
 DB_IMPORT=1
 STREAM_DB=1
@@ -20,41 +21,33 @@ ENV_REQUIRED=
 ## argument parsing
 while (( "$#" )); do
     case "$1" in
-        --clean-install)
-            CLEAN_INSTALL=1
+        # Primary Features
+        -c|--clone)
+            CLONE_MODE=1
+            ENV_REQUIRED=1
+            shift
+            ;;
+        --code-only)
+            CODE_ONLY=1
+            shift
+            ;;
+        --fresh|--clean-install|--fresh-install)
+            FRESH_INSTALL=1
             COMPOSER_INSTALL=
             DB_IMPORT=
             shift
             ;;
-        --fix-deps)
-            FIX_DEPS=1
-            shift
-            ;;
-        --download-source)
-            DOWNLOAD_SOURCE=1
-            COMPOSER_INSTALL=
-            ENV_REQUIRED=1
-            shift
-            ;;
-        --db-dump)
-            DB_DUMP="$2"
-            ENV_REQUIRED=1
-            shift 2
-            ;;
-        --db-dump=*)
-            DB_DUMP="${1#*=}"
-            ENV_REQUIRED=1
-            shift
-            ;;
-        --skip-db-import)
+
+        # Disable/Skip Options
+        --no-db|--skip-db-import)
             DB_IMPORT=
             shift
             ;;
-        --skip-composer-install)
+        --no-composer|--skip-composer-install)
             COMPOSER_INSTALL=
             shift
             ;;
-        --skip-migrate)
+        --no-migrate|--skip-migrate)
             SKIP_MIGRATE=1
             shift
             ;;
@@ -62,11 +55,44 @@ while (( "$#" )); do
             STREAM_DB=
             shift
             ;;
+
+        # Presets & Legacy
+        --download-source)
+            CLONE_MODE=1
+            CODE_ONLY=1
+            ENV_REQUIRED=1
+            shift
+            ;;
+
+        # Database Configuration
+        --db-dump|--db-dump=*)
+            [[ "$1" == *=* ]] && DB_DUMP="${1#*=}" || { DB_DUMP="${2:-}"; shift; }
+            shift
+            ;;
+
+        # Internal / Flags
+        --fix-deps)
+            FIX_DEPS=1
+            shift
+            ;;
+        -y|--yes)
+            export YES_TO_ALL=1
+            shift
+            ;;
         *)
             shift
             ;;
     esac
 done
+
+# Clone mode with --code-only disables DB sync
+if [[ -n "${CLONE_MODE}" ]] && [[ -n "${CODE_ONLY}" ]]; then
+    DB_IMPORT=
+fi
+
+# For backward compatibility
+CLEAN_INSTALL="${FRESH_INSTALL}"
+DOWNLOAD_SOURCE="${CLONE_MODE}"
 
 ## Auto-detect clean install if composer.json is missing
 if [[ ! -f "composer.json" ]] && [[ -z "${DOWNLOAD_SOURCE:-}" ]] && [[ -z "${CLEAN_INSTALL:-}" ]] && [[ -z "${DB_DUMP:-}" ]] && [[ -z "${DB_IMPORT:-}" ]]; then
@@ -87,6 +113,12 @@ if [[ -n "${FIX_DEPS}" ]]; then
         DETECTED_VERSION=""
         if [[ -f "composer.json" ]] && command -v jq &> /dev/null; then
             DETECTED_VERSION=$(jq -r '.require["laravel/framework"] // "unknown"' composer.json 2>/dev/null | sed 's/[\^~]//g' | grep -oP '^\d+' || echo "")
+        fi
+        
+        # Try to detect from remote
+        if [[ -z "${DETECTED_VERSION}" ]] && [[ -n "${CLONE_MODE}" ]] && [[ -n "${ENV_SOURCE}" ]]; then
+             echo "Auto-detecting Laravel version from remote '${ENV_SOURCE}'..."
+             DETECTED_VERSION=$(detect_remote_version "laravel" "${ENV_SOURCE}")
         fi
         
         if [[ -n "${DETECTED_VERSION}" ]] && [[ "${DETECTED_VERSION}" != "unknown" ]]; then
@@ -128,22 +160,13 @@ fi
 if [[ "${ENV_REQUIRED:-}" ]] && [[ -z "${ENV_SOURCE_HOST+x}" ]]; then
     printf "Invalid environment '%s' or missing REMOTE_*_HOST configuration\n" "${ENV_SOURCE}" >&2
     exit 2
-fi
-
-## download files from the remote
-if [[ "${DOWNLOAD_SOURCE:-}" ]]; then
-    warden sync --file --source="${ENV_SOURCE}"
-    
-    # Clean up generated files for fresh start
-    warden env exec php-fpm sh -c "
-        rm -rf storage/framework/cache/* storage/framework/views/* bootstrap/cache/*.php 2>/dev/null || true
-    " || true
+    exit 2
 fi
 
 :: Starting Warden
 warden svc up
-if [[ ! -f ${WARDEN_HOME_DIR:-~/.warden}/ssl/certs/${TRAEFIK_DOMAIN:-test.test}.crt.pem ]]; then
-    warden sign-certificate ${TRAEFIK_DOMAIN:-test.test}
+if [[ ! -f ${WARDEN_HOME_DIR}/ssl/certs/${TRAEFIK_DOMAIN}.crt.pem ]]; then
+    warden sign-certificate ${TRAEFIK_DOMAIN}
 fi
 
 :: Initializing environment
@@ -151,6 +174,28 @@ warden env up --remove-orphans
 
 ## wait for database to start
 warden env exec -T php-fpm sh -c "while ! nc -z db 3306 </dev/null; do sleep 2; done"
+
+## download files from the remote
+if [[ "${CLONE_MODE:-}" ]]; then
+    # Backup local .env to prevent overwrite
+    cp .env .env.warden-local
+
+    warden sync --file --source="${ENV_SOURCE}"
+
+    # If remote had .env, save it as reference
+    if [[ -f .env ]] && ! cmp -s .env .env.warden-local; then
+        mv .env .env.remote-source
+        printf "ℹ️  Remote .env saved as .env.remote-source\n"
+    fi
+
+    # Restore local .env
+    mv .env.warden-local .env
+    
+    # Clean up generated files for fresh start
+    warden env exec php-fpm sh -c "
+        rm -rf storage/framework/cache/* storage/framework/views/* bootstrap/cache/*.php 2>/dev/null || true
+    " || true
+fi
 
 # Clean install - create new Laravel project
 if [[ "${CLEAN_INSTALL:-}" ]]; then

@@ -40,8 +40,26 @@ setup_remote_env() {
     printf "  Path (e.g. /var/www/html): "
     read -r input_path
     
-    printf "  URL (e.g. https://example.com): "
+    if [[ -z "${input_path}" ]] && [[ -n "${input_host}" ]] && [[ -n "${input_user}" ]]; then
+        printf "    - Auto-detecting path... "
+        local home_path
+        home_path=$(ssh -o ConnectTimeout=5 -o BatchMode=yes -o StrictHostKeyChecking=no -p "${input_port}" "${input_user}@${input_host}" "echo ~" 2>/dev/null || true)
+        
+        if [[ -n "${home_path}" ]]; then
+             input_path="${home_path}/public_html"
+             printf "Found HOME: %s -> Defaulting to %s\n" "${home_path}" "${input_path}"
+        else
+             input_path="/var/www/html"
+             printf "Defaulting to %s\n" "${input_path}"
+        fi
+    fi
+    
+    printf "  URL (e.g. https://example.com/): "
     read -r input_url
+    if [[ -z "${input_url}" ]]; then
+        input_url="https://${input_host}/"
+        printf "    - Defaulting to %s\n" "${input_url}"
+    fi
 
     # Store in .env
     {
@@ -55,10 +73,15 @@ setup_remote_env() {
     } >> .env
 }
 
-if [[ -t 0 ]]; then
-    printf "\nDo you want to configure remote environments (Staging, Production, Dev)? [y/N] "
+if [[ "${CLONE_MODE:-}" == "1" ]]; then
+    printf "\n\033[33mRemote configuration is required for cloning.\033[0m\n"
+    response="y"
+else
+    if [[ -t 0 ]]; then
+        printf "\nDo you want to configure remote environments (Staging, Production, Dev)? [y/N] "
+    fi
+    read -r response || response="n"
 fi
-read -r response || response="n"
 
 if [[ "${response}" =~ ^[yY] ]]; then
     setup_remote_env "Staging" "REMOTE_STAGING"

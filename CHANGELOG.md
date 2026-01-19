@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.0] - 2026-01-19
+
+**v2.4.0: Bootstrap Clone Enhancements & Agent Guidelines**
+
+This release enhances the bootstrap command's cloning capabilities with better configuration preservation and auto-detection, while also optimizing argument parsing across all adapters. It also introduces dedicated guidelines for AI agents contributing to the project.
+
+### ✨ New Features
+
+- **Enhanced Bootstrap Cloning:**
+  - Improved configuration preservation when using `--clone`.
+  - Better project auto-detection mechanisms during bootstrap.
+
+- **Agent Guidelines:**
+  - Added `AGENTS.md` with comprehensive guidelines and best practices for AI agents working on the codebase.
+
+### 🛠 Improvements
+
+- **Bootstrap Optimization:**
+  - Refactored argument parsing across all framework adapters for better consistency and performance.
+- **Code Hygiene:**
+  - Removed obsolete shellcheck directives to clean up the codebase.
+
+
 ## [2.3.0] - 2026-01-18
 
 **v2.3.0: Project Shortcuts, Minimal Verbose Mode & Self-Update**
