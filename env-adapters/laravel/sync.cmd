@@ -105,7 +105,7 @@ function transfer_files() {
             \"${DEST_REMOTE_USER}@${DEST_REMOTE_HOST}:${DEST_REMOTE_DIR}/$(dirname "${dest_path}")/\""
     elif [[ "${direction}" == "download" ]]; then
         printf "⌛ \033[1;32mDownloading from %s:%s to %s ...\033[0m\n" "${ENV_SOURCE_HOST}" "${source_path}" "${dest_path}"
-        warden env exec php-fpm rsync ${RSYNC_OPTS} -e "ssh ${SSH_OPTS} -p ${ENV_SOURCE_PORT}" \
+        rsync ${RSYNC_OPTS} -e "ssh ${SSH_OPTS} -p ${ENV_SOURCE_PORT}" \
             "${exclude_args[@]}" \
             "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}:${ENV_SOURCE_DIR}/${source_path}" \
             "$(dirname "${dest_path}")/"
@@ -117,7 +117,7 @@ function transfer_files() {
              warden remote-exec -e "${ENV_SOURCE}" -- bash -c "mkdir -p \"${ENV_SOURCE_DIR}/$(dirname "${dest_path}")\""
         fi
 
-        warden env exec php-fpm rsync ${RSYNC_OPTS} -e "ssh ${SSH_OPTS} -p ${ENV_SOURCE_PORT}" \
+        rsync ${RSYNC_OPTS} -e "ssh ${SSH_OPTS} -p ${ENV_SOURCE_PORT}" \
             "${exclude_args[@]}" \
             "${source_path}" "${ENV_SOURCE_USER}@${ENV_SOURCE_HOST}:${ENV_SOURCE_DIR}/$(dirname "${dest_path}")/"
     fi

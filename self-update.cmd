@@ -86,9 +86,18 @@ function update_git_repo() {
         elif [[ "${FORCE}" -eq 1 ]]; then
             warning "Force enabled: Overwriting uncommitted changes in ${name}."
         else
-            error "Uncommitted changes detected in ${name} (${dir}). Aborting. Use --force to discard changes and update."
+            error "Uncommitted changes detected in ${name} (${dir})."
             echo "${dirty_status}" | sed 's/^/  /' >&2
-            return 1
+            
+            read -p "Do you want to discard these changes and force update? [y/N] " response
+            if [[ "$response" =~ ^[yY]$ ]]; then
+                warning "Force enabled: Overwriting uncommitted changes in ${name}."
+                # FORCE=1 is local to this scope? FORCE is global.
+                FORCE=1
+            else
+                error "Aborting update for ${name}."
+                return 1
+            fi
         fi
     fi
 

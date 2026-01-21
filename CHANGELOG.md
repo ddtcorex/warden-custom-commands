@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.1] - 2026-01-21
+
+**v2.4.1: SSH Authentication Fix & Self-Update UX**
+
+This release fixes a critical SSH authentication issue in file synchronization and improves the user experience of the self-update command.
+
+### 🐛 Bug Fixes
+
+- **Fixed rsync SSH authentication failures:**
+  - Changed `rsync` execution context from inside the `php-fpm` container to the host machine in `sync.cmd`.
+  - Ensures proper utilization of host SSH keys during file transfer operations.
+  - Applied to all framework adapters: Magento 2, Laravel, WordPress, and Symfony.
+  - Updated corresponding BATS unit tests to verify the new behavior.
+
+### 🛠 Improvements
+
+- **Enhanced `warden self-update` user experience:**
+  - Now prompts users to confirm force update when uncommitted changes are detected, instead of aborting immediately.
+  - Provides interactive choice: "Do you want to discard these changes and force update? [y/N]"
+  - Improves usability by reducing the need to re-run with `--force` flag.
+
 ## [2.4.0] - 2026-01-19
 
 **v2.4.0: Bootstrap Clone Enhancements & Agent Guidelines**
@@ -26,7 +47,6 @@ This release enhances the bootstrap command's cloning capabilities with better c
   - Refactored argument parsing across all framework adapters for better consistency and performance.
 - **Code Hygiene:**
   - Removed obsolete shellcheck directives to clean up the codebase.
-
 
 ## [2.3.0] - 2026-01-18
 
