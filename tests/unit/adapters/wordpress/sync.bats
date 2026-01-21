@@ -86,7 +86,10 @@ EOF
     
     run "$BOOTSTRAP_CMD"
     
-    grep -q "warden env exec php-fpm rsync" "$MOCK_LOG"
+    if grep -q "warden env exec php-fpm rsync" "$MOCK_LOG"; then
+        echo "FAIL: Found old rsync invocation"
+        return 1
+    fi
 }
 
 @test "Wordpress Sync: DB Download" {

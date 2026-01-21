@@ -123,8 +123,13 @@ EOF
         echo "Output: $output"
     fi
 
-    # Expect -T
-    grep -q "warden env exec -T php-fpm rsync" "$MOCK_LOG"
+    # Expect warden remote-exec for download using direct rsync
+    # Since we switched to running rsync on host, we won't see "warden env exec -T php-fpm rsync"
+    
+    if grep -q "warden env exec -T php-fpm rsync" "$MOCK_LOG"; then
+         echo "FAIL: Found old rsync invocation"
+         return 1
+    fi
 }
 
 @test "Magento2 Sync: DB Download" {
