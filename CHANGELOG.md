@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.2] - 2026-01-22
+
+**v2.4.2: Database Dump Ignored Tables Expansion**
+
+This release significantly expands the list of ignored tables in Magento 2 database dumps, covering more third-party extensions and improving dump efficiency.
+
+### 🛠 Improvements
+
+- **Expanded `db-dump` ignored tables list:**
+  - Added Mview changelog tables (`*_cl`) for MSI and catalog indexers.
+  - Added Smile ElasticSuite tracker tables.
+  - Added Mailchimp sync and error tables.
+  - Added Klaviyo sync queue table.
+  - Added Mirasvit cache warmer, search, and SEO tables.
+  - Added Yotpo sync tables.
+  - Added Amasty Most Viewed index tables.
+  - Added Sutunam activity tables.
+  - Added miscellaneous transient tables (OAuth, password reset, import history).
+  - Sorted all tables alphabetically for easier maintenance.
+  - Removed legacy/unused tables (`core_cache`, `search_query`, `catalogsearch_recommendations`).
+  - Total ignored tables increased from ~88 to ~113.
+
 ## [2.4.1] - 2026-01-21
 
 **v2.4.1: SSH Authentication Fix & Self-Update UX**
