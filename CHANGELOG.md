@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.0] - 2026-01-23
+
+**v2.5.0: Help System Standardization & UX Improvements**
+
+This release brings a major overhaul to the documentation and help system, ensuring a consistent user experience across all supported frameworks.
+
+### 🛠 Improvements
+
+- **Standardized Help System:**
+  - Refactored all subcommand help files to use a unified `WARDEN_USAGE` variable pattern.
+  - Improved help sourcing logic to prevent direct output during internal sourcing, allowing for cleaner integration.
+- **Enhanced Documentation:**
+  - Added comprehensive **Examples** sections to almost every command help file.
+  - Standardized usage descriptions and option formatting across Magento 2, Laravel, Symfony, and WordPress adapters.
+  - Significant updates to the root `README.md` for better clarity and consistent framework documentation.
+- **Command specific updates:**
+  - Improved help content for `remote-exec`, `self-update`, `setup-remotes`, `sync`, and `upgrade`.
+  - Added descriptive examples for framework-specific commands (e.g., `warden upgrade -v=6.5` for WordPress).
+
 ## [2.4.2] - 2026-01-22
 
 **v2.4.2: Database Dump Ignored Tables Expansion**
