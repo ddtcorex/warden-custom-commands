@@ -29,7 +29,7 @@ WARDEN_USAGE=$(cat <<EOF
 
 \033[33mExamples:\033[0m
   warden bootstrap                    # Standard bootstrap from staging
-  warden bootstrap -c -e prod         # Clone from production
+  warden bootstrap -c -e prod         # Clone from prod
   warden bootstrap --fresh            # Create new Laravel project
   warden bootstrap --no-migrate       # Skip migrations
 

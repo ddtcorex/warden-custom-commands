@@ -2,24 +2,27 @@
 [[ ! ${WARDEN_DIR} ]] && >&2 echo -e "\033[31mThis script is not intended to be run directly!\033[0m" && exit 1
 
 WARDEN_USAGE=$(cat <<EOF
-## set-config
+Configure Laravel for local development environment.
 
-Updates Laravel configuration settings.
+\033[33mUsage:\033[0m
+  set-config [-h|--help]
 
-### Synopsis
+\033[33mOptions:\033[0m
+  -h, --help                   Display this help menu
 
-    warden set-config
+\033[33mFeatures:\033[0m
+  - Updates APP_URL in .env to match Traefik domain
+  - Configures Redis for cache and sessions (if WARDEN_REDIS=1)
+  - Clears all Laravel caches
 
-### Description
+\033[33mExamples:\033[0m
+  warden set-config                       # Apply all configurations
 
-The set-config command updates configuration for the development environment:
-- Updates APP_URL in .env to match Traefik domain
-- Configures Redis if WARDEN_REDIS=1
-- Clears all Laravel caches
+\033[33mHooks:\033[0m
+  before_set_config()          Called before configuration updates
+  after_set_config()           Called after configuration updates
 
-### Examples
+  Define these functions in .warden/hooks to customize behavior.
 
-    # Update configuration
-    warden set-config
 EOF
 )

@@ -224,17 +224,20 @@ The unified synchronization command for files, media, and databases.
 **Options:**
 
 - `-h, --help` - Display help menu
-- `-s`, `--source`: Source environment (default: `staging`)
-- `-d`, `--destination`: Destination environment (default: `local`)
-- `-f`, `--file`: Sync source code/files
-- `-m`, `--media`: Sync media files
+- `-s, -e, --source, --environment`: Source environment (default: `staging`)
+- `-d, --destination`: Destination environment (default: `local`)
+- `-f, --file`: Sync source code/files
+- `-m, --media`: Sync media files
 - `--db`: Sync database (streaming, no local dump file created)
 - `--full`: Sync everything (file, media, db)
-- `-p`, `--path`: Sync a specific directory or file path
+- `-p, --path`: Sync a specific directory or file path
 - `--include-product`: Include product/cache images in media sync (Magento 2 only)
 - `--dry-run`: Show what would happen without making changes
-- `--flush`: Flush cache after sync (default: disabled)
-- `--delete`: Delete files on destination that are not present in source
+- `--redeploy`: Redeploy destination after sync using `deploy.cmd` (default: disabled)
+- `--delete`: Delete files on destination that are not present in source (rsync only)
+- `--backup`: Create a backup of the destination database before syncing (if DB is synced)
+- `--backup-dir=PATH`: Path to store backups (default: `~/backup` on destination)
+- `-y, --yes`: Non-interactive mode
 
 **Examples:**
 
@@ -244,8 +247,8 @@ The unified synchronization command for files, media, and databases.
    # Pull database from staging (default) to local
    warden sync --db
 
-   # Pull database from production to local and flush cache
-   warden sync -s prod --db --flush
+   # Pull database from prod to local
+   warden sync -s prod --db
    ```
 
 2. **Sync Media (Remote to Local)**
@@ -309,11 +312,12 @@ Initialize a new Magento 2 environment with all dependencies and configuration.
 
 **Install Options:**
 
-- `--fresh` - Create fresh Magento project (replaces `--clean-install`)
-- `--version=<version>` - Magento version for fresh install (e.g., 2.4.8)
+- `--fresh` - Create fresh Magento project (aliases: `--clean-install`, `--fresh-install`)
+- `--version, --meta-version=<version>` - Magento version for fresh install (e.g., 2.4.8)
+- `--meta-package=<package>` - Magento package name (default: `magento/project-community-edition`)
 - `--mage-username=<username>` - Magento Marketplace Public Key
 - `--mage-password=<password>` - Magento Marketplace Private Key
-- `--include-sample` - Include sample data (fresh install)
+- `--include-sample` - Include sample data (fresh install/bootstrap)
 - `--hyva-install` - Install Hyvä theme (fresh install)
 
 **Skip Options:**
@@ -326,9 +330,9 @@ Initialize a new Magento 2 environment with all dependencies and configuration.
 
 **Other Options:**
 
-- `-e, --environment=<env>` - Source environment (default: staging)
-- `--db-dump=<file>` - Use specific database dump file
-- `--fix-deps` - Auto-fix dependency versions for framework
+- `-e, --environment=<env>` - Source environment (staging, prod, dev). Default: staging
+- `--db-dump=<file>` - Use specific local database dump file for import
+- `--fix-deps` - Auto-fix dependency versions (PHP, Redis, etc.) based on Magento version
 - `-y, --yes` - Non-interactive mode
 
 **Example:**
@@ -337,7 +341,7 @@ Initialize a new Magento 2 environment with all dependencies and configuration.
 # Standard bootstrap from staging
 warden bootstrap
 
-# Clone project from production (one-command setup)
+# Clone project from prod (one-command setup)
 warden bootstrap -c -e prod
 
 # Clone code only, skip DB and media
@@ -354,16 +358,18 @@ Create a database backup with optional compression.
 **Options:**
 
 - `-h, --help` - Display help menu
-- `-f, --file=<file>.sql.gz` - Output file
-- `-e, --environment=<dev|staging|production>` - Specific environment (default: staging)
-- `--full` - Export full database from selected environment
-- `--exclude-sensitive-data` - Exclude sensitive data
+- `-f, --file=<file>` - Output file path
+- `-e, --environment=<env>` - Specific environment (local, dev, staging, prod). Default: local
+- `--full` - Export full database (no table exclusions)
+- `--exclude-sensitive-data` - Exclude sensitive data (customers, orders, etc.)
+- `--local` - Download the dump to your local machine (host) instead of storing it on the remote server.
+  (Applies only when dumping from remote environments; default behavior for remote is to store at `~/backup/` on the server).
 
 **Example:**
 
 ```bash
 warden db-dump
-warden db-dump --file=production-backup.sql.gz --environment=production
+warden db-dump --file=prod-backup.sql.gz -e prod
 warden db-dump --exclude-sensitive-data
 ```
 
@@ -375,6 +381,8 @@ Import database from local or remote file.
 
 - `-h, --help` - Display help menu
 - `-f, --file=<file>` - Path to existing database dump file (can be gzipped)
+- `--stream-db` - Stream database directly from remote environment (no local file)
+- `-e, --environment=<env>` - Remote environment to stream from (used with `--stream-db`)
 
 **Example:**
 
@@ -390,8 +398,12 @@ Deploy Magento application (run setup:upgrade, compile, deploy).
 **Options:**
 
 - `-h, --help` - Display help menu
+- `-e, --environment=<env>` - Environment to deploy to. Default: local
 - `-j, --jobs=<n>` - Number of parallel jobs for static content (default: 4)
-- `-o, --only-static` - Deploy static content only (skip di:compile)
+- `-o, --only-static` - Deploy static content only (skip composer, upgrade, compile)
+- `--deployer` - Use Deployer strategy (equivalent to `--strategy=deployer`)
+- `--strategy=<type>` - Deployment strategy: `native` (default) or `deployer`
+- `--deployer-config=<path>` - Path to custom `deploy.php` or `deploy.yaml`
 
 **Example:**
 
@@ -422,27 +434,39 @@ Open Magento services in browser or establish tunnels.
 **Options:**
 
 - `-h, --help` - Display help menu
-- `-e, --environment=<local|dev|staging|production>` - Specific environment (default: local)
+- `-e, --environment=<env>` - Specific environment (local, dev, staging, prod). Default: local
 
 **Arguments:**
 
-- `db` - Open database connection
-- `shell` - Open shell
+- `db` - Open database connection (tunnels to remote if environment specified)
+- `shell` - Open container shell (or SSH to remote)
 - `sftp` - Open SFTP connection
-- `admin` - Open admin panel
-- `elasticsearch` - Open Elasticsearch
+- `admin` - Open admin panel in browser
+- `elasticsearch` - Open Elasticsearch/OpenSearch
+
+**Other Options:**
+
+- `-a, --xdg-open` - Automatically open in browser/client
 
 **Example:**
 
 ```bash
 warden open
 warden open admin
-warden open --environment=staging
+warden open -e staging
 ```
 
 #### Magento 2: `warden set-config`
 
-Configure Magento settings (base URLs, cache, sessions, etc.).
+Automatically configure Magento settings to optimize for the Warden development environment.
+
+**Features:**
+
+- Sets base URLs to match Traefik configuration.
+- Configures Varnish, Redis, and OpenSearch/Elasticsearch based on `.env` settings.
+- Disables security features for easier development (2FA, reCAPTCHA, etc.).
+- Enables developer mode.
+- Supports custom hooks via `.warden/hooks`.
 
 **Example:**
 
@@ -459,6 +483,7 @@ Upgrade Magento to a specified version.
 - `--version=<version>` - Target version to upgrade to (required)
 - `--dry-run` - Show what would be done without making changes
 - `--skip-db-upgrade` - Skip database upgrade step
+- `--skip-env-update` - Skip environment dependency updates (automatic `fix-deps`)
 
 **Example:**
 
@@ -466,6 +491,22 @@ Upgrade Magento to a specified version.
 warden upgrade --version=2.4.8
 warden upgrade --version=2.4.8 --dry-run
 warden upgrade --version=2.4.8-p3 --skip-db-upgrade
+```
+
+#### Magento 2: `warden fix-deps`
+
+Automatically detect and update environment dependency versions (PHP, MySQL, Redis, etc.) in `.env` based on the Magento version.
+
+**Options:**
+
+- `-v, --version=VERSION` - Specify Magento version manually (e.g., 2.4.8)
+- `--dry-run` - Preview changes without modifying `.env`
+
+**Example:**
+
+```bash
+warden fix-deps --version=2.4.8
+warden fix-deps --dry-run
 ```
 
 ### Laravel Commands
@@ -493,15 +534,15 @@ Initialize Laravel environment with dependencies and database.
 
 **Other Options:**
 
-- `-e, --environment=<env>` - Source environment (default: staging)
-- `--db-dump=<file>` - Use specific database dump file
+- `-e, --environment=<env>` - Source environment (staging, prod, dev). Default: staging
+- `--db-dump=<file>` - Use specific local database dump file for import
 - `-y, --yes` - Non-interactive mode
 
 **Example:**
 
 ```bash
 warden bootstrap                    # Standard bootstrap
-warden bootstrap -c -e prod         # Clone from production
+warden bootstrap -c -e prod         # Clone from prod
 warden bootstrap --fresh            # Create new Laravel project
 ```
 
@@ -512,15 +553,16 @@ Dump database from a remote Laravel environment.
 **Options:**
 
 - `-h, --help` - Display help menu
-- `-e, --environment=<dev|staging|production>` - Environment to dump from (default: staging)
-- `-f, --file=<file>` - Output filename (default: auto-generated)
-- `--exclude-sensitive-data` - Exclude sensitive data from the dump (based on predefined IGNORED_TABLES)
+- `-e, --environment=<env>` - Specific environment (local, dev, staging, prod). Default: local
+- `-f, --file=<file>` - Output file path
+- `--exclude-sensitive-data` - Exclude sensitive data from the dump
+- `--local` - Download remote dump to local machine (default: store on remote at `~/backup/`)
 
 **Example:**
 
 ```bash
-warden db-dump -e dev
-warden db-dump --file=production-backup.sql.gz -e production
+warden db-dump -e dev --local
+warden db-dump --file=prod-backup.sql.gz -e prod
 ```
 
 #### Laravel: `warden db-import`
@@ -529,13 +571,16 @@ Import database dump into Laravel project.
 
 **Options:**
 
-- `-f, --file=<file>` - Path to database dump file (can be gzipped)
+- `-h, --help` - Display help menu
+- `-f, --file=<file>` - Path to existing database dump file (can be gzipped)
+- `--stream-db` - Stream database directly from remote environment (no local file)
+- `-e, --environment=<env>` - Remote environment to stream from (used with `--stream-db`)
 
 **Example:**
 
 ```bash
-warden db-import -f database.sql.gz
-warden db-import --file=backup.sql
+warden db-import --file=backup.sql.gz
+warden db-import --stream-db -e staging
 ```
 
 #### Laravel: `warden open`
@@ -544,8 +589,9 @@ Open Laravel services (local or remote).
 
 **Options:**
 
-- `-e, --environment=<local|dev|staging|production>` - Environment (default: local)
-- `-a` - Auto-open in browser/client
+- `-h, --help` - Display help menu
+- `-e, --environment=<env>` - Specific environment (local, dev, staging, prod). Default: local
+- `-a, --xdg-open` - Automatically open in browser/client
 
 **Arguments:** `db`, `shell`, `sftp`, `admin`, `elasticsearch`
 
@@ -564,6 +610,26 @@ Update Laravel `.env` configuration with Warden-specific settings.
 
 ```bash
 warden set-config
+```
+
+#### Laravel: `warden deploy`
+
+Deploy Laravel locally. Supports native strategy and Deployer.
+
+**Options:**
+
+- `-h, --help` - Display help menu
+- `-e, --environment=<env>` - Environment to deploy to. Default: local
+- `-o, --only-static` - Deploy static assets only (storage:link) and run hooks
+- `--deployer` - Use Deployer strategy (equivalent to `--strategy=deployer`)
+- `--strategy=<type>` - Deployment strategy: `native` (default) or `deployer`
+- `--deployer-config=<path>` - Path to custom `deploy.php` or `deploy.yaml`
+
+**Example:**
+
+```bash
+warden deploy
+warden deploy --deployer
 ```
 
 #### Laravel: `warden upgrade`
@@ -607,15 +673,15 @@ Initialize Symfony environment with dependencies and database.
 
 **Other Options:**
 
-- `-e, --environment=<env>` - Source environment (default: staging)
-- `--db-dump=<file>` - Use specific database dump file
+- `-e, --environment=<env>` - Source environment (staging, prod, dev). Default: staging
+- `--db-dump=<file>` - Use specific local database dump file for import
 - `-y, --yes` - Non-interactive mode
 
 **Example:**
 
 ```bash
 warden bootstrap                    # Standard bootstrap
-warden bootstrap -c -e prod         # Clone from production
+warden bootstrap -c -e prod         # Clone from prod
 warden bootstrap --fresh            # Create new Symfony project
 ```
 
@@ -626,15 +692,16 @@ Dump database from a remote Symfony environment.
 **Options:**
 
 - `-h, --help` - Display help menu
-- `-e, --environment=<dev|staging|production>` - Environment to dump from (default: staging)
-- `-f, --file=<file>` - Output filename (default: auto-generated)
-- `--exclude-sensitive-data` - Exclude sensitive data from the dump (based on predefined IGNORED_TABLES)
+- `-e, --environment=<env>` - Specific environment (local, dev, staging, prod). Default: local
+- `-f, --file=<file>` - Output file path
+- `--exclude-sensitive-data` - Exclude sensitive data from the dump
+- `--local` - Download remote dump to local machine (default: store on remote at `~/backup/`)
 
 **Example:**
 
 ```bash
-warden db-dump -e dev
-warden db-dump --file=production-backup.sql.gz -e production
+warden db-dump -e dev --local
+warden db-dump --file=prod-backup.sql.gz -e prod
 ```
 
 #### Symfony: `warden db-import`
@@ -643,13 +710,16 @@ Import database dump into Symfony project.
 
 **Options:**
 
-- `-f, --file=<file>` - Path to database dump file (can be gzipped)
+- `-h, --help` - Display help menu
+- `-f, --file=<file>` - Path to existing database dump file (can be gzipped)
+- `--stream-db` - Stream database directly from remote environment (no local file)
+- `-e, --environment=<env>` - Remote environment to stream from (used with `--stream-db`)
 
 **Example:**
 
 ```bash
-warden db-import --file=database.sql.gz
-warden db-import -f backup.sql
+warden db-import --file=backup.sql.gz
+warden db-import --stream-db -e staging
 ```
 
 #### Symfony: `warden open`
@@ -658,8 +728,9 @@ Open Symfony services (local or remote).
 
 **Options:**
 
-- `-e, --environment=<local|dev|staging|production>` - Environment (default: local)
-- `-a` - Auto-open in browser/client
+- `-h, --help` - Display help menu
+- `-e, --environment=<env>` - Specific environment (local, dev, staging, prod). Default: local
+- `-a, --xdg-open` - Automatically open in browser/client
 
 **Arguments:** `db`, `shell`, `sftp`, `admin`, `elasticsearch`
 
@@ -678,6 +749,26 @@ Update Symfony configuration for Warden environment.
 
 ```bash
 warden set-config
+```
+
+#### Symfony: `warden deploy`
+
+Deploy Symfony locally. Supports native strategy and Deployer.
+
+**Options:**
+
+- `-h, --help` - Display help menu
+- `-e, --environment=<env>` - Environment to deploy to. Default: local
+- `-o, --only-static` - Deploy assets only (skip composer, migrations)
+- `--deployer` - Use Deployer strategy (equivalent to `--strategy=deployer`)
+- `--strategy=<type>` - Deployment strategy: `native` (default) or `deployer`
+- `--deployer-config=<path>` - Path to custom `deploy.php` or `deploy.yaml`
+
+**Example:**
+
+```bash
+warden deploy
+warden deploy --deployer
 ```
 
 #### Symfony: `warden upgrade`
@@ -721,15 +812,15 @@ Initialize WordPress environment with complete installation.
 
 **Other Options:**
 
-- `-e, --environment=<env>` - Source environment (default: staging)
-- `--db-dump=<file>` - Use specific database dump file
+- `-e, --environment=<env>` - Source environment (staging, prod, dev). Default: staging
+- `--db-dump=<file>` - Use specific local database dump file for import
 - `-y, --yes` - Non-interactive mode
 
 **Example:**
 
 ```bash
 warden bootstrap                    # Standard bootstrap
-warden bootstrap -c -e prod         # Clone from production
+warden bootstrap -c -e prod         # Clone from prod
 warden bootstrap --fresh            # Download fresh WordPress
 ```
 
@@ -742,15 +833,16 @@ Dump database from a remote WordPress environment.
 **Options:**
 
 - `-h, --help` - Display help menu
-- `-e, --environment=<dev|staging|production>` - Environment to dump from (default: staging)
-- `-f, --file=<file>` - Output filename (default: auto-generated)
-- `--exclude-sensitive-data` - Exclude sensitive data from the dump (based on predefined IGNORED_TABLES)
+- `-e, --environment=<env>` - Specific environment (local, dev, staging, prod). Default: local
+- `-f, --file=<file>` - Output file path
+- `--exclude-sensitive-data` - Exclude sensitive data from the dump
+- `--local` - Download remote dump to local machine (default: store on remote at `~/backup/`)
 
 **Example:**
 
 ```bash
-warden db-dump -e dev
-warden db-dump --file=production-backup.sql.gz -e production
+warden db-dump -e dev --local
+warden db-dump --file=prod-backup.sql.gz -e prod
 ```
 
 #### WordPress: `warden db-import`
@@ -759,13 +851,16 @@ Import database dump into WordPress.
 
 **Options:**
 
-- `-f, --file=<file>` - Path to database dump file (can be gzipped)
+- `-h, --help` - Display help menu
+- `-f, --file=<file>` - Path to existing database dump file (can be gzipped)
+- `--stream-db` - Stream database directly from remote environment (no local file)
+- `-e, --environment=<env>` - Remote environment to stream from (used with `--stream-db`)
 
 **Example:**
 
 ```bash
-warden db-import --file=production.sql.gz
-warden db-import -f backup.sql
+warden db-import --file=backup.sql.gz
+warden db-import --stream-db -e staging
 ```
 
 **Note:** After import, use WP-CLI to search-replace URLs if needed:
@@ -780,8 +875,9 @@ Open WordPress services (local or remote).
 
 **Options:**
 
-- `-e, --environment=<local|dev|staging|production>` - Environment (default: local)
-- `-a` - Auto-open in browser/client
+- `-h, --help` - Display help menu
+- `-e, --environment=<env>` - Specific environment (local, dev, staging, prod). Default: local
+- `-a, --xdg-open` - Automatically open in browser/client
 
 **Arguments:** `db`, `shell`, `sftp`, `admin`, `elasticsearch`
 
@@ -790,6 +886,26 @@ Open WordPress services (local or remote).
 ```bash
 warden open db
 warden open -e staging admin
+```
+
+#### WordPress: `warden deploy`
+
+Deploy WordPress locally. Supports native strategy and Deployer.
+
+**Options:**
+
+- `-h, --help` - Display help menu
+- `-e, --environment=<env>` - Environment to deploy to. Default: local
+- `-o, --only-static` - Deploy static assets only (flush cache) and run hooks
+- `--deployer` - Use Deployer strategy (equivalent to `--strategy=deployer`)
+- `--strategy=<type>` - Deployment strategy: `native` (default) or `deployer`
+- `--deployer-config=<path>` - Path to custom `deploy.php` or `deploy.yaml`
+
+**Example:**
+
+```bash
+warden deploy
+warden deploy --deployer
 ```
 
 #### WordPress: `warden set-config`
@@ -822,12 +938,12 @@ warden upgrade --version=6.4.3 --dry-run
 
 #### `warden self-update`
 
-Update custom commands from git repository.
+Update both **Warden Core** and these **Custom Commands** to the latest versions. It also applies necessary patches to Warden to ensure compatibility.
 
 **Options:**
 
-- `-f, --force` - Force update even if uncommitted changes (or unknown patches) are present.
-- `--dry-run` - Simulate the update process to see what would happen.
+- `-f, --force`: Force update, overwriting local changes (uncommitted files).
+- `--dry-run`: Simulate the update process without making changes.
 
 **Example:**
 
@@ -870,13 +986,13 @@ Run arbitrary commands on a remote environment via SSH.
 # Run command on staging (default)
 warden remote-exec bin/magento cache:flush
 
-# Run command on production
-warden remote-exec -e production bin/magento indexer:reindex
+# Run command on prod
+warden remote-exec -e prod bin/magento indexer:reindex
 ```
 
 ## Adding New Environment Support
 
-To add support for a new framework (e.g., Symfony):
+To add support for a new framework (e.g., Drupal):
 
 1. **Create the directory:**
 
@@ -939,9 +1055,9 @@ MYSQL_DISTRIBUTION_VERSION=8.0
 # Laravel specific
 DB_CONNECTION=mysql
 DB_HOST=db
-DB_DATABASE=magento
-DB_USERNAME=magento
-DB_PASSWORD=magento
+DB_DATABASE=laravel
+DB_USERNAME=laravel
+DB_PASSWORD=laravel
 ```
 
 ## Troubleshooting

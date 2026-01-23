@@ -19,5 +19,10 @@ Upgrade Magento to a specified version.
 
   --skip-env-update     Skip environment dependency updates
 
+\033[33mExamples:\033[0m
+  warden upgrade -v=2.4.7                 # Upgrade to Magento 2.4.7
+  warden upgrade --version=2.4.8 --dry-run  # Preview Magento 2.4.8 upgrade
+  warden upgrade -v=2.4.7 --skip-db-upgrade # Skip setup:upgrade
+
 EOF
 )

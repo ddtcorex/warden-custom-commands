@@ -1,14 +1,24 @@
 #!/usr/bin/env bash
-[[ ! ${WARDEN_DIR} ]] && >&2 echo -e "\033[31mThis script is not intended to be run directly!\033[0m" && exit 1
+[[ ! "${WARDEN_DIR:-}" ]] && >&2 printf "\033[31mThis script is not intended to be run directly!\033[0m\n" && exit 1
 
 WARDEN_USAGE=$(cat <<EOF
-Pull the latest update and apply fixes/improvements
+Update Warden Core and Custom Commands to the latest versions.
 
-Usage:
-  warden self-update [options]
+\033[33mUsage:\033[0m
+  self-update [-h|--help] [-f|--force] [--dry-run]
 
-Options:
-  -f, --force      Force update, overwriting any local changes (uncommitted files)
-  --dry-run        Simulate the update process without making changes
+\033[33mOptions:\033[0m
+  -h, --help           Display this help message
+  -f, --force          Force update, overwriting any local changes (uncommitted files)
+  --dry-run            Simulate the update process without making changes
+
+\033[33mDescription:\033[0m
+  Pull the latest updates for both Warden Core and Custom Commands,
+  and apply necessary compatibility patches.
+
+\033[33mExamples:\033[0m
+  warden self-update                      # Update to latest versions
+  warden self-update --dry-run            # Preview what would be updated
+  warden self-update -f                   # Force update, discard local changes
 EOF
 )

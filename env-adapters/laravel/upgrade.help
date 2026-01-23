@@ -15,5 +15,9 @@ Upgrade Laravel framework to a specified version.
 
   --dry-run             Show what would be done without making changes
 
+\033[33mExamples:\033[0m
+  warden upgrade -v=10                    # Upgrade to Laravel 10
+  warden upgrade --version=11 --dry-run   # Preview Laravel 11 upgrade
+
 EOF
 )

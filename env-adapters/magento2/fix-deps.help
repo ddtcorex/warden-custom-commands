@@ -1,53 +1,33 @@
 #!/usr/bin/env bash
 [[ ! ${WARDEN_DIR} ]] && >&2 echo -e "\033[31mThis script is not intended to be run directly!\033[0m" && exit 1
 
-WARDEN_USAGE=$(cat <<EOF_USAGE
-Fix Magento dependency versions in .env file
+WARDEN_USAGE=$(cat <<EOF
+Fix Magento dependency versions in .env file based on your Magento version.
 
-Usage:
-  warden fix-deps [options]
+\033[33mUsage:\033[0m
+  fix-deps [-h|--help] [--dry-run] [-v|--version=<version>]
 
-Description:
-  Automatically updates .env file with correct dependency versions based on 
-  your Magento version. Uses official Adobe Commerce system requirements.
+\033[33mOptions:\033[0m
+  -h, --help                Display this help menu
 
-Options:
-  -h, --help              Show this help message
-  --dry-run               Preview changes without modifying .env
-  -v, --version=VERSION   Specify Magento version manually (e.g., 2.4.6)
+\033[33mArguments:\033[0m
+  --dry-run                 Preview changes without modifying .env
 
-Features:
-  • Auto-detects Magento version from META_VERSION, composer.json, or installation
-  • Updates PHP, MySQL/MariaDB, OpenSearch/Elasticsearch, Redis versions
-  • Configures Composer, RabbitMQ, and Varnish versions
-  • Dry-run mode to preview changes safely
-  • Based on official Adobe Commerce system requirements
+  -v, --version=VERSION     Specify Magento version manually (e.g., 2.4.8)
+                            Auto-detects from META_VERSION, composer.json, or installation
 
-Examples:
-  # Auto-detect version and show what would change
-  warden fix-deps -v=2.4.6
-  warden fix-deps --version=2.4.6
+\033[33mDependencies Updated:\033[0m
+  PHP_VERSION, MYSQL_DISTRIBUTION, MYSQL_DISTRIBUTION_VERSION,
+  OPENSEARCH_VERSION/ELASTICSEARCH_VERSION, REDIS_VERSION,
+  COMPOSER_VERSION, RABBITMQ_VERSION, VARNISH_VERSION
 
-  # Apply fixes for Magento 2.4.8
-  warden fix-deps --version=2.4.8
+\033[33mExamples:\033[0m
+  warden fix-deps --dry-run                # Preview changes
+  warden fix-deps -v=2.4.8                 # Apply fixes for Magento 2.4.8
 
-Dependencies Updated:
-  • PHP_VERSION
-  • MYSQL_DISTRIBUTION & MYSQL_DISTRIBUTION_VERSION
-  • WARDEN_OPENSEARCH or WARDEN_ELASTICSEARCH
-  • OPENSEARCH_VERSION or ELASTICSEARCH_VERSION
-  • REDIS_VERSION
-  • COMPOSER_VERSION
-  • RABBITMQ_VERSION
-  • VARNISH_VERSION
+\033[33mNote:\033[0m
+  Run with --dry-run first to review changes. After updating, run
+  'warden env down' and 'warden env up' to rebuild containers.
 
-Supported Versions:
-  Magento 2.4.0 through 2.4.8
-  
-Note:
-  Always run with --dry-run first to review changes before applying.
-  After updating versions, run 'warden env down' and 'warden env up' to 
-  rebuild containers with new versions.
-
-EOF_USAGE
+EOF
 )

@@ -1,10 +1,25 @@
 #!/usr/bin/env bash
 [[ ! "${WARDEN_DIR:-}" ]] && >&2 printf "\033[31mThis script is not intended to be run directly!\033[0m\n" && exit 1
 
-read -r -d '' WARDEN_USAGE <<EOF
-\033[33mUsage:\033[0m warden setup-remotes
+WARDEN_USAGE=$(cat <<EOF
+Interactively configure remote environment details in .env file.
 
-Interactively configure remote environment details (Production, Staging, Development) in .env file.
+\033[33mUsage:\033[0m
+  setup-remotes [-h|--help]
+
+\033[33mOptions:\033[0m
+  -h, --help           Display this help message
+
+\033[33mDescription:\033[0m
+  Interactively configure remote environment connection details 
+  (Production, Staging, Development) in your .env file.
+
+\033[33mFeatures:\033[0m
+  - Interactive prompts for Host, User, Port, and Path
+  - Auto-validation of SSH connectivity
+  - Updates/Creates .env entries safely
+
+\033[33mExamples:\033[0m
+  warden setup-remotes                    # Start interactive setup
 EOF
-
-echo -e "${WARDEN_USAGE}"
+)

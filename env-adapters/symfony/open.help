@@ -5,14 +5,25 @@ WARDEN_USAGE=$(cat <<EOF
 Open tunnel to services.
 
 \033[33mUsage:\033[0m
-  open [-h|--help] [db|shell|sftp|admin|elasticsearch] [-e|--environment=<env>] [-a|--xdg-open]
+  open [-h|--help] [db|shell|sftp|admin] [-e|--environment=<env>] [-a|--xdg-open]
 
 \033[33mOptions:\033[0m
-  -h, --help                                        Display this help menu
-  -a, --xdg-open            Auto-open in browser/client
+  -h, --help                   Display this help menu
+  -a, --xdg-open               Auto-open in browser/client
 
 \033[33mArguments:\033[0m
-  -e, --environment=NAME    Environment to use. Default: local
+  -e, --environment=NAME       Environment to use. Default: local
+
+\033[33mServices:\033[0m
+  db                           Open database connection
+  shell                        Open SSH shell to environment
+  sftp                         Open SFTP connection
+  admin                        Open admin panel in browser (not available for Symfony)
+
+\033[33mExamples:\033[0m
+  warden open db                          # Open local database
+  warden open shell -e staging            # SSH to staging server
+  warden open db -e prod                  # Open prod database
 
 EOF
 )

@@ -4,10 +4,9 @@
 SUBCOMMAND_DIR=$(dirname "${BASH_SOURCE[0]}")
 source "${SUBCOMMAND_DIR}"/env-variables
 
-# Source and output help from environment-specific implementation
+# Source environment-specific help - just set WARDEN_USAGE, don't output
 if [[ -f "${SUBCOMMAND_DIR}/env-adapters/${WARDEN_ENV_TYPE}/db-import.help" ]]; then
     source "${SUBCOMMAND_DIR}/env-adapters/${WARDEN_ENV_TYPE}/db-import.help"
-    echo "${WARDEN_USAGE}"
 else
-    echo "No help available for 'db-import' command in environment type '${WARDEN_ENV_TYPE}'"
+    WARDEN_USAGE="No help available for 'db-import' command in environment type '${WARDEN_ENV_TYPE}'"
 fi

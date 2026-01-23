@@ -15,5 +15,9 @@ Upgrade WordPress core to a specified version.
 
   --dry-run             Show what would be done without making changes
 
+\033[33mExamples:\033[0m
+  warden upgrade -v=6.5                   # Upgrade to WordPress 6.5
+  warden upgrade --version=6.6 --dry-run  # Preview WordPress 6.6 upgrade
+
 EOF
 )

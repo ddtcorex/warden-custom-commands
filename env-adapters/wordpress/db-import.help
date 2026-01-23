@@ -1,34 +1,27 @@
 #!/usr/bin/env bash
 [[ ! ${WARDEN_DIR} ]] && >&2 echo -e "\033[31mThis script is not intended to be run directly!\033[0m" && exit 1
 
-WARDEN_USAGE=$(cat <<HELP
-## db-import
+WARDEN_USAGE=$(cat <<EOF
+\033[33mUsage:\033[0m
+  db-import [-h|--help] [-f|--file=<file>] [--stream-db] [-e|--environment=<env>]
 
-Import a database dump into the WordPress database.
+\033[33mOptions:\033[0m
+  -h, --help                   Display this help menu.
 
-### Synopsis
+  -f, --file=<file>            Path to existing database dump file. Can be gzipped.
 
-    warden db-import [-f|--file=<file>] [--stream-db] [-e|--environment=<env>]
+  --stream-db                  Stream database directly from remote environment specified by -e.
 
-### Options
+  -e, --environment=<env>      Remote environment to stream from (e.g. staging, prod).
+                               Only used with --stream-db.
 
-    -f, --file=FILE          Path to database dump file (.sql or .sql.gz)
-    --stream-db              Stream database directly from remote environment specified by -e
-    -e, --environment=NAME   Remote environment to stream from (e.g. staging, prod)
+\033[33mExamples:\033[0m
+  warden db-import -f wp-content/db.sql.gz  # Import local dump file
+  warden db-import --stream-db -e staging   # Stream from staging environment
+  warden db-import --stream-db -e prod      # Stream from prod environment
 
-### Description
-
-Imports a database dump file into the WordPress database. Handles both compressed (.sql.gz) 
-and uncompressed (.sql) files. After import, displays a reminder to run search-replace
-for domain changes if WP-CLI is available.
-
-### Examples
-
-    # Import compressed dump
-    warden db-import --file=database.sql.gz
-
-    # Import and search-replace URLs
-    warden db-import -f backup.sql
-    warden env exec php-fpm wp search-replace 'old-domain.com' 'app.test.test'
-HELP
+\033[33mNote:\033[0m
+  After import, run search-replace for domain changes using WP-CLI:
+  warden env exec php-fpm wp search-replace 'old-domain.com' 'app.warden.test'
+EOF
 )
