@@ -30,6 +30,9 @@ Redis, URLs, admin security, and other development-friendly configurations.
   WARDEN_REDIS                 Enable Redis configuration (0 or 1)
   WARDEN_PWA                   Enable PWA theme configuration (0 or 1)
 
+\033[33mExamples:\033[0m
+  warden set-config                       # Apply all configurations
+
 \033[33mHooks:\033[0m
   before_set_config()          Called before URL and config updates
   after_set_config()           Called after URL and config updates

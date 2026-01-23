@@ -1,42 +1,31 @@
 #!/usr/bin/env bash
 [[ ! ${WARDEN_DIR} ]] && >&2 echo -e "\033[31mThis script is not intended to be run directly!\033[0m" && exit 1
 
-WARDEN_USAGE=$(cat <<EOF_USAGE
-Fix WordPress dependency versions in .env file
+WARDEN_USAGE=$(cat <<EOF
+Fix WordPress dependency versions in .env file based on your WordPress version.
 
-Usage:
-  warden fix-deps [options]
+\033[33mUsage:\033[0m
+  fix-deps [-h|--help] [--dry-run] [-v|--version=<version>]
 
-Description:
-  Automatically updates .env file with correct dependency versions based on 
-  your WordPress version. Uses official WordPress server requirements.
+\033[33mOptions:\033[0m
+  -h, --help                Display this help menu
 
-Options:
-  -h, --help              Show this help message
-  --dry-run               Preview changes without modifying .env
-  -v, --version=VERSION   Specify WordPress version manually (e.g., 6.5)
+\033[33mArguments:\033[0m
+  --dry-run                 Preview changes without modifying .env
 
-Features:
-  • Auto-detects WordPress version from version.php or WP-CLI
-  • Updates PHP, MySQL/MariaDB versions
-  • Dry-run mode to preview changes safely
+  -v, --version=VERSION     Specify WordPress version manually (e.g., 6.5)
+                            Auto-detects from version.php or WP-CLI
 
-Examples:
-  # Auto-detect version and show what would change
-  warden fix-deps -v=6.5
-  warden fix-deps --version=6.5
+\033[33mDependencies Updated:\033[0m
+  PHP_VERSION, MYSQL_DISTRIBUTION, MYSQL_DISTRIBUTION_VERSION
 
-Dependencies Updated:
-  • PHP_VERSION
-  • MYSQL_DISTRIBUTION & MYSQL_DISTRIBUTION_VERSION
+\033[33mExamples:\033[0m
+  warden fix-deps --dry-run        # Preview changes
+  warden fix-deps -v=6.5           # Apply fixes for WordPress 6.5
 
-Supported Versions:
-  WordPress 5.7 through 6.7
-  
-Note:
-  Always run with --dry-run first to review changes before applying.
-  After updating versions, run 'warden env down' and 'warden env up' to 
-  rebuild containers with new versions.
+\033[33mNote:\033[0m
+  Run with --dry-run first to review changes. After updating, run
+  'warden env down' and 'warden env up' to rebuild containers.
 
-EOF_USAGE
+EOF
 )

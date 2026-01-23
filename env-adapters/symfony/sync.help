@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
-printf "\033[33mSymfony Sync Options:\033[0m
-  --file           Sync code excluding vendor, node_modules, and var/cache/log
-  --media          Sync public/uploads directory
-  --db             Stream database dump from remote to local
-  --full           Sync all of the above
-  --dry-run        RSYNC dry-run mode
-"
+# Framework-specific sync reference (unused by Warden help system)
+# This file documents Symfony-specific sync behavior
+
+# Symfony Sync Paths and Exclusions:
+#   --file    Sync code (excludes: vendor/, node_modules/, var/cache/*, var/log/*, .git, .env, .env.local)
+#   --media   Sync public/uploads/ directory
+#   --db      Stream database via mysqldump/mariadb-dump
+#
+# Special Behavior:
+#   - Excludes .env.local when syncing to protect local config
+#   - Clears Symfony cache after sync (bin/console cache:clear)

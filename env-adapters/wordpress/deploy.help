@@ -25,5 +25,10 @@ Deploy WordPress locally. By default, runs a full deployment.
   --deployer-config=<path>  Path to deployer config file. Auto-detects from:
                             .deployer/deploy.php, .deployer/deploy.yaml, deploy.php, deploy.yaml
 
+\033[33mExamples:\033[0m
+  warden deploy                           # Full local deployment
+  warden deploy -o                        # Flush cache only
+  warden deploy --deployer -e staging     # Deploy to staging via Deployer
+
 EOF
 )

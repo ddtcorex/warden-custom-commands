@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
-printf "\033[33mUsage:\033[0m
+[[ ! "${WARDEN_DIR:-}" ]] && >&2 printf "\033[31mThis script is not intended to be run directly!\033[0m\n" && exit 1
+
+WARDEN_USAGE=$(cat <<EOF
+Sync files, media, or database between environments.
+
+\033[33mUsage:\033[0m
   sync [options]
 
 \033[33mOptions:\033[0m
@@ -21,7 +26,8 @@ printf "\033[33mUsage:\033[0m
 
 \033[33mExamples:\033[0m
   warden sync --db                    Sync DB from staging to local
-  warden sync --source=prod --media   Sync media from production to local
+  warden sync --source=prod --media   Sync media from prod to local
   warden sync --destination=dev --file Sync files from local to dev
   warden sync --path=pub/media/tmp    Sync a specific path from staging
-"
+EOF
+)

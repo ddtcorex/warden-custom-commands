@@ -8,11 +8,24 @@ Open tunnel to services
   open [-h|--help] [db|shell|sftp|admin|elasticsearch] [-e|--environment=<env>] [-a|--xdg-open]
 
 \033[33mOptions:\033[0m
-  -h, --help                                       Display this help menu
+  -h, --help                   Display this help menu
 
 \033[33mArguments:\033[0m
-  -e, --environment=NAME    Specific environment to use. Default: local
-  -a, --xdg-open            Open using xdg-open/open command.
+  -e, --environment=NAME       Specific environment to use. Default: local
+  -a, --xdg-open               Open using xdg-open/open command
+
+\033[33mServices:\033[0m
+  db                           Open database connection (TablePlus/DBeaver)
+  shell                        Open SSH shell to environment
+  sftp                         Open SFTP connection
+  admin                        Open admin panel in browser
+  elasticsearch                Open Elasticsearch/OpenSearch
+
+\033[33mExamples:\033[0m
+  warden open db                          # Open local database
+  warden open shell -e staging            # SSH to staging server
+  warden open admin -a                    # Open admin in browser
+  warden open db -e prod                  # Open prod database
 
 EOF
 )

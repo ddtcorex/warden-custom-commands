@@ -1,24 +1,28 @@
 #!/usr/bin/env bash
 [[ ! ${WARDEN_DIR} ]] && >&2 echo -e "\033[31mThis script is not intended to be run directly!\033[0m" && exit 1
 
-WARDEN_USAGE=$(cat <<HELP
-## set-config
+WARDEN_USAGE=$(cat <<EOF
+Configure WordPress for local development environment.
 
-Update WordPress configuration for Warden environment.
+\033[33mUsage:\033[0m
+  set-config [-h|--help]
 
-### Synopsis
+\033[33mOptions:\033[0m
+  -h, --help                   Display this help menu
 
-    warden set-config
+\033[33mFeatures:\033[0m
+  - Updates database connection settings in wp-config.php
+  - Configures Redis for object cache (if WARDEN_REDIS=1)
+  - Flushes WordPress and Redis cache
 
-### Description
+\033[33mExamples:\033[0m
+  warden set-config                       # Apply all configurations
 
-Updates WordPress configuration including:
-- Database connection settings in wp-config.php
-- Redis configuration (if enabled)
-- Flushes WordPress and Redis cache
+\033[33mHooks:\033[0m
+  before_set_config()          Called before configuration updates
+  after_set_config()           Called after configuration updates
 
-### Examples
+  Define these functions in .warden/hooks to customize behavior.
 
-    warden set-config
-HELP
+EOF
 )

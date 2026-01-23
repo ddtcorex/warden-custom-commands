@@ -37,7 +37,7 @@ WARDEN_USAGE=$(cat <<EOF
 
 \033[33mExamples:\033[0m
   warden bootstrap                           # Standard bootstrap from staging
-  warden bootstrap -c -e prod                # Clone from production
+  warden bootstrap -c -e prod                # Clone from prod
   warden bootstrap -c --code-only -e staging # Clone code only, skip DB/media
   warden bootstrap --fresh --meta-version=2.4.7  # Fresh Magento 2.4.7 install
 
