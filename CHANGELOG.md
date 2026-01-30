@@ -7,15 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.6.0] - 2026-01-30
 
-**v2.6.0: Rename Sync Command to Avoid Warden Conflict**
+**v2.6.0: Rename Sync Command & Linux Support Improvements**
 
-This release renames the `files, media, and database` synchronization command from `sync` to `env-sync` to resolve a naming conflict with Warden's core `sync` command (Mutagen).
+This release renames the synchronization command to `env-sync` to avoid conflicts with Warden core and introduces detailed documentation for Linux DNS configuration.
 
 ### ⚠️ Breaking Changes
 
 - **Renamed Command:** `warden sync` is provided by Warden core. The custom synchronization command is now **`warden env-sync`**.
   - Please update your scripts and aliases.
   - Usage remains the same: `warden env-sync [options]`.
+
+### 🛠 Improvements
+
+- **Documentation Enhancement:**
+  - Added detailed **DNS Resolver Configuration** steps for Linux users in `README.md`.
+  - Updated the Architecture file tree in `README.md` to include all utility commands (`fix-deps`, `upgrade`, `set-config`, etc.).
+- **Testing Infrastructure:**
+  - Updated all unit and integration tests to support the new `env-sync` command name.
+  - Standardized test suites to verify synchronization stability with the renamed command.
+
+### 🐛 Bug Fixes
+
+- Resolved the command name collision where `warden sync` would trigger Warden's Mutagen sync instead of the custom environment sync.
 
 ## [2.5.1] - 2026-01-30
 
