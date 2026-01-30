@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.1] - 2026-01-30
+
+**v2.5.1: Bootstrap Path Correction**
+
+This release fixes a path detection issue in the Magento 2 bootstrap process when performing clean installations.
+
+### 🐛 Bug Fixes
+
+- **Fixed `composer.json` path check:**
+  - Corrected the check to use `WARDEN_ENV_PATH` instead of `WARDEN_WEB_ROOT` during `warden bootstrap --fresh`.
+  - Ensures reliable detection of existing installations and prevents accidental overwrites or missing file errors.
+
 ## [2.5.0] - 2026-01-23
 
 **v2.5.0: Help System Standardization & UX Improvements**
