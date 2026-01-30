@@ -290,7 +290,7 @@ if [[ "${CLONE_MODE:-}" ]]; then
     # Backup local .env to prevent overwrite
     cp .env .env.warden-local
     
-    warden sync --file --source="${ENV_SOURCE}"
+    warden env-sync --file --source="${ENV_SOURCE}"
     
     # If remote had .env, save it as reference
     if [[ -f .env ]] && ! cmp -s .env .env.warden-local; then
@@ -603,7 +603,7 @@ if [[ "${ADMIN_CREATE:-}" == "1" ]]; then
 fi
 
 if [[ "${MEDIA_SYNC:-}" ]]; then
-    warden sync --media --source="${ENV_SOURCE}"
+    warden env-sync --media --source="${ENV_SOURCE}"
 fi
 
 echo "=========== THE APPLICATION HAS BEEN INSTALLED SUCCESSFULLY ==========="
