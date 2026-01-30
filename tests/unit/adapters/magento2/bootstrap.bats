@@ -95,9 +95,9 @@ setup() {
     
     [ "$status" -eq 0 ]
     
-    # Check order: warden svc up BEFORE warden sync
+    # Check order: warden svc up BEFORE warden env-sync
     local svc_up_line=$(grep -n "warden svc up" "$MOCK_LOG" | cut -d: -f1 | head -1)
-    local sync_line=$(grep -n "warden sync" "$MOCK_LOG" | cut -d: -f1 | head -1)
+    local sync_line=$(grep -n "warden env-sync" "$MOCK_LOG" | cut -d: -f1 | head -1)
     
     [ -n "$svc_up_line" ]
     [ -n "$sync_line" ]

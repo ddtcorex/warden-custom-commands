@@ -5,16 +5,16 @@ load "../../../libs/mocks.bash"
 setup() {
     setup_mocks
     
-    export TEST_SCRIPT_DIR="${TEST_TMP_DIR}/wordpress-sync"
+    export TEST_SCRIPT_DIR="${TEST_TMP_DIR}/symfony-sync"
     mkdir -p "${TEST_SCRIPT_DIR}"
     
-    cp "${BATS_TEST_DIRNAME}/../../../../env-adapters/wordpress/sync.cmd" "${TEST_SCRIPT_DIR}/sync.cmd"
-    cp "${BATS_TEST_DIRNAME}/../../../../env-adapters/wordpress/utils.sh" "${TEST_SCRIPT_DIR}/utils.sh"
-    chmod +x "${TEST_SCRIPT_DIR}/sync.cmd"
+    cp "${BATS_TEST_DIRNAME}/../../../../env-adapters/symfony/env-sync.cmd" "${TEST_SCRIPT_DIR}/env-sync.cmd"
+    cp "${BATS_TEST_DIRNAME}/../../../../env-adapters/symfony/utils.sh" "${TEST_SCRIPT_DIR}/utils.sh"
+    chmod +x "${TEST_SCRIPT_DIR}/env-sync.cmd"
     
-    BOOTSTRAP_CMD="${TEST_SCRIPT_DIR}/sync.cmd"
+    BOOTSTRAP_CMD="${TEST_SCRIPT_DIR}/env-sync.cmd"
     
-    export WARDEN_ENV_NAME="wordpress-test"
+    export WARDEN_ENV_NAME="symfony-test"
     export WARDEN_ENV_PATH="${TEST_SCRIPT_DIR}"
     export SSH_OPTS="-o StrictHostKeyChecking=no"
 
@@ -39,11 +39,7 @@ setup() {
             shift 4
             echo "warden-remote-exec $*" >> "$MOCK_LOG"
             if [[ "$*" == *"grep"* ]]; then
-                 # Helper for get_remote_db_info
-                 echo "define('DB_NAME', 'remote_db');"
-                 echo "define('DB_USER', 'remote_user');"
-                 echo "define('DB_PASSWORD', 'remote_pass');"
-                 echo "define('DB_HOST', 'remote-db:3306');"
+                echo "DATABASE_URL=mysql://remote_user:remote_pass@remote-db:3306/remote_db"
             fi
             return 0
         fi
@@ -59,6 +55,13 @@ setup() {
     }
     export -f warden
 
+    # Mock lsof
+    cat > "${MOCK_BIN}/lsof" << 'EOF'
+#!/usr/bin/env bash
+exit 1
+EOF
+    chmod +x "${MOCK_BIN}/lsof"
+    
     cat > "${MOCK_BIN}/ssh" << 'EOF'
 #!/usr/bin/env bash
 echo "ssh $*" >> "${MOCK_LOG}"
@@ -73,32 +76,43 @@ EOF
     cd "${TEST_SCRIPT_DIR}"
 }
 
-@test "Wordpress Sync: File Download" {
+@test "Symfony Sync: File Download" {
     export ENV_SOURCE="dev"
     export ENV_SOURCE_HOST="example.com"
     export ENV_SOURCE_PORT="22"
     export ENV_SOURCE_USER="user"
     export ENV_SOURCE_DIR="/var/www/remote"
     export ENV_SOURCE_HOST_VAR="REMOTE_DEV_HOST"
+    export REMOTE_DEV_HOST="dummy"
     
     export DIRECTION="download"
     export SYNC_TYPE_FILE=1
     
     run "$BOOTSTRAP_CMD"
     
+    # Needs -T? Checking cmd...
+    # Step 157 line 90: warden env exec php-fpm rsync (No -T)
+    # But failed in grep. Maybe due to unbound vars previously.
+    
+    if [[ "$status" -ne 0 ]]; then
+        echo "Command failed with status $status"
+        echo "Output: $output"
+    fi
+
     if grep -q "warden env exec php-fpm rsync" "$MOCK_LOG"; then
         echo "FAIL: Found old rsync invocation"
         return 1
     fi
 }
 
-@test "Wordpress Sync: DB Download" {
+@test "Symfony Sync: DB Download" {
     export ENV_SOURCE="dev"
     export ENV_SOURCE_HOST="example.com"
     export ENV_SOURCE_PORT="22"
     export ENV_SOURCE_USER="user"
     export ENV_SOURCE_DIR="/var/www/remote"
     export ENV_SOURCE_HOST_VAR="REMOTE_DEV_HOST"
+    export REMOTE_DEV_HOST="dummy"
     
     export DIRECTION="download"
     export SYNC_TYPE_DB=1
@@ -109,4 +123,26 @@ EOF
     grep -Fq 'export MYSQL_PWD="$MYSQL_PASSWORD"' "$MOCK_LOG"
     grep -Fq 'SET FOREIGN_KEY_CHECKS=0' "$MOCK_LOG"
     grep -Fq 'mariadb || echo mysql' "$MOCK_LOG"
+}
+
+@test "Symfony Sync: DB Download with Backup" {
+    export ENV_SOURCE="dev"
+    export ENV_SOURCE_HOST="example.com"
+    export ENV_SOURCE_PORT="22"
+    export ENV_SOURCE_USER="user"
+    export ENV_SOURCE_DIR="/var/www/remote"
+    export ENV_SOURCE_HOST_VAR="REMOTE_DEV_HOST"
+    export REMOTE_DEV_HOST="dummy"
+    
+    export DIRECTION="download"
+    export SYNC_TYPE_DB=1
+    export SYNC_BACKUP=1
+    
+    run "$BOOTSTRAP_CMD"
+    
+    grep -q "warden db-dump -e local" "$MOCK_LOG"
+    if grep -q "warden db-dump -e local --file" "$MOCK_LOG"; then
+        echo "Found --file arg when it should be absent"
+        return 1
+    fi
 }

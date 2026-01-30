@@ -204,10 +204,10 @@ fi
 export SYNC_SOURCE SYNC_DESTINATION SYNC_TYPE_FILE SYNC_TYPE_MEDIA SYNC_TYPE_DB SYNC_TYPE_FULL SYNC_PATH SYNC_DRY_RUN SYNC_DELETE SYNC_REMOTE_TO_REMOTE SYNC_INCLUDE_PRODUCT SYNC_REDEPLOY SYNC_ASSUME_YES DIRECTION SYNC_BACKUP SYNC_BACKUP_DIR
 
 # Dispatch to environment-specific implementation
-ENV_CMD="${SUBCOMMAND_DIR}/env-adapters/${WARDEN_ENV_TYPE}/sync.cmd"
+ENV_CMD="${SUBCOMMAND_DIR}/env-adapters/${WARDEN_ENV_TYPE}/env-sync.cmd"
 if [[ -f "${ENV_CMD}" ]]; then
     source "${ENV_CMD}"
 else
-    printf "\033[31mCommand 'sync' is not supported for environment type '%s'\033[0m\n" "${WARDEN_ENV_TYPE}" >&2
+    printf "\033[31mCommand 'env-sync' is not supported for environment type '%s'\033[0m\n" "${WARDEN_ENV_TYPE}" >&2
     exit 1
 fi

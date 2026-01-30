@@ -180,7 +180,7 @@ if [[ "${CLONE_MODE:-}" ]]; then
     # Backup local .env to prevent overwrite
     cp .env .env.warden-local
     
-    warden sync --file --source="${ENV_SOURCE}"
+    warden env-sync --file --source="${ENV_SOURCE}"
     
     # If remote had .env, save it as reference
     if [[ -f .env ]] && ! cmp -s .env .env.warden-local; then
@@ -244,7 +244,7 @@ if [[ "${COMPOSER_INSTALL:-}" ]] && [[ ! "${CLEAN_INSTALL:-}" ]]; then
             # If it doesn't have a composer.json, it's a good candidate for sync fallback
             if ! warden env exec -T php-fpm test -f "wp-content/plugins/${plugin}/composer.json" 2>/dev/null; then
                 echo "➜ Syncing vendor fallback for ${plugin}"
-                warden sync --path="wp-content/plugins/${plugin}/vendor/" --source="${ENV_SOURCE}" || true
+                warden env-sync --path="wp-content/plugins/${plugin}/vendor/" --source="${ENV_SOURCE}" || true
             fi
         done
     fi

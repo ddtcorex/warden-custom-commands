@@ -181,7 +181,7 @@ rm -rf .env var vendor app bin dev generated lib phpserver pub setup || true
 INPUTS="example.com\ndeploy\n22\n/var/www/html\nhttps://example.com\n1\n2.4.6"
     
 echo "Running interactive clone bootstrap (dry-run inputs)..."
-# We expect this might fail at 'warden sync' or 'ssh' steps since example.com isn't reachable,
+# We expect this might fail at 'warden env-sync' or 'ssh' steps since example.com isn't reachable,
 # but we are testing the FLOW and .env generation.
 echo -e "$INPUTS" | warden bootstrap -c -e dev || true
 

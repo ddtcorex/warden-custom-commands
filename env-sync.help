@@ -5,7 +5,7 @@ WARDEN_USAGE=$(cat <<EOF
 Sync files, media, or database between environments.
 
 \033[33mUsage:\033[0m
-  sync [options]
+  env-sync [options]
 
 \033[33mOptions:\033[0m
   -s, -e, --source, --environment=NAME    Source environment (default: staging)
@@ -25,9 +25,9 @@ Sync files, media, or database between environments.
   -h, --help           Display this help message
 
 \033[33mExamples:\033[0m
-  warden sync --db                    Sync DB from staging to local
-  warden sync --source=prod --media   Sync media from prod to local
-  warden sync --destination=dev --file Sync files from local to dev
-  warden sync --path=pub/media/tmp    Sync a specific path from staging
+  warden env-sync --db                    Sync DB from staging to local
+  warden env-sync --source=prod --media   Sync media from prod to local
+  warden env-sync --destination=dev --file Sync files from local to dev
+  warden env-sync --path=pub/media/tmp    Sync a specific path from staging
 EOF
 )

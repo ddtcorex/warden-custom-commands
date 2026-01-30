@@ -21,7 +21,7 @@ configure_test_envs "$TEST_ENV_TYPE"
 echo ""
 echo "Running tests for environment type: ${TEST_ENV_TYPE}"
 
-header "Warden Sync Integration Tests"
+header "Warden ENV Sync Integration Tests"
 
 # Step 0: Run Unit Tests (BATS)
 if [[ "${SKIP_UNIT}" -ne 1 ]]; then

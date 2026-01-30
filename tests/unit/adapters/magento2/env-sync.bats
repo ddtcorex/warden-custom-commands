@@ -8,11 +8,11 @@ setup() {
     export TEST_SCRIPT_DIR="${TEST_TMP_DIR}/magento2-sync"
     mkdir -p "${TEST_SCRIPT_DIR}"
     
-    cp "${BATS_TEST_DIRNAME}/../../../../env-adapters/magento2/sync.cmd" "${TEST_SCRIPT_DIR}/sync.cmd"
+    cp "${BATS_TEST_DIRNAME}/../../../../env-adapters/magento2/env-sync.cmd" "${TEST_SCRIPT_DIR}/env-sync.cmd"
     cp "${BATS_TEST_DIRNAME}/../../../../env-adapters/magento2/utils.sh" "${TEST_SCRIPT_DIR}/utils.sh"
-    chmod +x "${TEST_SCRIPT_DIR}/sync.cmd"
+    chmod +x "${TEST_SCRIPT_DIR}/env-sync.cmd"
     
-    BOOTSTRAP_CMD="${TEST_SCRIPT_DIR}/sync.cmd"
+    BOOTSTRAP_CMD="${TEST_SCRIPT_DIR}/env-sync.cmd"
     
     export WARDEN_ENV_NAME="magento2-test"
     export WARDEN_ENV_PATH="${TEST_SCRIPT_DIR}"
