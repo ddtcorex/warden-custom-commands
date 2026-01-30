@@ -484,7 +484,7 @@ elif [ -n "${CLONE_MODE}" ] && [ -f "${WARDEN_ENV_PATH}/app/etc/env.php" ]; then
         --no-interaction || warning "Failed to patch env.php database configuration"
 fi
 
-if [[ ${CLEAN_INSTALL} ]] && [[ ! -f "${WARDEN_WEB_ROOT}/composer.json" ]]; then
+if [[ ${CLEAN_INSTALL} ]] && [[ ! -f "${WARDEN_ENV_PATH}/composer.json" ]]; then
     :: Installing Magento website
     
     # Clean up and prepare directory in one go
