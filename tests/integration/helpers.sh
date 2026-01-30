@@ -134,9 +134,9 @@ function cleanup_test_files() {
     done
 }
 
-# Run warden sync command
+# Run warden env-sync command
 function run_sync() {
-    (cd "${LOCAL_ENV}" && warden sync -y "$@")
+    (cd "${LOCAL_ENV}" && warden env-sync -y "$@")
 }
 
 function run_sync_confirmed() {

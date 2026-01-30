@@ -53,6 +53,34 @@ echo 'export PATH="/opt/warden/bin:$PATH"' >> ~/.zshrc
 source ~/.zshrc
 ```
 
+### DNS Resolver Configuration (Linux)
+
+If you are running on Linux (Ubuntu, Fedora, etc.), you must configure `systemd-resolved` to work with Warden's DNS resolver.
+
+1. Create a configuration directory for `systemd-resolved`:
+
+   ```bash
+   sudo mkdir -p /etc/systemd/resolved.conf.d
+   ```
+
+2. Create the Warden configuration file:
+
+   ```bash
+   sudo tee /etc/systemd/resolved.conf.d/warden.conf <<EOF
+   [Resolve]
+   DNS=127.0.0.1
+   Domains=~test
+   EOF
+   ```
+
+3. Restart the service:
+
+   ```bash
+   sudo systemctl restart systemd-resolved
+   ```
+
+For more details, see [Warden Docs: Systemd Resolved](https://docs.warden.dev/configuration/dns-resolver.html#systemd-resolved).
+
 ### Install Custom Commands
 
 ```bash
@@ -138,10 +166,16 @@ commands/
 ├── db-dump.cmd            # Dispatcher → env-adapters/{type}/db-dump.cmd
 ├── db-import.cmd          # Dispatcher → env-adapters/{type}/db-import.cmd
 ├── deploy.cmd             # Dispatcher → env-adapters/{type}/deploy.cmd
+├── env-sync.cmd           # Dispatcher → env-adapters/{type}/env-sync.cmd
+├── fix-deps.cmd           # Dispatcher → env-adapters/{type}/fix-deps.cmd
 ├── open.cmd               # Dispatcher → env-adapters/{type}/open.cmd
+├── set-config.cmd         # Dispatcher → env-adapters/{type}/set-config.cmd
+├── upgrade.cmd            # Dispatcher → env-adapters/{type}/upgrade.cmd
 │
-├── self-update.cmd        # Global command
 ├── env-variables          # Global environment loader
+├── remote-exec.cmd        # Global command
+├── self-update.cmd        # Global command
+├── setup-remotes.cmd      # Global command
 │
 └── env-adapters/          # Environment-specific implementations
     ├── magento2/
@@ -153,14 +187,23 @@ commands/
     │   ├── db-import.help
     │   ├── deploy.cmd
     │   ├── deploy.help
+    │   ├── env-sync.cmd
+    │   ├── fix-deps.cmd
+    │   ├── fix-deps.help
+    │   ├── magento-versions.json
     │   ├── open.cmd
     │   ├── open.help
+    │   ├── set-config.cmd
+    │   ├── set-config.help
+    │   ├── upgrade.cmd
+    │   └── upgrade.help
     │
     ├── laravel/
     │   ├── bootstrap.cmd
     │   ├── db-dump.cmd
     │   ├── db-dump.help
     │   ├── db-import.cmd
+    │   ├── env-sync.cmd
     │   ├── fix-deps.cmd
     │   ├── fix-deps.help
     │   ├── open.cmd
@@ -174,6 +217,7 @@ commands/
     │   ├── db-dump.cmd
     │   ├── db-dump.help
     │   ├── db-import.cmd
+    │   ├── env-sync.cmd
     │   ├── fix-deps.cmd
     │   ├── fix-deps.help
     │   ├── open.cmd
@@ -187,6 +231,7 @@ commands/
         ├── db-dump.cmd
         ├── db-dump.help
         ├── db-import.cmd
+        ├── env-sync.cmd
         ├── fix-deps.cmd
         ├── fix-deps.help
         ├── open.cmd
@@ -217,7 +262,7 @@ Most commands support the following global flags:
 
 ### Common Commands
 
-#### `warden sync`
+#### `warden env-sync`
 
 The unified synchronization command for files, media, and databases.
 
@@ -245,51 +290,51 @@ The unified synchronization command for files, media, and databases.
 
    ```bash
    # Pull database from staging (default) to local
-   warden sync --db
+   warden env-sync --db
 
    # Pull database from prod to local
-   warden sync -s prod --db
+   warden env-sync -s prod --db
    ```
 
 2. **Sync Media (Remote to Local)**
 
    ```bash
    # Pull media files from staging to local
-   warden sync --media
+   warden env-sync --media
 
    # Delete local files that are missing on remote (mirroring)
-   warden sync --media --delete
+   warden env-sync --media --delete
    ```
 
 3. **Sync Files/Code (Local to Remote)**
 
    ```bash
    # Push local changes to dev environment
-   warden sync -d dev --file
+   warden env-sync -d dev --file
 
    # Push a specific file
-   warden sync -d dev -p app/etc/config.php
+   warden env-sync -d dev -p app/etc/config.php
    ```
 
 4. **Sync Specific Path (Remote to Remote)**
 
    ```bash
    # Sync a specific log folder from prod to staging
-   warden sync -s prod -d staging -p var/log/
+   warden env-sync -s prod -d staging -p var/log/
    ```
 
 5. **Full Synchronization**
 
    ```bash
    # Sync everything: DB, Media, Files
-   warden sync --full
+   warden env-sync --full
    ```
 
 6. **Dry Run**
 
    ```bash
    # See what would happen without actually syncing
-   warden sync --media --delete --dry-run
+   warden env-sync --media --delete --dry-run
    ```
 
 > [!IMPORTANT]
