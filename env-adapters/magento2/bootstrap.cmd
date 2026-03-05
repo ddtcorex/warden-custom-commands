@@ -302,13 +302,12 @@ if [[ "${CLONE_MODE:-}" ]]; then
     mv .env.warden-local .env
     
     # Combined file operations to reduce container exec overhead
-    # May fail if directories don't exist yet - that's expected
-    warden env exec php-fpm sh -c "
-        mkdir -p /var/www/html/generated \
-                 /var/www/html/pub/media \
-                 /var/www/html/pub/static \
-                 /var/www/html/var
-    " 2>/dev/null || true
+    # Create directories locally to ensure host user retains permission ownership
+    # and prevent 'Permission denied' errors if container user lacks host mapping rights.
+    mkdir -p "${WARDEN_ENV_PATH}/generated" \
+             "${WARDEN_ENV_PATH}/pub/media" \
+             "${WARDEN_ENV_PATH}/pub/static" \
+             "${WARDEN_ENV_PATH}/var" 2>/dev/null || true
 fi
 
 ## include check for DB_DUMP file only when database import is expected
@@ -379,8 +378,19 @@ if [[ "${DB_IMPORT:-}" ]]; then
     fi
 fi
 
-if [ -z ${WARDEN_ENCRYPT_KEY+x} ]; then
-    ENCRYPT_KEY=00000000000000000000000000000000
+if [ -z "${WARDEN_ENCRYPT_KEY+x}" ]; then
+    # If we have an existing env.php, try to use its crypt key as fallback
+    if [[ -f "${WARDEN_ENV_PATH}/app/etc/env.php" ]]; then
+        EXTRACTED_KEY=$(warden env exec -T php-fpm php -r '$c = @include "app/etc/env.php"; echo (is_array($c) && isset($c["crypt"]["key"])) ? $c["crypt"]["key"] : "";' 2>/dev/null)
+        if [[ -n "${EXTRACTED_KEY}" ]]; then
+            ENCRYPT_KEY="${EXTRACTED_KEY}"
+            printf "ℹ️  Using crypt/key extracted from remote env.php\n"
+        fi
+    fi
+    # If still not set, generate a random 32-character encryption key
+    if [[ -z "${ENCRYPT_KEY:-}" ]]; then
+        ENCRYPT_KEY=$(cat /dev/urandom | env LC_ALL=C tr -dc 'a-f0-9' | fold -w 32 | head -n 1)
+    fi
 else
     ENCRYPT_KEY="$WARDEN_ENCRYPT_KEY"
 fi
@@ -397,15 +407,6 @@ DB_NAME=${DB_NAME:-magento}
 
 # Determine database host
 DB_HOST_NAME="db"
-
-# If we have an existing env.php, try to use its crypt key as fallback for WARDEN_ENCRYPT_KEY
-if [[ -f "${WARDEN_ENV_PATH}/app/etc/env.php" ]] && [[ "${ENCRYPT_KEY}" == "00000000000000000000000000000000" ]]; then
-    EXTRACTED_KEY=$(warden env exec -T php-fpm php -r '$c = @include "app/etc/env.php"; echo (is_array($c) && isset($c["crypt"]["key"])) ? $c["crypt"]["key"] : "";' 2>/dev/null)
-    if [[ -n "${EXTRACTED_KEY}" ]]; then
-        ENCRYPT_KEY="${EXTRACTED_KEY}"
-        printf "ℹ️  Using crypt/key extracted from remote env.php\n"
-    fi
-fi
 
 if [ ! -f "${WARDEN_ENV_PATH}/app/etc/env.php" ] && [ ! $CLEAN_INSTALL ]; then
     :: Configuring environment variables
@@ -484,43 +485,68 @@ elif [ -n "${CLONE_MODE}" ] && [ -f "${WARDEN_ENV_PATH}/app/etc/env.php" ]; then
         --no-interaction || warning "Failed to patch env.php database configuration"
 fi
 
-if [[ ${CLEAN_INSTALL} ]] && [[ ! -f "${WARDEN_ENV_PATH}/composer.json" ]]; then
-    :: Installing Magento website
-    
-    # Clean up and prepare directory in one go
-    warden env exec php-fpm sh -c "
-        rsync -a auth.json /home/www-data/.composer/ && \
-        rm -rf /tmp/create-project && \
-        composer create-project -q -n --repository-url=https://repo.magento.com/ \"${META_PACKAGE}\" /tmp/create-project \"${META_VERSION}\" && \
-        rsync -a /tmp/create-project/ /var/www/html/ && \
-        rm -rf /tmp/create-project
-    "
-
-    if [[ "${HYVA_INSTALL:-}" ]]; then
-        :: Setting up Hyvä
+if [[ "${CLEAN_INSTALL:-}" ]]; then
+    if [[ ! -f "${WARDEN_ENV_PATH}/composer.json" ]]; then
+        :: Downloading Magento source
         
-        # Check Magento version compatibility (Hyvä requires 2.4.4+)
-        if [[ -n "${META_VERSION:-}" ]] && ! test $(version "${META_VERSION}") -ge "$(version 2.4.4)"; then
-            warning "Hyvä requires Magento 2.4.4 or higher (detected ${META_VERSION}). Skipping Hyvä installation."
-            HYVA_INSTALL=
-        fi
-    fi
-
-    if [[ "${HYVA_INSTALL:-}" ]]; then
-        # Use default token
-        HYVA_TOKEN="2a749843f9e64f7e5f74495baafbd7422271d23933e8d00059a3072767c0"
-        
-        # Register Hyvä repository (using Private Packagist), set credentials and install base packages
-        # We run this in a single sh -c block for consistency and to ensure credentials are found
+        # Clean up and prepare directory in one go
         warden env exec php-fpm sh -c "
-            composer config http-basic.hyva-themes.repo.packagist.com token \"${HYVA_TOKEN}\" && \
-            composer config repositories.hyva-themes composer https://hyva-themes.repo.packagist.com/app-hyva-test-dv1dgx/ && \
-            composer require -n hyva-themes/magento2-default-theme
+            rsync -a auth.json /home/www-data/.composer/ && \
+            rm -rf /tmp/create-project && \
+            composer create-project -q -n --repository-url=https://repo.magento.com/ \"${META_PACKAGE}\" /tmp/create-project \"${META_VERSION}\" && \
+            rsync -a /tmp/create-project/ /var/www/html/ && \
+            rm -rf /tmp/create-project
+        "
+
+        if [[ "${HYVA_INSTALL:-}" ]]; then
+            :: Setting up Hyvä
+            
+            # Check Magento version compatibility (Hyvä requires 2.4.4+)
+            if [[ -n "${META_VERSION:-}" ]] && ! test $(version "${META_VERSION}") -ge "$(version 2.4.4)"; then
+                warning "Hyvä requires Magento 2.4.4 or higher (detected ${META_VERSION}). Skipping Hyvä installation."
+                HYVA_INSTALL=
+            fi
+        fi
+
+        if [[ "${HYVA_INSTALL:-}" ]]; then
+            # Use default token
+            HYVA_TOKEN="2a749843f9e64f7e5f74495baafbd7422271d23933e8d00059a3072767c0"
+            
+            # Register Hyvä repository (using Private Packagist), set credentials and install base packages
+            # We run this in a single sh -c block for consistency and to ensure credentials are found
+            warden env exec php-fpm sh -c "
+                composer config http-basic.hyva-themes.repo.packagist.com token \"${HYVA_TOKEN}\" && \
+                composer config repositories.hyva-themes composer https://hyva-themes.repo.packagist.com/app-hyva-test-dv1dgx/ && \
+                composer require -n hyva-themes/magento2-default-theme
+            "
+            
+            # Also mirror the token to the host auth.json for persistence if it exists
+            if [[ -f "${WARDEN_ENV_PATH}/auth.json" ]]; then
+                warden env exec php-fpm composer config -g http-basic.hyva-themes.repo.packagist.com token "${HYVA_TOKEN}"
+            fi
+        fi
+    else
+        :: Installing dependencies from existing composer.json
+        warden env exec php-fpm sh -c "
+            rsync -a auth.json /home/www-data/.composer/ && \
+            composer install
         "
         
-        # Also mirror the token to the host auth.json for persistence if it exists
-        if [[ -f "${WARDEN_ENV_PATH}/auth.json" ]]; then
-            warden env exec php-fpm composer config -g http-basic.hyva-themes.repo.packagist.com token "${HYVA_TOKEN}"
+        # Ensure fresh install can proceed by removing existing env.php and caches
+        if [[ -f "${WARDEN_ENV_PATH}/app/etc/env.php" ]]; then
+            rm -f "${WARDEN_ENV_PATH}/app/etc/env.php"
+            printf "ℹ️  Removed existing app/etc/env.php for clean installation\n"
+        fi
+        
+        warden env exec php-fpm sh -c "rm -rf generated/code/* var/cache/* var/page_cache/* var/view_preprocessed/*"
+    fi
+
+    # Try to auto-detect version from installed codebase if not set
+    if [[ -z "${META_VERSION:-}" ]]; then
+        DETECTED_VERSION=$(detect_magento_version)
+        if [[ -n "${DETECTED_VERSION}" ]]; then
+            META_VERSION="${DETECTED_VERSION}"
+            printf "ℹ️  Auto-detected Magento version: %s\n" "${META_VERSION}"
         fi
     fi
 
@@ -547,6 +573,9 @@ if [[ ${CLEAN_INSTALL} ]] && [[ ! -f "${WARDEN_ENV_PATH}/composer.json" ]]; then
          SEARCH_ENGINE="elasticsearch7"
          SEARCH_COMMAND="elasticsearch"
     fi
+
+    # Fix: Elasticsearch/OpenSearch index_create_block_exception due to low disk space watermark
+    warden env exec php-fpm sh -c "curl -s -X PUT 'http://${SEARCH_HOST}:9200/_all/_settings' -H 'Content-Type: application/json' -d'{\"index.blocks.read_only_allow_delete\": null}' > /dev/null 2>&1" || true
 
     warden env exec php-fpm bin/magento setup:install \
         --backend-frontname=admin \

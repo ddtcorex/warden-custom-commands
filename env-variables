@@ -56,6 +56,38 @@ function get_remote_details() {
     fi
 }
 
+function detect_magento_version() {
+    local detected_version=""
+    
+    # 1. Try to get version from composer.json reliably
+    if [[ -f "composer.json" ]]; then
+        local composer_ver=$(grep -oE '"magento/product-(community|enterprise)-edition":\s*"[^"]+"' composer.json 2>/dev/null | head -n1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+(-p[0-9]+)?' | head -n1)
+        if [[ -n "${composer_ver}" ]]; then
+            detected_version="${composer_ver}"
+        elif command -v jq &> /dev/null; then
+            # Fallback to jq if grep logic doesn't match for some reason
+            composer_ver=$(jq -r '.require["magento/product-community-edition"] // .require["magento/product-enterprise-edition"] // "unknown"' composer.json | sed 's/[\^~]//g')
+            if [[ "${composer_ver}" != "unknown" ]]; then
+                detected_version="${composer_ver}"
+            fi
+        fi
+    fi
+    
+    # 2. Fall back to installed version if available and php-fpm is running
+    if [[ -z "${detected_version}" ]]; then
+        # Check if php-fpm container is running before attempting to execute
+        if warden env exec -T php-fpm true &> /dev/null; then
+            local cli_ver=$(warden env exec -T php-fpm bin/magento --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+(-p[0-9]+)?' | head -n1)
+            if [[ -n "${cli_ver}" ]]; then
+                detected_version="${cli_ver}"
+            fi
+        fi
+    fi
+
+    # Output the result
+    printf "%s" "${detected_version}"
+}
+
 WARDEN_ENV_PATH="$(locateEnvPath)" || exit $?
 
 loadEnvConfig "${WARDEN_ENV_PATH}" || exit $?

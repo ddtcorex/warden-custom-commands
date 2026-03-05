@@ -38,25 +38,11 @@ fi
 
 # Detect Magento version if not specified
 if [[ -z "${MAGENTO_VERSION}" ]]; then
-    if [[ -f "composer.json" ]] && command -v jq &> /dev/null; then
-        # Try to get version from composer.json
-        MAGENTO_VERSION=$(jq -r '.require["magento/product-community-edition"] // .require["magento/product-enterprise-edition"] // "unknown"' composer.json | sed 's/[\^~]//g')
-        if [[ "${MAGENTO_VERSION}" != "unknown" ]]; then
-            printf "Detected Magento version from composer.json: %s\n" "${MAGENTO_VERSION}"
-        fi
-    fi
-    
-    # Fall back to installed version if available
-    if [[ -z "${MAGENTO_VERSION:-}" ]] || [[ "${MAGENTO_VERSION:-}" == "unknown" ]]; then
-        if warden env exec php-fpm bin/magento --version &> /dev/null; then
-            MAGENTO_VERSION=$(warden env exec php-fpm bin/magento --version 2>/dev/null | awk '{print $3}')
-            printf "Detected installed Magento version: %s\n" "${MAGENTO_VERSION}"
-        fi
+    MAGENTO_VERSION=$(detect_magento_version)
+    if [[ -n "${MAGENTO_VERSION}" ]]; then
+        printf "Detected Magento version: %s\n" "${MAGENTO_VERSION}"
     fi
 fi
-
-# Store original version for display
-ORIGINAL_VERSION="${MAGENTO_VERSION}"
 
 if [[ -z "${MAGENTO_VERSION:-}" ]]; then
     printf "Warning: Could not detect Magento version. Using default (latest) configuration.\n"
@@ -69,7 +55,7 @@ else
     else
         # Fallback logic: Find latest available patch for this main version
         # 1. Extract valid base version (X.Y.Z)
-        BASE_VERSION=$(echo "${MAGENTO_VERSION}" | grep -oP '^\d+\.\d+\.\d+')
+        BASE_VERSION=$(echo "${MAGENTO_VERSION}" | grep -oE '^[0-9]+\.[0-9]+\.[0-9]+')
         
         if [[ -n "${BASE_VERSION}" ]]; then
             # Escape dots for regex
@@ -77,8 +63,8 @@ else
             
             # Find the first key in the file that matches this base version.
             # Since the file is sorted descending, the first match (e.g. 2.4.8-p3) is the latest known patch.
-            # Regex matches "2.4.8" followed by " or -...
-            FALLBACK_VERSION=$(grep -P -m 1 "^\s*\"${ESCAPED_BASE}(?:-[^\"]+)?\"\s*:" "${JSON_FILE}" | grep -oP "\"\K[^\"]+(?=\")")
+            # Use POSIX-compatible grep/awk instead of GNU grep-only PCRE
+            FALLBACK_VERSION=$(grep -E "^\s*\"${ESCAPED_BASE}(-[^\"]+)?\"\s*:" "${JSON_FILE}" 2>/dev/null | head -n 1 | awk -F '"' '{print $2}')
             
             if [[ -n "${FALLBACK_VERSION}" ]]; then
                 printf "⚠ Version '%s' not found.\n" "${MAGENTO_VERSION}"
@@ -146,106 +132,55 @@ fi
 # Apply changes to .env
 printf "Updating .env file...\n"
 
-# Update or add PHP_VERSION
-if grep -q "^PHP_VERSION=" .env; then
-    sed -i "s/^PHP_VERSION=.*/PHP_VERSION=${PHP_VERSION}/" .env
-else
-    echo "PHP_VERSION=${PHP_VERSION}" >> .env
-fi
+function update_env_var() {
+    local key="$1"
+    local val="$2"
+    if grep -q "^${key}=" .env; then
+        # Use \| as delimiter for sed to avoid issues if value contains /
+        sed -i "s|^${key}=.*|${key}=${val}|" .env
+    else
+        echo "${key}=${val}" >> .env
+    fi
+}
 
-# Update MariaDB version
-if grep -q "^MYSQL_DISTRIBUTION_VERSION=" .env; then
-    sed -i "s/^MYSQL_DISTRIBUTION_VERSION=.*/MYSQL_DISTRIBUTION_VERSION=${MARIADB_VERSION}/" .env
-else
-    echo "MYSQL_DISTRIBUTION_VERSION=${MARIADB_VERSION}" >> .env
-fi
+update_env_var "PHP_VERSION" "${PHP_VERSION}"
+update_env_var "MYSQL_DISTRIBUTION_VERSION" "${MARIADB_VERSION}"
+update_env_var "MYSQL_DISTRIBUTION" "mariadb"
+update_env_var "REDIS_VERSION" "${REDIS_VERSION}"
+update_env_var "COMPOSER_VERSION" "${COMPOSER_VERSION}"
 
-# Set MySQL distribution to mariadb
-if grep -q "^MYSQL_DISTRIBUTION=" .env; then
-    sed -i "s/^MYSQL_DISTRIBUTION=.*/MYSQL_DISTRIBUTION=mariadb/" .env
-else
-    echo "MYSQL_DISTRIBUTION=mariadb" >> .env
-fi
-
-# Update Redis
-if grep -q "^REDIS_VERSION=" .env; then
-    sed -i "s/^REDIS_VERSION=.*/REDIS_VERSION=${REDIS_VERSION}/" .env
-else
-    echo "REDIS_VERSION=${REDIS_VERSION}" >> .env
-fi
-
-# Update Composer
-if grep -q "^COMPOSER_VERSION=" .env; then
-    sed -i "s/^COMPOSER_VERSION=.*/COMPOSER_VERSION=${COMPOSER_VERSION}/" .env
-else
-    echo "COMPOSER_VERSION=${COMPOSER_VERSION}" >> .env
-fi
-
-# Update RabbitMQ if version is not null
 # Enable/disable OpenSearch/Elasticsearch based on version
 if [[ "${OPENSEARCH_VERSION}" != "null" ]]; then
-    if grep -q "^WARDEN_OPENSEARCH=" .env; then
-        sed -i "s/^WARDEN_OPENSEARCH=.*/WARDEN_OPENSEARCH=1/" .env
-    else
-        echo "WARDEN_OPENSEARCH=1" >> .env
-    fi
+    update_env_var "WARDEN_OPENSEARCH" "1"
+    update_env_var "OPENSEARCH_VERSION" "${OPENSEARCH_VERSION}"
     
-    # Set OPENSEARCH_VERSION
-    if grep -q "^OPENSEARCH_VERSION=" .env; then
-        sed -i "s/^OPENSEARCH_VERSION=.*/OPENSEARCH_VERSION=${OPENSEARCH_VERSION}/" .env
-    else
-        echo "OPENSEARCH_VERSION=${OPENSEARCH_VERSION}" >> .env
-    fi
-
     # Disable Elasticsearch if OpenSearch is used
     if grep -q "^WARDEN_ELASTICSEARCH=" .env; then
         sed -i "s/^WARDEN_ELASTICSEARCH=.*/WARDEN_ELASTICSEARCH=0/" .env
     fi
 elif [[ "${ELASTICSEARCH_VERSION}" != "null" ]]; then
-    if grep -q "^WARDEN_ELASTICSEARCH=" .env; then
-        sed -i "s/^WARDEN_ELASTICSEARCH=.*/WARDEN_ELASTICSEARCH=1/" .env
-    else
-        echo "WARDEN_ELASTICSEARCH=1" >> .env
-    fi
+    update_env_var "WARDEN_ELASTICSEARCH" "1"
+    update_env_var "ELASTICSEARCH_VERSION" "${ELASTICSEARCH_VERSION}"
     
-    # Set ELASTICSEARCH_VERSION
-    if grep -q "^ELASTICSEARCH_VERSION=" .env; then
-        sed -i "s/^ELASTICSEARCH_VERSION=.*/ELASTICSEARCH_VERSION=${ELASTICSEARCH_VERSION}/" .env
-    else
-        echo "ELASTICSEARCH_VERSION=${ELASTICSEARCH_VERSION}" >> .env
-    fi
-
     # Disable OpenSearch if Elasticsearch is used
     if grep -q "^WARDEN_OPENSEARCH=" .env; then
         sed -i "s/^WARDEN_OPENSEARCH=.*/WARDEN_OPENSEARCH=0/" .env
     fi
 fi
+
 if [[ "${RABBITMQ_VERSION}" != "null" ]]; then
-    if grep -q "^RABBITMQ_VERSION=" .env; then
-        sed -i "s/^RABBITMQ_VERSION=.*/RABBITMQ_VERSION=${RABBITMQ_VERSION}/" .env
-    else
-        echo "RABBITMQ_VERSION=${RABBITMQ_VERSION}" >> .env
-    fi
+    update_env_var "RABBITMQ_VERSION" "${RABBITMQ_VERSION}"
 fi
 
-# Update Varnish if version is not null
 if [[ "${VARNISH_VERSION}" != "null" ]]; then
-    if grep -q "^VARNISH_VERSION=" .env; then
-        sed -i "s/^VARNISH_VERSION=.*/VARNISH_VERSION=${VARNISH_VERSION}/" .env
-    else
-        echo "VARNISH_VERSION=${VARNISH_VERSION}" >> .env
-    fi
+    update_env_var "VARNISH_VERSION" "${VARNISH_VERSION}"
 fi
 
 # Disable xdebug3 for PHP versions < 7.2 (xdebug3 requires PHP 7.2+)
 PHP_MAJOR=$(echo "${PHP_VERSION}" | cut -d. -f1)
 PHP_MINOR=$(echo "${PHP_VERSION}" | cut -d. -f2)
 if [[ "${PHP_MAJOR}" -lt 7 ]] || [[ "${PHP_MAJOR}" -eq 7 && "${PHP_MINOR}" -lt 2 ]]; then
-    if grep -q "^PHP_XDEBUG_3=" .env; then
-        sed -i "s/^PHP_XDEBUG_3=.*/PHP_XDEBUG_3=0/" .env
-    else
-        echo "PHP_XDEBUG_3=0" >> .env
-    fi
+    update_env_var "PHP_XDEBUG_3" "0"
 fi
 
 echo "✅ .env file updated successfully!"
