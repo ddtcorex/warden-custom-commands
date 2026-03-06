@@ -20,12 +20,6 @@ Custom commands that extend Warden's functionality for multiple framework types.
    docker-compose --version
    ```
 
-3. **Mutagen** 0.11.4 or later (macOS only, for sync sessions)
-
-```bash
-# Will be automatically installed via Homebrew if not present
-```
-
 ### Install Warden
 
 ### Option 1: Via Homebrew (Recommended)

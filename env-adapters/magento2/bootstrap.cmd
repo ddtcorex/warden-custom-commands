@@ -316,32 +316,14 @@ fi
 :: Verifying configuration
 INIT_ERROR=
 
-## attempt to install mutagen if not already present
-if [[ "${OSTYPE}" =~ ^darwin ]] && ! command -v mutagen >/dev/null 2>&1 && command -v brew >/dev/null 2>&1; then
-    warning "Mutagen could not be found; attempting install via brew."
-    brew install havoc-io/mutagen/mutagen
-fi
-
 ## check for presence of host machine dependencies
-for DEP_NAME in warden mutagen pv; do
-    if [[ "${DEP_NAME}" = "mutagen" ]] && [[ ! $OSTYPE =~ ^darwin ]]; then
-        continue
-    fi
+for DEP_NAME in warden pv; do
 
     if ! command -v "${DEP_NAME}" >/dev/null 2>&1; then
         error "Command '${DEP_NAME}' not found. Please install."
         INIT_ERROR=1
     fi
 done
-
-## verify mutagen version constraint
-# mutagen may not be installed on non-macOS systems
-MUTAGEN_VERSION=$(mutagen version 2>/dev/null) || MUTAGEN_VERSION=""
-MUTAGEN_REQUIRE=0.11.4
-if [[ $OSTYPE =~ ^darwin ]] && ! test $(version ${MUTAGEN_VERSION}) -ge $(version ${MUTAGEN_REQUIRE}); then
-    error "Mutagen ${MUTAGEN_REQUIRE} or greater is required (version ${MUTAGEN_VERSION} is installed)"
-    INIT_ERROR=1
-fi
 
 ## check for presence of local configuration files to ensure they exist
 for REQUIRED_FILE in ${REQUIRED_FILES[@]}; do
