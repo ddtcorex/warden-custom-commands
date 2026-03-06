@@ -6,7 +6,8 @@
 # Build common SSH options used across all commands
 # Usage: ssh_opts=$(build_ssh_opts)
 function build_ssh_opts() {
-    local opts="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -o BatchMode=yes"
+    # SSH KeepAlive is added to prevent long-running processes (like stream-db) from dropping
+    local opts="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR -o BatchMode=yes -o ServerAliveInterval=60 -o ServerAliveCountMax=10"
     
     if [[ -n "${SSH_AUTH_SOCK:-}" ]]; then
         opts="${opts} -A"

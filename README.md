@@ -22,14 +22,7 @@ Custom commands that extend Warden's functionality for multiple framework types.
 
 ### Install Warden
 
-### Option 1: Via Homebrew (Recommended)
-
-```bash
-brew install wardenenv/warden/warden
-warden svc up
-```
-
-### Option 2: Alternative Installation (Manual)
+### Option 1: Manual Installation (Recommended)
 
 ```bash
 sudo mkdir /opt/warden
@@ -37,6 +30,13 @@ sudo chown $(whoami) /opt/warden
 git clone -b main https://github.com/wardenenv/warden.git /opt/warden
 echo 'export PATH="/opt/warden/bin:$PATH"' >> ~/.bashrc
 PATH="/opt/warden/bin:$PATH"
+warden svc up
+```
+
+### Option 2: Via Homebrew
+
+```bash
+brew install wardenenv/warden/warden
 warden svc up
 ```
 

@@ -15,6 +15,9 @@ Deploy Magento locally. By default, runs a full deployment.
 \033[33mArguments:\033[0m
   -e, --environment=<env>   Remote environment to deploy to (e.g. staging, prod). Default: local
 
+  -l, --locales="<l1> <l2>" Space-separated locales to deploy (e.g. "en_US fr_FR")
+                            If not set, uses default locales defined in Magento DB.
+
   -o, --only-static         Deploy static files only (skip composer, upgrade, compile)
 
   -j, --jobs=<n>            Number of parallel jobs for static content deploy. Default: 4

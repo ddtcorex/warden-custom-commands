@@ -10,7 +10,7 @@ fi
 SSH_OPTS=${SSH_OPTS:-${WARDEN_SSH_OPTS:-}}
 
 # Determine RSYNC options
-RSYNC_OPTS="-azvPLk --force"
+RSYNC_OPTS="-azvPLk --force --timeout=60"
 if [[ "${SYNC_DRY_RUN:-0}" -eq 1 ]]; then
     RSYNC_OPTS="${RSYNC_OPTS} --dry-run"
 fi

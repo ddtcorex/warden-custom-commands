@@ -35,11 +35,24 @@ while (( "$#" )); do
             STATIC_ONLY=1
             shift
             ;;
+        -l=*|--locales=*)
+            DEPLOY_LOCALES="${1#*=}"
+            shift
+            ;;
+        -l|--locales)
+            DEPLOY_LOCALES="$2"
+            shift 2
+            ;;
         *)
             shift
             ;;
     esac
 done
+
+if [[ -n "${DEPLOY_LOCALES:-}" ]]; then
+    # remove quotes if they exist around localles and construct string
+    DEPLOY_LOCALES=$(echo "${DEPLOY_LOCALES}" | tr -d '"'\')
+fi
 
 function deploy_static() {
     printf "\n"
@@ -56,6 +69,37 @@ function deploy_static() {
         MAGENTO_VERSION="2.4"
     fi
     
+    if [[ -z "${DEPLOY_LOCALES:-}" ]]; then
+        printf "⌛ \033[1;32mAuto-detecting active locales from database...\033[0m\n"
+        
+        DETECT_PHP_CMD=$(cat <<'EOF'
+try {
+    $env = @include "app/etc/env.php";
+    if (!$env || !isset($env["db"]["connection"]["default"])) exit;
+    $d = $env["db"]["connection"]["default"];
+    $host = $d["host"]; $port = "3306";
+    if (strpos($host, ":") !== false) list($host, $port) = explode(":", $host);
+    $pdo = new PDO("mysql:host=$host;port=$port;dbname={$d['dbname']}", $d["username"], $d["password"]);
+    $prefix = $env["db"]["table_prefix"] ?? "";
+    $stmt = $pdo->query("SELECT value FROM `${prefix}core_config_data` WHERE path = 'general/locale/code' AND value != '' UNION SELECT interface_locale FROM `${prefix}admin_user` WHERE interface_locale IS NOT NULL AND interface_locale != ''");
+    if ($stmt) {
+        $locales = array_filter(array_unique($stmt->fetchAll(PDO::FETCH_COLUMN)));
+        if (!in_array("en_US", $locales)) $locales[] = "en_US";
+        echo implode(" ", $locales);
+    }
+} catch (Exception $e) {}
+EOF
+)
+        DETECTED_LOCALES=$(${EXEC_PREFIX} php -r "${DETECT_PHP_CMD}" 2>/dev/null | tr -d '\r' | xargs)
+        
+        if [[ -n "${DETECTED_LOCALES}" ]]; then
+            DEPLOY_LOCALES="${DETECTED_LOCALES}"
+            printf "ℹ️  Found locales: \033[33m%s\033[0m\n" "${DEPLOY_LOCALES}"
+        else
+            printf "⚠️  \033[1;33mCould not auto-detect locales, falling back to Magento defaults.\033[0m\n"
+        fi
+    fi
+
     # Check if version is >= 2.2 using sort -V
     LOWER_VERSION=$(printf "2.2\n%s" "${MAGENTO_VERSION}" | sort -V | head -n1)
     if [[ "${LOWER_VERSION}" == "2.2" ]]; then
@@ -65,10 +109,10 @@ function deploy_static() {
     fi
     
     if [[ "${IS_MODERN_MAGENTO}" -eq 1 ]]; then
-        ${EXEC_PREFIX} bin/magento setup:static-content:deploy -f --jobs=${DEPLOY_JOBS:-4} ${VERBOSE_FLAG}
+        ${EXEC_PREFIX} bin/magento setup:static-content:deploy -f --jobs=${DEPLOY_JOBS:-4} ${DEPLOY_LOCALES:-} ${VERBOSE_FLAG}
     else
         printf "Note: --jobs not supported on Magento < 2.2, using sequential deployment\n"
-        ${EXEC_PREFIX} bin/magento setup:static-content:deploy -f ${VERBOSE_FLAG}
+        ${EXEC_PREFIX} bin/magento setup:static-content:deploy -f ${DEPLOY_LOCALES:-} ${VERBOSE_FLAG}
     fi
     
     after_deploy_static

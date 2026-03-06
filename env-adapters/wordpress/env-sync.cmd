@@ -8,7 +8,7 @@ if [ -z "${ENV_SOURCE_HOST_VAR+x}" ]; then
 fi
 
 # Determine RSYNC options
-RSYNC_OPTS="-azvPLk --force"
+RSYNC_OPTS="-azvPLk --force --timeout=60"
 if [[ "${SYNC_DRY_RUN:-0}" -eq 1 ]]; then
     RSYNC_OPTS="${RSYNC_OPTS} --dry-run"
 fi
