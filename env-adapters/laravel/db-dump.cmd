@@ -43,7 +43,7 @@ function dump_local () {
     
     mkdir -p "$(dirname "${DUMP_FILENAME}")"
 
-    local db_dump="export MYSQL_PWD='${DB_PASS}'; ${DUMP_BIN} --no-tablespaces --single-transaction --routines ${ignored_opts} -hdb -u${DB_USER} ${DB_NAME} 2> >(grep -v 'Deprecated program name' >&2) | gzip"
+    local db_dump="export MYSQL_PWD='${DB_PASS}'; ${DUMP_BIN} --max-allowed-packet=512M --no-tablespaces --single-transaction --routines ${ignored_opts} -hdb -u${DB_USER} ${DB_NAME} 2> >(grep -v 'Deprecated program name' >&2) | gzip"
     warden env exec -T db bash -c "${db_dump}" > "${DUMP_FILENAME}"
 
     printf "✅ \033[32mDatabase dump complete! File: %s\033[0m\n" "${DUMP_FILENAME}"
@@ -82,7 +82,7 @@ function dump_premise () {
         # Download to local
         printf "⌛ \033[1;32mDumping \033[33m%s\033[1;32m database from \033[33m%s\033[1;32m to local...\033[0m\n" "${db_name}" "${ENV_SOURCE_HOST}"
 
-        local db_dump="export MYSQL_PWD='${db_pass}'; \$(command -v mariadb-dump || echo mysqldump) --no-tablespaces --single-transaction --routines ${ignored_opts} -h${db_host} -P${db_port} -u${db_user} ${db_name} 2> >(grep -v 'Deprecated program name' >&2) | ${sed_filters} | gzip"
+        local db_dump="export MYSQL_PWD='${db_pass}'; \$(command -v mariadb-dump || echo mysqldump) --max-allowed-packet=512M --no-tablespaces --single-transaction --routines ${ignored_opts} -h${db_host} -P${db_port} -u${db_user} ${db_name} 2> >(grep -v 'Deprecated program name' >&2) | ${sed_filters} | gzip -1"
         warden remote-exec -e "${ENV_SOURCE}" -- bash -c "set -o pipefail; ${db_dump}" > "${DUMP_FILENAME}"
 
         printf "✅ \033[32mDatabase dump complete! File: %s\033[0m\n" "${DUMP_FILENAME}"
@@ -103,7 +103,7 @@ function dump_premise () {
         local dump_cmd="
             mkdir -p \"\$(dirname \"${remote_cmd_file}\")\" && 
             export MYSQL_PWD='${db_pass}'; 
-            \$(command -v mariadb-dump || echo mysqldump) --no-tablespaces --single-transaction --routines ${ignored_opts} -h${db_host} -P${db_port} -u${db_user} ${db_name} 2> >(grep -v 'Deprecated program name' >&2) | ${sed_filters} | gzip > \"${remote_cmd_file}\"
+            \$(command -v mariadb-dump || echo mysqldump) --max-allowed-packet=512M --no-tablespaces --single-transaction --routines ${ignored_opts} -h${db_host} -P${db_port} -u${db_user} ${db_name} 2> >(grep -v 'Deprecated program name' >&2) | ${sed_filters} | gzip > \"${remote_cmd_file}\"
         "
         
         if ! warden remote-exec -e "${ENV_SOURCE}" -- bash -c "${dump_cmd}"; then

@@ -162,8 +162,8 @@ function sync_database() {
 
         printf "  Streaming sync: %s -> %s (through local)...\n" "${SYNC_SOURCE}" "${SYNC_DESTINATION}"
         
-        local dump_cmd="export MYSQL_PWD='${src_db_pass}'; \$(command -v mariadb-dump || echo mysqldump) --single-transaction --no-tablespaces --routines -h${src_db_host} -P${src_db_port} -u${src_db_user} ${src_db_name}"
-        local import_cmd="export MYSQL_PWD='${dest_db_pass}'; { echo \"SET FOREIGN_KEY_CHECKS=0; SET UNIQUE_CHECKS=0; SET AUTOCOMMIT=0;\"; cat; echo \"COMMIT; SET FOREIGN_KEY_CHECKS=1; SET UNIQUE_CHECKS=1; SET AUTOCOMMIT=1;\"; } | \$(command -v mariadb || echo mysql) -h${dest_db_host} -P${dest_db_port} -u${dest_db_user} ${dest_db_name} -f"
+        local dump_cmd="export MYSQL_PWD='${src_db_pass}'; \$(command -v mariadb-dump || echo mysqldump) --max-allowed-packet=512M --single-transaction --no-tablespaces --routines -h${src_db_host} -P${src_db_port} -u${src_db_user} ${src_db_name} | gzip -1"
+        local import_cmd="export MYSQL_PWD='${dest_db_pass}'; { echo \"SET FOREIGN_KEY_CHECKS=0; SET UNIQUE_CHECKS=0; SET AUTOCOMMIT=0;\"; gunzip -c; echo \"COMMIT; SET FOREIGN_KEY_CHECKS=1; SET UNIQUE_CHECKS=1; SET AUTOCOMMIT=1;\"; } | \$(command -v mariadb || echo mysql) --max-allowed-packet=512M -h${dest_db_host} -P${dest_db_port} -u${dest_db_user} ${dest_db_name} -f"
 
         PV=$(command -v pv || echo cat)
         local pv_cmd="cat"
@@ -178,7 +178,9 @@ function sync_database() {
 
         # 2. Stream dump from source to destination
         if ! warden remote-exec -e "${SYNC_SOURCE}" -- bash -c "${dump_cmd}" \
+            | gunzip -c \
             | sed "${SED_FILTERS[@]}" \
+            | gzip -1 \
             | ${pv_cmd} \
             | warden remote-exec -e "${SYNC_DESTINATION}" -- bash -c "${import_cmd}"; then
             printf "\033[31mError: Remote-to-Remote sync failed.\033[0m\n" >&2
@@ -223,7 +225,7 @@ function sync_database() {
 
         printf "Streaming mysqldump from local to %s ...\n" "${SYNC_DESTINATION}"
 
-        local mysql_import_cmd="{ echo \"SET FOREIGN_KEY_CHECKS=0; SET UNIQUE_CHECKS=0; SET AUTOCOMMIT=0;\"; cat; echo \"COMMIT; SET FOREIGN_KEY_CHECKS=1; SET UNIQUE_CHECKS=1; SET AUTOCOMMIT=1;\"; } | \$(command -v mariadb || echo mysql) -h${dest_db_host} -P${dest_db_port} -u${dest_db_user} ${dest_db_name} -f"
+        local mysql_import_cmd="{ echo \"SET FOREIGN_KEY_CHECKS=0; SET UNIQUE_CHECKS=0; SET AUTOCOMMIT=0;\"; gunzip -c; echo \"COMMIT; SET FOREIGN_KEY_CHECKS=1; SET UNIQUE_CHECKS=1; SET AUTOCOMMIT=1;\"; } | \$(command -v mariadb || echo mysql) --max-allowed-packet=512M -h${dest_db_host} -P${dest_db_port} -u${dest_db_user} ${dest_db_name} -f"
 
         # 1. Reset destination database
         printf "  Resetting remote database ...\n"
@@ -233,8 +235,10 @@ function sync_database() {
         fi
 
         # 2. Stream import
-        if ! warden env exec -T db bash -c "export MYSQL_PWD='${src_db_pass}'; ${DUMP_BIN} --single-transaction --no-tablespaces --routines -h${src_db_host} -P${src_db_port} -u${src_db_user} ${src_db_name}" \
+        if ! warden env exec -T db bash -c "export MYSQL_PWD='${src_db_pass}'; ${DUMP_BIN} --max-allowed-packet=512M --single-transaction --no-tablespaces --routines -h${src_db_host} -P${src_db_port} -u${src_db_user} ${src_db_name} | gzip -1" \
+            | gunzip -c \
             | sed "${SED_FILTERS[@]}" \
+            | gzip -1 \
             | warden remote-exec -e "${ENV_SOURCE}" -- bash -c "export MYSQL_PWD='${dest_db_pass}'; ${mysql_import_cmd}"; then
             
             printf "\033[31mError: Database upload from local failed.\033[0m\n" >&2
@@ -266,11 +270,11 @@ function sync_database() {
     local pv_cmd="cat"
     if [[ "${PV}" == "pv" ]]; then pv_cmd="pv -N Downloading"; fi
 
-    warden remote-exec -e "${ENV_SOURCE}" -- bash -c "export MYSQL_PWD='${db_pass}'; \$(command -v mariadb-dump || echo mysqldump) --single-transaction --no-tablespaces --routines -h${db_host} -P${db_port} -u${db_user} ${db_name} | gzip" \
+    warden remote-exec -e "${ENV_SOURCE}" -- bash -c "export MYSQL_PWD='${db_pass}'; \$(command -v mariadb-dump || echo mysqldump) --max-allowed-packet=512M --single-transaction --no-tablespaces --routines -h${db_host} -P${db_port} -u${db_user} ${db_name} | gzip -1" \
         | ${pv_cmd} \
-        | zcat \
+        | gunzip -c \
         | sed "${SED_FILTERS[@]}" \
-        | warden env exec -T db bash -c 'export MYSQL_PWD="$MYSQL_PASSWORD"; { echo "SET FOREIGN_KEY_CHECKS=0; SET UNIQUE_CHECKS=0; SET AUTOCOMMIT=0;"; cat; echo "COMMIT; SET FOREIGN_KEY_CHECKS=1; SET UNIQUE_CHECKS=1; SET AUTOCOMMIT=1;"; } | $(command -v mariadb || echo mysql) -hdb -u"$MYSQL_USER" "$MYSQL_DATABASE" -f'
+        | warden env exec -T db bash -c 'export MYSQL_PWD="$MYSQL_PASSWORD"; { echo "SET FOREIGN_KEY_CHECKS=0; SET UNIQUE_CHECKS=0; SET AUTOCOMMIT=0;"; cat; echo "COMMIT; SET FOREIGN_KEY_CHECKS=1; SET UNIQUE_CHECKS=1; SET AUTOCOMMIT=1;"; } | $(command -v mariadb || echo mysql) --max-allowed-packet=512M -hdb -u"$MYSQL_USER" "$MYSQL_DATABASE" -f'
 }
 
 # 1. Sync Files/Code
