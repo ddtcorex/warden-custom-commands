@@ -371,7 +371,7 @@ if [ -z "${WARDEN_ENCRYPT_KEY+x}" ]; then
     fi
     # If still not set, generate a random 32-character encryption key
     if [[ -z "${ENCRYPT_KEY:-}" ]]; then
-        ENCRYPT_KEY=$(cat /dev/urandom | env LC_ALL=C tr -dc 'a-f0-9' | fold -w 32 | head -n 1)
+        ENCRYPT_KEY=$(od -vN 16 -An -tx1 /dev/urandom | tr -d ' \n')
     fi
 else
     ENCRYPT_KEY="$WARDEN_ENCRYPT_KEY"

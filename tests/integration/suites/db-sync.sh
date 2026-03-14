@@ -15,7 +15,7 @@ test_db_sync_download() {
     
     # Check data transfer
     local result
-    result=$(run_db_query "${LOCAL_PHP}" "SELECT val FROM test_sync_table WHERE id=1;" 2>&1 | grep "remote-dev-data" | head -n 1)
+    result=$(run_db_query "${LOCAL_PHP}" "SELECT val FROM test_sync_table WHERE id=1;" 2>&1 | grep "remote-dev-data" | awk 'NR==1')
     
     if [[ "${result}" == *"remote-dev-data"* ]]; then
         pass "DB sync download - data transferred correctly"
@@ -51,7 +51,7 @@ test_db_sync_upload() {
     
     # 1. Verify data transfer
     local result
-    result=$(run_db_query "${DEV_PHP}" "SELECT val FROM test_upload_table WHERE id=1;" 2>&1 | grep "local-upload-data" | head -n 1)
+    result=$(run_db_query "${DEV_PHP}" "SELECT val FROM test_upload_table WHERE id=1;" 2>&1 | grep "local-upload-data" | awk 'NR==1')
     
     if [[ "${result}" == *"local-upload-data"* ]]; then
         pass "DB sync upload - data transferred (Local -> Dev)"

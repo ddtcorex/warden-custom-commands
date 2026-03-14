@@ -130,7 +130,7 @@ test_r2r_db_sync() {
     output=$(run_sync_confirmed -s dev -d staging --db --backup 2>&1) || true
     
     local result
-    result=$(run_db_query "${STAGING_PHP}" "SELECT val FROM test_r2r_db WHERE id=1;" 2>&1 | grep "r2r-db-data" | head -n 1)
+    result=$(run_db_query "${STAGING_PHP}" "SELECT val FROM test_r2r_db WHERE id=1;" 2>&1 | grep "r2r-db-data" | awk 'NR==1')
     
     if [[ "${result}" == *"r2r-db-data"* ]]; then
         pass "R2R DB sync - data transferred correctly"

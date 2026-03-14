@@ -60,7 +60,7 @@ printf "Target version: %s\n" "${TARGET_VERSION}"
 printf "\n"
 
 # Detect current version
-CURRENT_VERSION=$(warden env exec -T php-fpm php bin/magento --version 2>/dev/null | grep -oP '\d+\.\d+\.\d+(-p\d+)?' | head -n1 || true)
+CURRENT_VERSION=$(warden env exec -T php-fpm php bin/magento --version 2>/dev/null | grep -oP '\d+\.\d+\.\d+(-p\d+)?' | awk 'NR==1' || true)
 
 if [[ -z "${CURRENT_VERSION}" ]]; then
     # Fallback: Try reading from composer.json
@@ -68,7 +68,7 @@ if [[ -z "${CURRENT_VERSION}" ]]; then
     
     # If still unknown, try looking for magento/product package version
     if [[ "${CURRENT_VERSION}" == "unknown" ]]; then
-         CURRENT_VERSION=$(warden env exec -T php-fpm composer show magento/product-community-edition 2>/dev/null | grep 'versions' | grep -oP ' \K\d+\.\d+\.\d+(-p\d+)?' | head -n1 || echo "unknown")
+         CURRENT_VERSION=$(warden env exec -T php-fpm composer show magento/product-community-edition 2>/dev/null | grep 'versions' | grep -oP ' \K\d+\.\d+\.\d+(-p\d+)?' | awk 'NR==1' || echo "unknown")
     fi
 fi
 printf "Current version: %s\n" "${CURRENT_VERSION}"

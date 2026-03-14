@@ -14,10 +14,10 @@ function get_remote_db_info() {
         return 1
     fi
 
-    local db_name=$(printf "%s" "${db_config}" | grep "DB_NAME" | head -n 1 | sed -E "s/.*['\"]DB_NAME['\"]\s*,\s*['\"](.*)['\"].*/\1/")
-    local db_user=$(printf "%s" "${db_config}" | grep "DB_USER" | head -n 1 | sed -E "s/.*['\"]DB_USER['\"]\s*,\s*['\"](.*)['\"].*/\1/")
-    local db_pass=$(printf "%s" "${db_config}" | grep "DB_PASSWORD" | head -n 1 | sed -E "s/.*['\"]DB_PASSWORD['\"]\s*,\s*['\"](.*)['\"].*/\1/")
-    local db_host_raw=$(printf "%s" "${db_config}" | grep "DB_HOST" | head -n 1 | sed -E "s/.*['\"]DB_HOST['\"]\s*,\s*['\"](.*)['\"].*/\1/")
+    local db_name=$(printf "%s" "${db_config}" | grep "DB_NAME" | awk 'NR==1' | sed -E "s/.*['\"]DB_NAME['\"]\s*,\s*['\"](.*)['\"].*/\1/")
+    local db_user=$(printf "%s" "${db_config}" | grep "DB_USER" | awk 'NR==1' | sed -E "s/.*['\"]DB_USER['\"]\s*,\s*['\"](.*)['\"].*/\1/")
+    local db_pass=$(printf "%s" "${db_config}" | grep "DB_PASSWORD" | awk 'NR==1' | sed -E "s/.*['\"]DB_PASSWORD['\"]\s*,\s*['\"](.*)['\"].*/\1/")
+    local db_host_raw=$(printf "%s" "${db_config}" | grep "DB_HOST" | awk 'NR==1' | sed -E "s/.*['\"]DB_HOST['\"]\s*,\s*['\"](.*)['\"].*/\1/")
 
     local db_host=${db_host_raw%%:*}
     local db_port=${db_host_raw#*:}

@@ -64,7 +64,7 @@ function deploy_static() {
     
     # Check Magento version for --jobs support (2.2+)
     # Capture version. If empty, default to 2.4.
-    MAGENTO_VERSION=$(${EXEC_PREFIX} bin/magento --version 2>/dev/null | tr -d '\r' | grep -oP '\d+\.\d+' | head -n1)
+    MAGENTO_VERSION=$(${EXEC_PREFIX} bin/magento --version 2>/dev/null | tr -d '\r' | grep -oP '\d+\.\d+' | awk 'NR==1')
     if [[ -z "${MAGENTO_VERSION}" ]]; then
         MAGENTO_VERSION="2.4"
     fi
@@ -101,7 +101,7 @@ EOF
     fi
 
     # Check if version is >= 2.2 using sort -V
-    LOWER_VERSION=$(printf "2.2\n%s" "${MAGENTO_VERSION}" | sort -V | head -n1)
+    LOWER_VERSION=$(printf "2.2\n%s" "${MAGENTO_VERSION}" | sort -V | awk 'NR==1')
     if [[ "${LOWER_VERSION}" == "2.2" ]]; then
         IS_MODERN_MAGENTO=1
     else

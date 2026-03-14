@@ -64,7 +64,7 @@ else
             # Find the first key in the file that matches this base version.
             # Since the file is sorted descending, the first match (e.g. 2.4.8-p3) is the latest known patch.
             # Use POSIX-compatible grep/awk instead of GNU grep-only PCRE
-            FALLBACK_VERSION=$(grep -E "^\s*\"${ESCAPED_BASE}(-[^\"]+)?\"\s*:" "${JSON_FILE}" 2>/dev/null | head -n 1 | awk -F '"' '{print $2}')
+            FALLBACK_VERSION=$(grep -E "^\s*\"${ESCAPED_BASE}(-[^\"]+)?\"\s*:" "${JSON_FILE}" 2>/dev/null | awk -F '"' 'NR==1{print $2}')
             
             if [[ -n "${FALLBACK_VERSION}" ]]; then
                 printf "⚠ Version '%s' not found.\n" "${MAGENTO_VERSION}"

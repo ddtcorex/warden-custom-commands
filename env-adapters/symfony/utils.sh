@@ -10,7 +10,7 @@ function get_remote_db_info() {
     # Fetch DB URL via SSH
     # Check .env.local first, then .env
     # We use -r to prevent backslash escaping issues in grep output, but SSH layer might still strict it.
-    local db_url=$(warden remote-exec -e "${env_name}" -- grep -h -E '^DATABASE_URL=' "${remote_dir}/.env.local" "${remote_dir}/.env" 2>/dev/null | head -n 1)
+    local db_url=$(warden remote-exec -e "${env_name}" -- grep -h -E '^DATABASE_URL=' "${remote_dir}/.env.local" "${remote_dir}/.env" 2>/dev/null | awk 'NR==1')
     
     if [[ -z "${db_url}" ]]; then
         return 1
