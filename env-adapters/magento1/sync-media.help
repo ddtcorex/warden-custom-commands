@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+[[ ! "${WARDEN_DIR:-}" ]] && >&2 printf "\033[31mNot intended to run directly!\033[0m\n" && exit 1
+
+WARDEN_USAGE=$(cat <<EOF
+\033[33mUsage:\033[0m
+  sync-media [-h|--help] [-e|--environment=<env>] [--dry-run] [--delete] [--include-product]
+
+\033[33mOptions:\033[0m
+  -h, --help              Display this help menu.
+  --dry-run               Perform a dry run (show files that would be synced).
+  --delete                Delete files on destination that don't exist on source.
+  --include-product       Include the catalog/product directory (excluded by default).
+
+\033[33mArguments:\033[0m
+  -e, --environment=<env> Remote environment to source from. Default: staging.
+EOF
+)

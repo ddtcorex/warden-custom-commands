@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+[[ ! "${WARDEN_DIR:-}" ]] && >&2 printf "\033[31mNot intended to run directly!\033[0m\n" && exit 1
+
+WARDEN_USAGE=$(cat <<EOF
+\033[33mUsage:\033[0m
+  deploy [-h|--help] [-e|--environment=<env>]
+
+\033[33mOptions:\033[0m
+  -h, --help                   Display this help menu.
+
+\033[33mArguments:\033[0m
+  -e, --environment=<env>      Environment to deploy to. Default: local
+EOF
+)

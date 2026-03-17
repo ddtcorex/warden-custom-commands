@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+[[ ! "${WARDEN_DIR:-}" ]] && >&2 printf "\033[31mNot intended to run directly!\033[0m\n" && exit 1
+
+WARDEN_USAGE=$(cat <<EOF
+\033[33mUsage:\033[0m
+  open <service> [-h|--help] [-e|--environment=<env>] [-a]
+
+\033[33mOptions:\033[0m
+  -h, --help                   Display this help menu.
+  -a                           Auto-open the URL in default browser.
+
+\033[33mArguments:\033[0m
+  <service>                    Service to open: db, shell, sftp, admin
+  -e, --environment=<env>      Environment to open from. Default: local
+EOF
+)

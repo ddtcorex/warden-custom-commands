@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+[[ ! "${WARDEN_DIR:-}" ]] && >&2 printf "\033[31mNot intended to run directly!\033[0m\n" && exit 1
+
+set -euo pipefail
+
+# Support for M1 specific DB_PREFIX
+if [[ -z "${WARDEN_DB_PREFIX+x}" ]]; then
+    DB_PREFIX=
+else
+    DB_PREFIX="$WARDEN_DB_PREFIX"
+fi
+
+if [[ -n "${REMOTE_DB_PREFIX+x}" ]]; then
+    DB_PREFIX="$REMOTE_DB_PREFIX"
+fi
+export DB_PREFIX
+
+# Source core env-variables to load all standard logic and helpers
+# Note: Root env-variables handles locateEnvPath, loadEnvConfig, SSH_OPTS, etc.
+source "$(dirname "$(dirname "$(dirname "${BASH_SOURCE[0]}")")")/env-variables"
