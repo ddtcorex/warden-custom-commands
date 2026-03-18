@@ -315,10 +315,35 @@ fi
 
 if [[ "${ADMIN_CREATE:-0}" -eq "1" ]]; then
     :: Creating admin user
-    printf "INSERT IGNORE INTO ${DB_PREFIX}admin_user(username, firstname, lastname, email, password, created, lognum, reload_acl_flag, is_active, extra, rp_token, rp_token_created_at)VALUES('admin', 'Admin', 'User', 'admin@${TRAEFIK_SUBDOMAIN}.${TRAEFIK_DOMAIN}', MD5('Admin123$'), NOW(), 0, 0, 1, NULL, NULL, NOW());" | warden db connect
-    USER_ID=$(printf "SELECT user_id FROM ${DB_PREFIX}admin_user WHERE username='admin'\G" | warden db connect | grep user_id | awk '{print $2}')
-    if [[ -n "${USER_ID}" ]]; then
-        printf "INSERT IGNORE INTO ${DB_PREFIX}admin_role (parent_id, tree_level, sort_order, role_type, user_id, role_name) VALUES (1, 2, 0, 'U', ${USER_ID}, 'Administrator');" | warden db connect
+    # Ensure tables exist before trying to update/assign roles
+    if warden env exec -T db bash -c 'export MYSQL_PWD="$MYSQL_PASSWORD"; $(command -v mariadb || echo mysql) -u"$MYSQL_USER" "$MYSQL_DATABASE" -e "SHOW TABLES LIKE \"${DB_PREFIX}admin_user\"" -N -s' | grep -q "${DB_PREFIX}admin_user"; then
+        
+        # We use a salted MD5 hash for maximum compatibility with all M1 versions
+        # Password: Admin123$, Salt: admin
+        pass_hash=$(printf "adminAdmin123$" | md5sum | awk '{print $1}')
+        salted_pass="${pass_hash}:admin"
+        
+        warden env exec -T db bash -c "export MYSQL_PWD=\"\$MYSQL_PASSWORD\"; \$(command -v mariadb || echo mysql) -u\"\$MYSQL_USER\" \"\$MYSQL_DATABASE\" -f" <<EOF
+INSERT INTO ${DB_PREFIX}admin_user(username, firstname, lastname, email, password, created, lognum, reload_acl_flag, is_active, extra, rp_token, rp_token_created_at)
+VALUES ("admin", "Admin", "User", "admin@${TRAEFIK_SUBDOMAIN}.${TRAEFIK_DOMAIN}", "${salted_pass}", NOW(), 0, 0, 1, NULL, NULL, NOW())
+ON DUPLICATE KEY UPDATE password = "${salted_pass}", is_active = 1;
+
+-- Ensure an 'Administrators' role group exists
+INSERT IGNORE INTO ${DB_PREFIX}admin_role (parent_id, tree_level, sort_order, role_type, user_id, role_name)
+VALUES (0, 1, 1, 'G', 0, 'Administrators');
+
+-- Ensure the role has 'all' permissions
+INSERT IGNORE INTO ${DB_PREFIX}admin_rule (role_id, resource_id, privileges, assert_id, role_type, permission)
+SELECT role_id, 'all', NULL, 0, 'G', 'allow' FROM ${DB_PREFIX}admin_role WHERE role_type = 'G' AND role_name = 'Administrators' LIMIT 1;
+
+-- Assign user to the 'Administrators' role
+INSERT INTO ${DB_PREFIX}admin_role (parent_id, tree_level, sort_order, role_type, user_id, role_name)
+SELECT role_id, 2, 0, 'U', (SELECT user_id FROM ${DB_PREFIX}admin_user WHERE username = 'admin' LIMIT 1), 'admin'
+FROM ${DB_PREFIX}admin_role WHERE role_type = 'G' AND role_name = 'Administrators' LIMIT 1
+ON DUPLICATE KEY UPDATE parent_id = VALUES(parent_id);
+EOF
+    else
+        warning "Table ${DB_PREFIX}admin_user not found. Skipping admin user creation. (Expected if DB is not yet initialized)"
     fi
 fi
 
