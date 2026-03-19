@@ -2,15 +2,6 @@
 # Source Warden utilities
 [[ -f "${WARDEN_DIR}/utils/env.sh" ]] && source "${WARDEN_DIR}/utils/env.sh"
 
-# Reconstruct arguments from WARDEN_PARAMS if no arguments are passed natively (e.g. via warden sourced commands)
-# We use a lock variable to prevent duplicating arguments if this file is sourced multiple times
-if [[ "${_ENV_VARS_ARGS_MERGED:-0}" -eq 0 ]]; then
-    if [[ -n "${WARDEN_PARAMS[@]+_}" ]]; then
-        set -- "${WARDEN_PARAMS[@]}" "$@"
-    fi
-    _ENV_VARS_ARGS_MERGED=1
-fi
-
 [[ ! "${WARDEN_DIR:-}" ]] && >&2 printf "\033[31mThis script is not intended to be run directly!\033[0m\n" && exit 1
 
 # Enable strict mode for all commands
@@ -198,7 +189,6 @@ done
 
 # Update positional parameters with filtered args
 set -- "${FILTERED_ARGS[@]}"
-WARDEN_PARAMS=("${FILTERED_ARGS[@]}")
 
 if [[ -z "${ENV_SOURCE:-}" ]]; then
     ENV_SOURCE=staging

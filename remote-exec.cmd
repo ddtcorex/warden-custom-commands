@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 [[ ! "${WARDEN_DIR:-}" ]] && >&2 printf "\033[31mThis script is not intended to be run directly!\033[0m\n" && exit 1
 
+# Reconstruct arguments from WARDEN_PARAMS (consumed by warden) and preserved "$@"
+# This is necessary because warden consumes non-flag arguments into WARDEN_PARAMS
+if [[ -n "${WARDEN_PARAMS[@]+_}" ]]; then
+    set -- "${WARDEN_PARAMS[@]}" "$@"
+fi
+
 SUBCOMMAND_DIR=$(dirname "${BASH_SOURCE[0]}")
 source "${SUBCOMMAND_DIR}"/env-variables
 
