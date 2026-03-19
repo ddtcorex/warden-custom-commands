@@ -3,7 +3,7 @@
 
 WARDEN_USAGE=$(cat <<EOF
 \033[33mUsage:\033[0m
-  bootstrap [-h|--help] [-e|--environment=<env>] [-c|--clone] [--fresh] [--include-sample] [--code-only] [--no-db] [--no-media] [--no-composer] [--no-admin] [--no-stream-db] [--db-dump=<file>]
+  bootstrap [-h|--help] [-e|--environment=<env>] [-c|--clone] [--fresh] [--include-sample] [--code-only] [--no-db] [--no-media] [--no-composer] [--no-admin] [--no-stream-db] [--db-dump=<file>] [--no-noise] [--no-pii]
 
 \033[33mOptions:\033[0m
   -h, --help                   Display this help menu.
@@ -22,5 +22,7 @@ WARDEN_USAGE=$(cat <<EOF
   -p, --meta-package=<pkg>     Magento meta-package. Default: magento/project-community-edition
   --version, --meta-version=<v> Magento version to install.
   --db-dump=<file>             Path to a database dump file to import.
+  --no-noise                 Exclude noise tables (logs/cache/indexes) in DB sync.
+  --no-pii     Exclude PII/sensitive data from DB sync.
 EOF
 )

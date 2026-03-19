@@ -17,6 +17,8 @@ WARDEN_USAGE=$(cat <<EOF
   --include-product       Include the catalog/product directory (excluded by default).
   --no-backup             Do not backup the local environment before syncing.
   --no-stream-db          Disable database streaming.
+  --no-noise            Exclude noise tables (logs/cache/indexes) from DB sync
+  --no-pii Exclude sensitive data (customers, orders, etc).
 
 \033[33mArguments:\033[0m
   -e, --environment=<env> Remote environment to source from. Default: staging.

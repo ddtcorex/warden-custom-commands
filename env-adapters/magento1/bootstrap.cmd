@@ -23,6 +23,7 @@ ADMIN_CREATE=1
 ENV_REQUIRED=
 MAGE_USERNAME=
 MAGE_PASSWORD=
+DB_FLAGS=""
 
 ## argument parsing
 while [[ "$#" -gt 0 ]]; do
@@ -95,8 +96,12 @@ while [[ "$#" -gt 0 ]]; do
             ENV_REQUIRED=1
             shift
             ;;
-        --exclude-sensitive-data)
-            # Handled via env-variables if needed, or we can keep it as a flag
+        -S|--no-pii)
+            DB_FLAGS="${DB_FLAGS} --no-pii"
+            shift
+            ;;
+        -N|--no-noise)
+            DB_FLAGS="${DB_FLAGS} --no-noise"
             shift
             ;;
 
@@ -241,19 +246,19 @@ fi
 ## import database only if --skip-db-import is not specified
 if [[ -n "${DB_IMPORT:-}" ]]; then
     if [[ -n "${STREAM_DB:-}" ]]; then
-        warden db-import --stream-db -e "$ENV_SOURCE"
+        warden db-import --stream-db -e "$ENV_SOURCE" ${DB_FLAGS}
     elif [[ -z "${DB_DUMP:-}" ]]; then
         DB_DUMP="var/${WARDEN_ENV_NAME}_${ENV_SOURCE}-$(date +%Y%m%dT%H%M%S).sql.gz"
         :: Get database
-        warden db-dump --file="${DB_DUMP}" -e "$ENV_SOURCE"
+        warden db-dump --file="${DB_DUMP}" -e "$ENV_SOURCE" ${DB_FLAGS}
         
         if [[ "$DB_DUMP" ]]; then
             :: Importing database
-            warden db-import --file="${DB_DUMP}"
+            warden db-import --file="${DB_DUMP}" ${DB_FLAGS}
         fi
     else
         :: Importing database
-        warden db-import --file="${DB_DUMP}"
+        warden db-import --file="${DB_DUMP}" ${DB_FLAGS}
     fi
 fi
 

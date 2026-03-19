@@ -27,10 +27,31 @@ function get_remote_db_info() {
     if [[ "${db_host}" == "localhost" ]]; then
         db_host="127.0.0.1"
     fi
+
+    local db_prefix=$(warden remote-exec -e "${env_name}" -- grep -E "^\s*\\\$table_prefix\s*=" "${remote_dir}/wp-config.php" 2>/dev/null | sed -E "s/.*['\"](.*)['\"].*/\1/")
+    db_prefix=${db_prefix:-wp_}
     
     echo "DB_HOST=${db_host}"
     echo "DB_PORT=${db_port}"
     echo "DB_USERNAME=${db_user}"
     echo "DB_PASSWORD=${db_pass}"
     echo "DB_DATABASE=${db_name}"
+    echo "DB_PREFIX=${db_prefix}"
 }
+
+# List of tables to ignore during standard (no-noise flag) database dumps
+IGNORED_TABLES=(
+    'options_bak'
+    'options_replica'
+    'options_tmp'
+    'redirection_404'
+    'wflogs'
+)
+
+# List of tables containing sensitive data to be ignored when --no-pii is passed
+SENSITIVE_TABLES=(
+    'commentmeta'
+    'comments'
+    'usermeta'
+    'users'
+)

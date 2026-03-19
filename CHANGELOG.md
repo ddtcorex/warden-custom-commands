@@ -220,8 +220,8 @@ This release introduces sensitive data exclusion for all framework adapters, sta
 
 ### ✨ New Features
 
-- **Sensitive Data Exclusion (`--exclude-sensitive-data`):**
-  - Added support for `--exclude-sensitive-data` flag to `warden db-dump` for **Laravel**, **Symfony**, and **WordPress** adapters.
+- **Sensitive Data Exclusion (`--no-pii`):**
+  - Added support for `--no-pii` flag to `warden db-dump` for **Laravel**, **Symfony**, and **WordPress** adapters.
   - Automatically excludes sensitive tables (e.g., users, sessions, password resets) during database exports.
   - Aligns logic across all 4 major framework adapters.
 

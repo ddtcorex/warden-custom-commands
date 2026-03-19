@@ -7,26 +7,21 @@ PV="pv"
 if ! command -v pv &>/dev/null; then
     PV="cat"
 fi
-STREAM_DB=0
+STREAM_DB=${STREAM_DB:-0}
 DUMP_FILENAME=""
+
+# Arguments for stream-db
+it_no_noise=${SYNC_DB_NO_NOISE:-0}
+it_exclude_sensitive=${SYNC_DB_NO_PII:-0}
 
 while (( "$#" )); do
     case "$1" in
-        -f=*|--file=*)
-            DUMP_FILENAME="${1#*=}"
-            shift
-            ;;
-        -f|--file)
-            DUMP_FILENAME="$2"
-            shift 2
-            ;;
-        --stream-db)
-            STREAM_DB=1
-            shift
-            ;;
-        *)
-            shift
-            ;;
+        -f=*|--file=*) DUMP_FILENAME="${1#*=}"; shift ;;
+        -f|--file) DUMP_FILENAME="$2"; shift 2 ;;
+        --stream-db) STREAM_DB=1; shift ;;
+        -N|--no-noise) it_no_noise=1; shift ;;
+        -S|--no-pii) it_exclude_sensitive=1; shift ;;
+        *) shift ;;
     esac
 done
 
@@ -75,7 +70,7 @@ SED_FILTERS=(
     -e '/999999.*sandbox/d'
     -e 's/DEFINER=[^*]*\*/\*/g'
     -e 's/utf8mb4_0900_ai_ci/utf8mb4_general_ci/g'
-    -e 's/utf8mb4_unicode_520_ci/utf8mb4_general_ci/g'
+    -e 's/utf8mb4_unicode_520_ci/utf8_general_ci/g'
     -e 's/utf8_unicode_520_ci/utf8_general_ci/g'
 )
 
@@ -97,6 +92,7 @@ if [[ "${STREAM_DB}" -eq 1 ]]; then
     db_name=$(echo "${db_vars}" | grep "^DB_DATABASE=" | tail -n 1 | cut -d= -f2- | tr -d '"'"'")
     db_user=$(echo "${db_vars}" | grep "^DB_USERNAME=" | tail -n 1 | cut -d= -f2- | tr -d '"'"'")
     db_pass=$(echo "${db_vars}" | grep "^DB_PASSWORD=" | tail -n 1 | cut -d= -f2- | tr -d '"'"'")
+    DB_PREFIX=$(echo "${db_vars}" | grep "^DB_PREFIX=" | tail -n 1 | cut -d= -f2- | tr -d '"'"'")
 
     db_host=${db_host:-127.0.0.1}
     db_port=${db_port:-3306}
@@ -106,9 +102,22 @@ if [[ "${STREAM_DB}" -eq 1 ]]; then
       exit 1
     fi
 
+    local current_ignored=()
+    if [[ "${it_no_noise:-0}" -eq 1 ]]; then
+        current_ignored+=("${IGNORED_TABLES[@]}")
+    fi
+    if [[ "${it_exclude_sensitive:-0}" -eq "1" ]]; then
+        current_ignored+=("${SENSITIVE_TABLES[@]}")
+    fi
+
+    local ignored_opts=""
+    for table in "${current_ignored[@]}"; do
+        ignored_opts+=" --ignore-table=${db_name}.${DB_PREFIX}${table}"
+    done
+
     printf "Streaming dump from %s:%s ...\n" "${ENV_SOURCE_HOST}" "${db_name}"
     warden remote-exec -e "${ENV_SOURCE}" -- bash -c \
-        "export MYSQL_PWD='${db_pass}'; \$(command -v mariadb-dump || echo mysqldump) --max-allowed-packet=512M --single-transaction --no-tablespaces --routines -h${db_host} -P${db_port} -u${db_user} ${db_name} | gzip -1" \
+        "export MYSQL_PWD='${db_pass}'; \$(command -v mariadb-dump || echo mysqldump) --max-allowed-packet=512M --single-transaction --no-tablespaces --routines ${ignored_opts} -h${db_host} -P${db_port} -u${db_user} ${db_name} | gzip -1" \
         | gunzip -c \
         | sed "${SED_FILTERS[@]}" \
         | warden env exec -T db bash -c 'export MYSQL_PWD="$MYSQL_PASSWORD"; { echo "SET FOREIGN_KEY_CHECKS=0; SET UNIQUE_CHECKS=0; SET AUTOCOMMIT=0;"; cat; echo "COMMIT; SET FOREIGN_KEY_CHECKS=1; SET UNIQUE_CHECKS=1; SET AUTOCOMMIT=1;"; } | $(command -v mariadb || echo mysql) --max-allowed-packet=512M -hdb -u"$MYSQL_USER" "$MYSQL_DATABASE" -f'

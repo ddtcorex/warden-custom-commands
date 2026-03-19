@@ -50,6 +50,14 @@ EOF
     export PATH="${MOCK_BIN}:${PATH}"
     
     cat > "${TEST_SCRIPT_DIR}/test_wrapper.sh" << 'EOF'
+    # Mock normalize_env_name to match real implementation (dots to underscores)
+    function normalize_env_name() { echo "${1^^}" | tr '.' '_'; }
+    export -f normalize_env_name
+    
+    export REMOTE_REMOTE_EXAMPLE_COM_HOST="remote.example.com"
+    export REMOTE_REMOTE_EXAMPLE_COM_PORT="22"
+    export REMOTE_REMOTE_EXAMPLE_COM_USER="user"
+    
     source ./utils.sh
     get_remote_db_info "$@"
 EOF

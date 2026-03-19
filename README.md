@@ -268,7 +268,9 @@ The unified synchronization command for files, media, and databases.
 - `-f, --file`: Sync source code/files
 - `-m, --media`: Sync media files
 - `--db`: Sync database (streaming, no local dump file created)
-- `--full`: Sync everything (file, media, db)
+- `-N, --no-noise`: Skip noise tables from DB sync (logs, cache, search indexes)
+- `-S, --no-pii`: Exclude PII/GDPR sensitive tables (Customers, Orders, etc.)
+- `--full`: Full Sync (Shortcut for `--file --media --db`)
 - `-p, --path`: Sync a specific directory or file path
 - `--include-product`: Include product/cache images in media sync (Magento 2 only)
 - `--dry-run`: Show what would happen without making changes
@@ -320,8 +322,14 @@ The unified synchronization command for files, media, and databases.
 5. **Full Synchronization**
 
    ```bash
-   # Sync everything: DB, Media, Files
+   # Sync everything: DB, Media, Files (all tables included by default)
    warden env-sync --full
+
+   # Sync DB, skipping noise tables (logs/cache/search indexes)
+   warden env-sync --db -N
+
+   # Sync DB, skipping both noise tables and PII/sensitive data
+   warden env-sync --db -N -S
    ```
 
 6. **Dry Run**
@@ -366,6 +374,8 @@ Initialize a new Magento 2 environment with all dependencies and configuration.
 - `--no-composer` - Skip composer install
 - `--no-admin` - Skip admin user creation
 - `--no-stream-db` - Use intermediate dump file instead of streaming
+- `--no-noise` - Exclude noise tables (logs/cache/indexes) in DB sync during clone
+- `--no-pii` - Exclude PII/sensitive data from DB sync during clone
 
 **Other Options:**
 
@@ -399,17 +409,17 @@ Create a database backup with optional compression.
 - `-h, --help` - Display help menu
 - `-f, --file=<file>` - Output file path
 - `-e, --environment=<env>` - Specific environment (local, dev, staging, prod). Default: local
-- `--full` - Export full database (no table exclusions)
-- `--exclude-sensitive-data` - Exclude sensitive data (customers, orders, etc.)
+- `-N, --no-noise` - Exclude noise tables from dump (logs/cache/indexes)
+- `-S, --no-pii` - Exclude sensitive data (customers, orders, etc.)
 - `--local` - Download the dump to your local machine (host) instead of storing it on the remote server.
   (Applies only when dumping from remote environments; default behavior for remote is to store at `~/backup/` on the server).
 
 **Example:**
 
 ```bash
-warden db-dump
-warden db-dump --file=prod-backup.sql.gz -e prod
-warden db-dump --exclude-sensitive-data
+warden db-dump                       # Dump all tables (default)
+warden db-dump -N -e prod            # Dump from prod, skip noise tables
+warden db-dump -N -S                 # Skip noise + PII data
 ```
 
 #### Magento 2: `warden db-import`
@@ -548,6 +558,39 @@ warden fix-deps --version=2.4.8
 warden fix-deps --dry-run
 ```
 
+### Magento 1 Commands
+
+#### Magento 1: `warden bootstrap`
+
+Initialize a new Magento 1 / OpenMage environment.
+
+**Options:**
+
+- `-c, --clone` - Clone project from remote (source + DB + media)
+- `--code-only` - With --clone: skip DB and media sync
+- `--fresh` - Create fresh M1/OpenMage project
+- `--no-db`, `--no-media`, `--no-composer` - Skip specific steps
+- `--no-noise` - Exclude noise tables (logs/cache/indexes) in DB sync during clone
+- `--no-pii` - Exclude PII/sensitive data from DB sync during clone
+
+**Example:**
+
+```bash
+warden bootstrap -c -e staging
+```
+
+#### Magento 1: `warden env-sync`
+
+Standardized synchronization for M1. Supports `--db`, `--media`, `--no-noise`, etc.
+
+#### Magento 1: `warden db-dump` / `db-import`
+
+Standardized database operations for M1 with support for `--no-noise` and `--no-pii`.
+
+#### Magento 1: `warden upgrade` / `deploy` / `open`
+
+Utility commands adapted for Magento 1 architecture.
+
 ### Laravel Commands
 
 #### Laravel: `warden bootstrap`
@@ -570,6 +613,8 @@ Initialize Laravel environment with dependencies and database.
 - `--no-composer` - Skip composer install
 - `--no-migrate` - Skip database migrations
 - `--no-stream-db` - Use intermediate dump file instead of streaming
+- `--no-noise` - Exclude noise tables (logs/cache/indexes) in DB sync during clone
+- `--no-pii` - Exclude PII/sensitive data from DB sync during clone
 
 **Other Options:**
 
@@ -594,7 +639,8 @@ Dump database from a remote Laravel environment.
 - `-h, --help` - Display help menu
 - `-e, --environment=<env>` - Specific environment (local, dev, staging, prod). Default: local
 - `-f, --file=<file>` - Output file path
-- `--exclude-sensitive-data` - Exclude sensitive data from the dump
+- `-N, --no-noise` - Skip noise tables (logs, cache, indexes)
+- `-S, --no-pii` - Exclude sensitive data from the dump
 - `--local` - Download remote dump to local machine (default: store on remote at `~/backup/`)
 
 **Example:**
@@ -709,6 +755,8 @@ Initialize Symfony environment with dependencies and database.
 - `--no-composer` - Skip composer install
 - `--no-migrate` - Skip database migrations
 - `--no-stream-db` - Use intermediate dump file instead of streaming
+- `--no-noise` - Exclude noise tables (logs/cache/indexes) in DB sync during clone
+- `--no-pii` - Exclude PII/sensitive data from DB sync during clone
 
 **Other Options:**
 
@@ -733,7 +781,8 @@ Dump database from a remote Symfony environment.
 - `-h, --help` - Display help menu
 - `-e, --environment=<env>` - Specific environment (local, dev, staging, prod). Default: local
 - `-f, --file=<file>` - Output file path
-- `--exclude-sensitive-data` - Exclude sensitive data from the dump
+- `-N, --no-noise` - Skip noise tables (logs, cache, indexes)
+- `-S, --no-pii` - Exclude sensitive data from the dump
 - `--local` - Download remote dump to local machine (default: store on remote at `~/backup/`)
 
 **Example:**
@@ -848,6 +897,8 @@ Initialize WordPress environment with complete installation.
 - `--no-composer` - Skip composer install
 - `--no-wp-install` - Skip WordPress installation wizard
 - `--no-stream-db` - Use intermediate dump file instead of streaming
+- `--no-noise` - Exclude noise tables (logs/cache/indexes) in DB sync during clone
+- `--no-pii` - Exclude PII/sensitive data from DB sync during clone
 
 **Other Options:**
 
@@ -874,7 +925,8 @@ Dump database from a remote WordPress environment.
 - `-h, --help` - Display help menu
 - `-e, --environment=<env>` - Specific environment (local, dev, staging, prod). Default: local
 - `-f, --file=<file>` - Output file path
-- `--exclude-sensitive-data` - Exclude sensitive data from the dump
+- `-N, --no-noise` - Skip noise tables (logs, cache, indexes)
+- `-S, --no-pii` - Exclude sensitive data from the dump
 - `--local` - Download remote dump to local machine (default: store on remote at `~/backup/`)
 
 **Example:**

@@ -17,6 +17,7 @@ DB_DUMP=
 DB_IMPORT=1
 STREAM_DB=1
 ENV_REQUIRED=
+DB_FLAGS=""
 
 ## argument parsing
 while (( "$#" )); do
@@ -67,6 +68,14 @@ while (( "$#" )); do
         # Database Configuration
         --db-dump|--db-dump=*)
             [[ "$1" == *=* ]] && DB_DUMP="${1#*=}" || { DB_DUMP="${2:-}"; shift; }
+            shift
+            ;;
+        -N|--no-noise)
+            DB_FLAGS="${DB_FLAGS} --no-noise"
+            shift
+            ;;
+        -S|--no-pii)
+            DB_FLAGS="${DB_FLAGS} --no-pii"
             shift
             ;;
 
@@ -257,7 +266,7 @@ fi
 ## import database only if --skip-db-import is not specified
 if [[ "${DB_IMPORT:-}" ]] && [[ ! "${CLEAN_INSTALL:-}" ]]; then
     if [[ "${STREAM_DB:-}" ]] && [[ -z "${DB_DUMP}" ]] && [[ -n "${ENV_SOURCE_HOST+x}" ]]; then
-        warden db-import --stream-db -e "$ENV_SOURCE"
+        warden db-import --stream-db -e "$ENV_SOURCE" ${DB_FLAGS}
     else
         if [[ -z "$DB_DUMP" ]] && [[ -n "${ENV_SOURCE_HOST+x}" ]]; then
             DUMP_DIR="storage"
@@ -268,13 +277,13 @@ if [[ "${DB_IMPORT:-}" ]] && [[ ! "${CLEAN_INSTALL:-}" ]]; then
                 DUMP_DIR="var"
             fi
             DB_DUMP="${DUMP_DIR}/${WARDEN_ENV_NAME}_${ENV_SOURCE}-$(date +%Y%m%dT%H%M%S).sql.gz"
-            :: Downloading database from ${ENV_SOURCE}
-            warden db-dump --local --file="${DB_DUMP}" -e "$ENV_SOURCE"
+            :: "Downloading database from ${ENV_SOURCE}"
+            warden db-dump --local --file="${DB_DUMP}" -e "$ENV_SOURCE" ${DB_FLAGS}
         fi
 
         if [[ -n "$DB_DUMP" ]] && [[ -f "$DB_DUMP" ]]; then
-            :: Importing database
-            warden db-import --file="${DB_DUMP}"
+            :: "Importing database"
+            warden db-import --file="${DB_DUMP}" ${DB_FLAGS}
         fi
     fi
 fi

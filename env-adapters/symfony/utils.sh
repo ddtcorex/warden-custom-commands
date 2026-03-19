@@ -52,3 +52,15 @@ function get_remote_db_info() {
     echo "DB_PASSWORD=${db_pass}"
     echo "DB_DATABASE=${db_name}"
 }
+
+# List of tables to ignore during standard (no-noise flag) database dumps
+IGNORED_TABLES=(
+    'messenger_messages'
+    'sessions'
+)
+
+# List of tables containing sensitive data to be ignored when --no-pii is passed
+SENSITIVE_TABLES=(
+    'reset_password_request'
+    'user'
+)

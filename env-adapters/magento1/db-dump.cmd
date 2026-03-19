@@ -10,6 +10,48 @@ _ADAPTER_DIR=$(dirname "${BASH_SOURCE[0]}")
 source "${_ADAPTER_DIR}"/env-variables
 source "${_ADAPTER_DIR}"/utils.sh
 
+DUMP_FILENAME=""
+NO_NOISE=${NO_NOISE:-0}
+NO_PII=${NO_PII:-0}
+LOCAL_DOWNLOAD=${LOCAL_DOWNLOAD:-0}
+
+while (( "$#" )); do
+    case "$1" in
+        -f=*|--file=*)
+            DUMP_FILENAME="${1#*=}"
+            shift
+            ;;
+        -f|--file)
+            DUMP_FILENAME="$2"
+            shift 2
+            ;;
+        -N|--no-noise)
+            NO_NOISE=1
+            shift
+            ;;
+        -S|--no-pii)
+            NO_PII=1
+            shift
+            ;;
+        --local)
+            LOCAL_DOWNLOAD=1
+            shift
+            ;;
+        *)
+            WARDEN_PARAMS+=("$1")
+            shift
+            ;;
+    esac
+done
+
+if [[ -z "${DUMP_FILENAME}" ]] && [[ -n "${WARDEN_PARAMS[0]+1}" ]]; then
+    DUMP_FILENAME="${WARDEN_PARAMS[0]}"
+fi
+
+if [[ -z "${DUMP_FILENAME}" ]]; then
+    DUMP_FILENAME="var/${WARDEN_ENV_NAME}_${ENV_SOURCE}-$(date +%Y%m%dT%H%M%S).sql.gz"
+fi
+
 ENV_SOURCE="${ENV_SOURCE:-local}"
 if [[ "${ENV_SOURCE_DEFAULT:-0}" -eq "1" ]] || [[ "${ENV_SOURCE}" == "local" ]]; then
     ENV_SOURCE="local"
@@ -18,47 +60,28 @@ elif [[ -z "${!ENV_SOURCE_HOST_VAR+x}" ]]; then
     exit 2
 fi
 
-IGNORED_TABLES=(
-    'catalogsearch_result'
-    'smtppro_email_log'
-    'udprod_images'
-    'index_event'
-    'mkp_api_session_vendor'
-    'cron_schedule'
-    'catalogsearch_fulltext'
-    'log_customer'
-    'log_quote'
-    'log_summary'
-    'log_summary_type'
-    'log_url'
-    'log_url_info'
-    'log_visitor'
-    'log_visitor_info'
-    'log_visitor_online'
-    'enterprise_logging_event'
-    'enterprise_logging_event_changes'
-)
+# Use shared tables list from utils.sh.
+# IGNORED_TABLES is already defined in utils.sh.
+
+if [[ "${NO_NOISE}" -eq 0 && "${NO_PII}" -eq 1 ]]; then
+    IGNORED_TABLES+=("${SENSITIVE_TABLES[@]}")
+fi
 
 function get_local_db_info() {
-    # Extract credentials from local.xml
-    local local_xml="${WARDEN_ENV_PATH}/app/etc/local.xml"
-    if [[ ! -f "${local_xml}" ]]; then
-        error "local.xml not found at ${local_xml}"
-        return 1
-    fi
+    local db_info=$(get_db_info "local")
+    [[ -z "${db_info}" ]] && return 1
     
-    # Simple grep/sed extraction to avoid container overhead if possible
-    DB_HOST=$(grep -oPm1 "(?<=<host><\!\[CDATA\[)[^\]]+" "${local_xml}")
-    DB_USER=$(grep -oPm1 "(?<=<username><\!\[CDATA\[)[^\]]+" "${local_xml}")
-    DB_PASS=$(grep -oPm1 "(?<=<password><\!\[CDATA\[)[^\]]+" "${local_xml}")
-    DB_NAME=$(grep -oPm1 "(?<=<dbname><\!\[CDATA\[)[^\]]+" "${local_xml}")
+    DB_HOST=$(echo "${db_info}" | grep "^DB_HOST=" | cut -d= -f2-)
+    DB_USER=$(echo "${db_info}" | grep "^DB_USERNAME=" | cut -d= -f2-)
+    DB_PASS=$(echo "${db_info}" | grep "^DB_PASSWORD=" | cut -d= -f2-)
+    DB_NAME=$(echo "${db_info}" | grep "^DB_DATABASE=" | cut -d= -f2-)
 }
 
 function dump_local () {
     get_local_db_info
     
     local ignored_opts=()
-    if [[ "${FULL_DUMP:-0}" -eq "0" ]]; then
+    if [[ "${NO_NOISE:-0}" -eq "0" ]]; then
         for table in "${IGNORED_TABLES[@]}"; do
             ignored_opts+=( --ignore-table="${DB_NAME}.${DB_PREFIX:-}${table}" )
         done
@@ -88,7 +111,7 @@ function dump_premise () {
     local db_name=$(echo "${src_db_info}" | grep "^DB_DATABASE=" | cut -d= -f2-)
 
     local ignored_opts=""
-    if [[ "${FULL_DUMP:-0}" -eq "0" ]]; then
+    if [[ "${NO_NOISE:-0}" -eq "0" ]]; then
         for table in "${IGNORED_TABLES[@]}"; do
             ignored_opts+=" --ignore-table=\"${db_name}.${DB_PREFIX:-}${table}\""
         done
@@ -132,60 +155,8 @@ function dump_premise () {
     fi
 }
 
-DUMP_FILENAME=
-FULL_DUMP=0
-EXCLUDE_SENSITIVE_DATA=0
-LOCAL_DOWNLOAD=0
+# Logic moved to top
 
-while (( "$#" )); do
-    case "$1" in
-        -f=*|--file=*)
-            DUMP_FILENAME="${1#*=}"
-            shift
-            ;;
-        -f|--file)
-            DUMP_FILENAME="$2"
-            shift 2
-            ;;
-        --full)
-            FULL_DUMP=1
-            shift
-            ;;
-        --exclude-sensitive-data)
-            EXCLUDE_SENSITIVE_DATA=1
-            shift
-            ;;
-        --local)
-            LOCAL_DOWNLOAD=1
-            shift
-            ;;
-        *)
-            shift
-            ;;
-    esac
-done
-
-if [[ -z "${DUMP_FILENAME}" ]] && [[ -n "${WARDEN_PARAMS[0]+1}" ]]; then
-    DUMP_FILENAME="${WARDEN_PARAMS[0]}"
-fi
-
-if [[ -z "${DUMP_FILENAME}" ]]; then
-    DUMP_FILENAME="var/${WARDEN_ENV_NAME}_${ENV_SOURCE}-$(date +%Y%m%dT%H%M%S).sql.gz"
-fi
-
-if [[ "${FULL_DUMP}" -eq "0" && "${EXCLUDE_SENSITIVE_DATA}" -eq "1" ]]; then
-    IGNORED_TABLES+=(
-        'admin_user' 'admin_passwords'
-        'sales_flat_order' 'sales_flat_order_address' 'sales_flat_order_grid' 'sales_flat_order_item' 'sales_flat_order_payment' 'sales_flat_order_status_history' 'sales_order_tax' 'sales_order_tax_item'
-        'sales_flat_invoice' 'sales_flat_invoice_comment' 'sales_flat_invoice_grid' 'sales_flat_invoice_item'
-        'sales_flat_shipment' 'sales_flat_shipment_comment' 'sales_flat_shipment_grid' 'sales_flat_shipment_item' 'sales_flat_shipment_track'
-        'sales_flat_creditmemo' 'sales_flat_creditmemo_comment' 'sales_flat_creditmemo_grid' 'sales_flat_creditmemo_item' 'sales_payment_transaction'
-        'paypal_payment_transaction' 'urma_rma' 'urma_rma_comment' 'urma_rma_grid' 'urma_rma_item' 'urma_rma_track'
-        'sales_flat_quote' 'sales_flat_quote_item' 'sales_flat_quote_item_option' 'sales_flat_quote_address' 'sales_flat_quote_shipping_rate' 'sales_flat_quote_payment'
-        'customer_address_entity' 'customer_address_entity_datetime' 'customer_address_entity_decimal' 'customer_address_entity_int' 'customer_address_entity_text' 'customer_address_entity_varchar'
-        'customer_entity' 'customer_entity_datetime' 'customer_entity_decimal' 'customer_entity_int' 'customer_entity_text' 'customer_entity_varchar' 'newsletter_subscriber'
-    )
-fi
 
 if [[ "${ENV_SOURCE}" = "local" ]]; then
     dump_local

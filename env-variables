@@ -112,6 +112,7 @@ export YES_TO_ALL="${YES_TO_ALL:-0}"
 
 export VERBOSE="${VERBOSE:-0}"
 export VERBOSE_FLAG="${VERBOSE_FLAG:-}"
+export WARDEN_PARAMS=()
 
 # Parse source/destination arguments and build filtered args list
 declare -a SKIP_INDICES=()

@@ -11,7 +11,7 @@ PV="pv"
 if ! command -v pv &>/dev/null; then
     PV="cat"
 fi
-STREAM_DB=0
+STREAM_DB=${STREAM_DB:-0}
 DUMP_FILENAME=""
 
 while (( "$#" )); do
@@ -79,17 +79,30 @@ if [[ "${STREAM_DB}" -eq 1 ]]; then
     fi
 
     # Streaming database from remote
-    db_info=$(get_remote_db_info "${ENV_SOURCE_HOST}" "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}" "${ENV_SOURCE_DIR}")
+    db_info=$(get_db_info "${ENV_SOURCE}")
     db_host=$(echo "${db_info}" | grep "^DB_HOST=" | cut -d= -f2-)
     db_port=$(echo "${db_info}" | grep "^DB_PORT=" | cut -d= -f2-)
     db_user=$(echo "${db_info}" | grep "^DB_USERNAME=" | cut -d= -f2-)
     db_pass=$(echo "${db_info}" | grep "^DB_PASSWORD=" | cut -d= -f2-)
     db_name=$(echo "${db_info}" | grep "^DB_DATABASE=" | cut -d= -f2-)
 
+    # Calculate ignored tables for sync
+    current_ignored=("${IGNORED_TABLES[@]}")
+    if [[ "${SYNC_DB_NO_PII:-0}" -eq 1 ]]; then
+        current_ignored+=("${SENSITIVE_TABLES[@]}")
+    fi
+
+    ignored_opts=""
+    if [[ "${SYNC_DB_NO_NOISE:-0}" -eq 1 ]]; then
+        for table in "${current_ignored[@]}"; do
+            ignored_opts+=" --ignore-table=\"${db_name}.${DB_PREFIX:-}${table}\""
+        done
+    fi
+
     printf "Streaming mysqldump from %s:%s ...\n" "${ENV_SOURCE_HOST}" "${db_name}"
     
     # Using two-stage dump (schema then data) for better reliability and avoiding DEFINER issues
-    dump_cmd="export MYSQL_PWD='${db_pass}'; { \$(command -v mariadb-dump || echo mysqldump) --max-allowed-packet=512M --force --single-transaction --no-tablespaces --no-data --routines -h${db_host} -P${db_port} -u${db_user} ${db_name} 2>/dev/null; \$(command -v mariadb-dump || echo mysqldump) --max-allowed-packet=512M --force --single-transaction --no-tablespaces --skip-triggers --no-create-info -h${db_host} -P${db_port} -u${db_user} ${db_name} 2>/dev/null; } | gzip -1"
+    dump_cmd="export MYSQL_PWD='${db_pass}'; { \$(command -v mariadb-dump || echo mysqldump) --max-allowed-packet=512M --force --single-transaction --no-tablespaces --no-data --routines -h${db_host} -P${db_port} -u${db_user} ${db_name} 2>/dev/null; \$(command -v mariadb-dump || echo mysqldump) --max-allowed-packet=512M --force --single-transaction --no-tablespaces --skip-triggers --no-create-info ${ignored_opts} -h${db_host} -P${db_port} -u${db_user} ${db_name} 2>/dev/null; } | gzip -1"
 
     warden remote-exec -e "${ENV_SOURCE}" -- bash -c "${dump_cmd}" \
         | gunzip -c \

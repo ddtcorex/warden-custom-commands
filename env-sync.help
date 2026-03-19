@@ -21,6 +21,8 @@ Sync files, media, or database between environments.
   --redeploy           Redeploy destination after sync using deploy.cmd (default: disabled)
   --backup             Create a backup of the destination database before syncing (if db is synced)
   --backup-dir=PATH    Path to store backups (default: ~/backup on destination)
+  -N, --no-noise  Exclude noise tables (logs/cache/indexes) from DB sync
+  -S, --no-pii  Exclude customer/order data during DB sync
   -y, --yes            Assume 'yes' to all prompts and run non-interactively
   -h, --help           Display this help message
 

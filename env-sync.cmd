@@ -92,6 +92,14 @@ while (( "$#" )); do
             SYNC_BACKUP_DIR="$2"
             shift 2
             ;;
+        -N|--no-noise)
+            SYNC_DB_NO_NOISE=1
+            shift
+            ;;
+        -S|--no-pii)
+            SYNC_DB_NO_PII=1
+            shift
+            ;;
         --) # End of all options
             shift
             WARDEN_PARAMS+=("$@")
@@ -107,6 +115,10 @@ while (( "$#" )); do
             ;;
     esac
 done
+
+# Default: include all tables. Use --no-noise to filter out logs/cache/indexes.
+SYNC_DB_NO_NOISE="${SYNC_DB_NO_NOISE:-0}"
+SYNC_DB_NO_PII="${SYNC_DB_NO_PII:-0}"
 
 # Remove all trailing slashes from path to ensure consistent behavior
 while [[ "${SYNC_PATH}" == */ ]]; do SYNC_PATH="${SYNC_PATH%/}"; done
@@ -169,6 +181,13 @@ else
     [[ "${SYNC_TYPE_DB}" -eq 1 ]] && SYNC_DESC="${SYNC_DESC}Database "
 fi
 SYNC_DESC=$(printf "%s" "${SYNC_DESC}" | xargs) # trim trailing space
+if [[ "${SYNC_DB_NO_NOISE:-0}" -eq 1 && "${SYNC_DB_NO_PII:-0}" -eq 1 ]]; then
+    SYNC_DESC="${SYNC_DESC} (lean & anonymized)"
+elif [[ "${SYNC_DB_NO_NOISE:-0}" -eq 1 ]]; then
+    SYNC_DESC="${SYNC_DESC} (lean)"
+elif [[ "${SYNC_DB_NO_PII:-0}" -eq 1 ]]; then
+    SYNC_DESC="${SYNC_DESC} (anonymized)"
+fi
 [[ "${SYNC_DELETE}" -eq 1 ]] && SYNC_DESC="${SYNC_DESC} (with delete)"
 [[ "${SYNC_DRY_RUN}" -eq 1 ]] && SYNC_DESC="${SYNC_DESC} [DRY RUN]"
 
@@ -201,7 +220,7 @@ else
 fi
 
 # Export variables for adapter scripts
-export SYNC_SOURCE SYNC_DESTINATION SYNC_TYPE_FILE SYNC_TYPE_MEDIA SYNC_TYPE_DB SYNC_TYPE_FULL SYNC_PATH SYNC_DRY_RUN SYNC_DELETE SYNC_REMOTE_TO_REMOTE SYNC_INCLUDE_PRODUCT SYNC_REDEPLOY SYNC_ASSUME_YES DIRECTION SYNC_BACKUP SYNC_BACKUP_DIR
+export SYNC_SOURCE SYNC_DESTINATION SYNC_TYPE_FILE SYNC_TYPE_MEDIA SYNC_TYPE_DB SYNC_TYPE_FULL SYNC_PATH SYNC_DRY_RUN SYNC_DELETE SYNC_REMOTE_TO_REMOTE SYNC_INCLUDE_PRODUCT SYNC_REDEPLOY SYNC_ASSUME_YES DIRECTION SYNC_BACKUP SYNC_BACKUP_DIR SYNC_DB_NO_NOISE SYNC_DB_NO_PII
 
 # Dispatch to environment-specific implementation
 ENV_CMD="${SUBCOMMAND_DIR}/env-adapters/${WARDEN_ENV_TYPE}/env-sync.cmd"

@@ -103,7 +103,11 @@ function sync_database() {
 
     # Download sync is now offloaded to db-import --stream-db which handles everything robustly
     if [[ "${DIRECTION:-download}" == "download" ]]; then
-        if ! warden db-import --stream-db; then
+        local import_flags=""
+        [[ "${SYNC_DB_NO_NOISE:-0}" -eq 1 ]] && import_flags="${import_flags} --no-noise"
+        [[ "${SYNC_DB_NO_PII:-0}" -eq 1 ]] && import_flags="${import_flags} --no-pii"
+
+        if ! warden db-import --stream-db ${import_flags}; then
             error "Database sync failed."
             return 1
         fi

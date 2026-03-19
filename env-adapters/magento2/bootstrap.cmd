@@ -26,6 +26,7 @@ HYVA_INSTALL=
 HYVA_TOKEN=
 MAGE_USERNAME=
 MAGE_PASSWORD=
+DB_FLAGS=""
 
 ## argument parsing
 while [[ "$#" -gt 0 ]]; do
@@ -102,6 +103,14 @@ while [[ "$#" -gt 0 ]]; do
         # Database Configuration
         --db-dump|--db-dump=*)
             [[ "$1" == *=* ]] && DB_DUMP="${1#*=}" || { DB_DUMP="${2:-}"; shift; }
+            shift
+            ;;
+        -N|--no-noise)
+            DB_FLAGS="${DB_FLAGS} --no-noise"
+            shift
+            ;;
+        -S|--no-pii)
+            DB_FLAGS="${DB_FLAGS} --no-pii"
             shift
             ;;
 
@@ -344,19 +353,19 @@ fi
 ## import database only if --skip-db-import is not specified
 if [[ "${DB_IMPORT:-}" ]]; then
     if [[ "${STREAM_DB:-}" ]]; then
-        warden db-import --stream-db -e "$ENV_SOURCE"
+        warden db-import --stream-db -e "$ENV_SOURCE" ${DB_FLAGS}
     elif [[ -z "$DB_DUMP" ]]; then
         DB_DUMP="var/${WARDEN_ENV_NAME}_${ENV_SOURCE}-`date +%Y%m%dT%H%M%S`.sql.gz"
         :: Get database
-        warden db-dump --local --file="${DB_DUMP}" -e "$ENV_SOURCE"
+        warden db-dump --local --file="${DB_DUMP}" -e "$ENV_SOURCE" ${DB_FLAGS}
         
         if [[ "$DB_DUMP" ]]; then
             :: Importing database
-            warden db-import --file="${DB_DUMP}"
+            warden db-import --file="${DB_DUMP}" ${DB_FLAGS}
         fi
     else
         :: Importing database
-        warden db-import --file="${DB_DUMP}"
+        warden db-import --file="${DB_DUMP}" ${DB_FLAGS}
     fi
 fi
 
