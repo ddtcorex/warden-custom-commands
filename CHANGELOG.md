@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.0] - 2026-03-19
+
+**v2.7.0: Magento 1 Support & Safer Database Sync**
+
+### ✨ New Features
+
+- **Magento 1 adapter:** Added full Magento 1 command set (bootstrap, deploy, sync, db-dump/import, open, upgrade) with aligned help files and unit tests. Admin provisioning now uses salted passwords, role assignment, and updated configuration keys for reliable sign-in.
+- **Granular data scrubbing:** Introduced `--no-noise` and `--no-pii` options to `env-sync`, `db-dump`, and bootstrap flows, allowing sensitive or transient data to be excluded from transfers by default across all adapters.
+- **Locale deployment for Magento 2:** Added locale-aware static content deployment support to improve multi-language Magento 2 environments.
+
+### 🛠 Improvements
+
+- **Database transfer reliability:** Tuned dump/import pipelines with `max-allowed-packet`, `autocommit` controls, and faster compression via `gzip -1` to reduce failures on large datasets.
+- **SSH/rsync resilience:** Added configurable rsync timeout and SSH keep-alive options to prevent stalled synchronizations on slow or unstable links.
+- **Bootstrap cleanup:** Removed Mutagen dependency and related installation/version checks for a leaner setup experience.
+- **Magento install robustness:** Improved Magento version detection, encryption key handling, clean-install guardrails, and included an Elasticsearch block fix to avoid index bootstrap errors.
+- **Cross-shell hygiene:** Replaced `head -n 1` with `awk 'NR==1'` and refreshed random key generation via `od` for better POSIX portability.
+
+### 🐛 Bug Fixes
+
+- **Magento 1 auth consistency:** Ensured admin user creation writes salted passwords and roles so fresh environments authenticate correctly without manual intervention.
+
+### 🧪 Testing
+
+- Added Magento 1 unit tests and expanded existing suites to cover new scrub flags, SSH/rsync timeout handling, and database pipeline tweaks.
+
+
 ## [2.6.0] - 2026-01-30
 
 **v2.6.0: Rename Sync Command & Linux Support Improvements**
