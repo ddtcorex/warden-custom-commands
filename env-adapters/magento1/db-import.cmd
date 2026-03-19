@@ -28,6 +28,14 @@ while (( "$#" )); do
             STREAM_DB=1
             shift
             ;;
+        -N|--no-noise)
+            SYNC_DB_NO_NOISE=1
+            shift
+            ;;
+        -S|--no-pii)
+            SYNC_DB_NO_PII=1
+            shift
+            ;;
         *)
             shift
             ;;
@@ -55,6 +63,11 @@ fi
 _DB_CONTAINER_ID=$(warden env ps --filter status=running -q db 2>/dev/null || true)
 if [[ -z "${_DB_CONTAINER_ID}" ]]; then
     warden env up db
+    _DB_CONTAINER_ID=$(warden env ps --filter status=running -q db 2>/dev/null || true)
+    if [[ -z "${_DB_CONTAINER_ID}" ]]; then
+        printf "😮 \033[31mDatabase container failed to start\033[0m\n" >&2
+        exit 1
+    fi
 fi
 
 printf "⌛ \033[1;32mDropping and initializing docker database ...\033[0m\n"
@@ -79,7 +92,7 @@ if [[ "${STREAM_DB}" -eq 1 ]]; then
     fi
 
     # Streaming database from remote
-    db_info=$(get_db_info "${ENV_SOURCE}")
+    db_info=$(get_remote_db_info "${ENV_SOURCE_DIR}")
     db_host=$(echo "${db_info}" | grep "^DB_HOST=" | cut -d= -f2-)
     db_port=$(echo "${db_info}" | grep "^DB_PORT=" | cut -d= -f2-)
     db_user=$(echo "${db_info}" | grep "^DB_USERNAME=" | cut -d= -f2-)

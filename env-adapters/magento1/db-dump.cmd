@@ -10,6 +10,14 @@ _ADAPTER_DIR=$(dirname "${BASH_SOURCE[0]}")
 source "${_ADAPTER_DIR}"/env-variables
 source "${_ADAPTER_DIR}"/utils.sh
 
+ENV_SOURCE="${ENV_SOURCE:-local}"
+if [[ "${ENV_SOURCE_DEFAULT:-0}" -eq "1" ]] || [[ "${ENV_SOURCE}" == "local" ]]; then
+    ENV_SOURCE="local"
+elif [[ -z "${!ENV_SOURCE_HOST_VAR+x}" ]]; then
+    printf "Invalid environment '%s'\n" "${ENV_SOURCE:-}" >&2
+    exit 2
+fi
+
 DUMP_FILENAME=""
 NO_NOISE=${NO_NOISE:-0}
 NO_PII=${NO_PII:-0}
@@ -48,27 +56,17 @@ if [[ -z "${DUMP_FILENAME}" ]] && [[ -n "${WARDEN_PARAMS[0]+1}" ]]; then
     DUMP_FILENAME="${WARDEN_PARAMS[0]}"
 fi
 
+# Default filename based on environment
 if [[ -z "${DUMP_FILENAME}" ]]; then
-    DUMP_FILENAME="var/${WARDEN_ENV_NAME}_${ENV_SOURCE}-$(date +%Y%m%dT%H%M%S).sql.gz"
-fi
-
-ENV_SOURCE="${ENV_SOURCE:-local}"
-if [[ "${ENV_SOURCE_DEFAULT:-0}" -eq "1" ]] || [[ "${ENV_SOURCE}" == "local" ]]; then
-    ENV_SOURCE="local"
-elif [[ -z "${!ENV_SOURCE_HOST_VAR+x}" ]]; then
-    printf "Invalid environment '%s'\n" "${ENV_SOURCE:-}" >&2
-    exit 2
-fi
-
-# Use shared tables list from utils.sh.
-# IGNORED_TABLES is already defined in utils.sh.
-
-if [[ "${NO_NOISE}" -eq 0 && "${NO_PII}" -eq 1 ]]; then
-    IGNORED_TABLES+=("${SENSITIVE_TABLES[@]}")
+    if [[ "${ENV_SOURCE}" == "local" ]] || [[ "${LOCAL_DOWNLOAD}" -eq 1 ]]; then
+        DUMP_FILENAME="var/${WARDEN_ENV_NAME}_${ENV_SOURCE}-$(date +%Y%m%dT%H%M%S).sql.gz"
+    else
+        DUMP_FILENAME="~/backup/${WARDEN_ENV_NAME}_${ENV_SOURCE}-$(date +%Y%m%dT%H%M%S).sql.gz"
+    fi
 fi
 
 function get_local_db_info() {
-    local db_info=$(get_db_info "local")
+    local db_info=$(get_db_info)
     [[ -z "${db_info}" ]] && return 1
     
     DB_HOST=$(echo "${db_info}" | grep "^DB_HOST=" | cut -d= -f2-)
@@ -80,12 +78,18 @@ function get_local_db_info() {
 function dump_local () {
     get_local_db_info
     
-    local ignored_opts=()
-    if [[ "${NO_NOISE:-0}" -eq "0" ]]; then
-        for table in "${IGNORED_TABLES[@]}"; do
-            ignored_opts+=( --ignore-table="${DB_NAME}.${DB_PREFIX:-}${table}" )
-        done
+    local current_ignored=()
+    if [[ "${NO_NOISE:-0}" -eq "1" ]]; then
+        current_ignored+=("${IGNORED_TABLES[@]}")
     fi
+    if [[ "${NO_PII:-0}" -eq "1" ]]; then
+        current_ignored+=("${SENSITIVE_TABLES[@]}")
+    fi
+
+    local ignored_opts=()
+    for table in "${current_ignored[@]}"; do
+        ignored_opts+=( --ignore-table="${DB_NAME}.${DB_PREFIX:-}${table}" )
+    done
 
     printf "⌛ \033[1;32mDumping local database (\033[33m%s\033[1;32m)...\033[0m\n" "${DB_NAME}"
     
@@ -103,19 +107,25 @@ function dump_local () {
 }
 
 function dump_premise () {
-    local src_db_info=$(get_remote_db_info "${ENV_SOURCE_HOST}" "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}" "${ENV_SOURCE_DIR}")
+    local src_db_info=$(get_remote_db_info "${ENV_SOURCE_DIR}")
     local db_host=$(echo "${src_db_info}" | grep "^DB_HOST=" | cut -d= -f2-)
     local db_port=$(echo "${src_db_info}" | grep "^DB_PORT=" | cut -d= -f2-)
     local db_user=$(echo "${src_db_info}" | grep "^DB_USERNAME=" | cut -d= -f2-)
     local db_pass=$(echo "${src_db_info}" | grep "^DB_PASSWORD=" | cut -d= -f2-)
     local db_name=$(echo "${src_db_info}" | grep "^DB_DATABASE=" | cut -d= -f2-)
 
-    local ignored_opts=""
-    if [[ "${NO_NOISE:-0}" -eq "0" ]]; then
-        for table in "${IGNORED_TABLES[@]}"; do
-            ignored_opts+=" --ignore-table=\"${db_name}.${DB_PREFIX:-}${table}\""
-        done
+    local current_ignored=()
+    if [[ "${NO_NOISE:-0}" -eq "1" ]]; then
+        current_ignored+=("${IGNORED_TABLES[@]}")
     fi
+    if [[ "${NO_PII:-0}" -eq "1" ]]; then
+        current_ignored+=("${SENSITIVE_TABLES[@]}")
+    fi
+
+    local ignored_opts=""
+    for table in "${current_ignored[@]}"; do
+        ignored_opts+=" --ignore-table=\"${db_name}.${DB_PREFIX:-}${table}\""
+    done
 
     local sed_filters="sed -e '/999999.*sandbox/d' -e 's/DEFINER=[^*]*\\*/\\*/g' -e 's/ROW_FORMAT=FIXED//g'"
 

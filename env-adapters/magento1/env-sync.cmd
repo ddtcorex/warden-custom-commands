@@ -30,6 +30,7 @@ fi
 
 _ADAPTER_DIR=$(dirname "${BASH_SOURCE[0]}")
 source "${_ADAPTER_DIR}/utils.sh"
+source "${SUBCOMMAND_DIR}/lib/error-handling.sh"
 
 # Function for file transfer (uses rsync)
 function transfer_files() {

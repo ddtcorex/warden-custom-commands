@@ -3,7 +3,16 @@
 # Returns: newline-separated list of DB_VAR=VALUE
 function get_db_info() {
     local env_name="${1:-local}"
-    local remote_dir="${2:-${ENV_SOURCE_DIR:-/var/www/html}}"
+    local remote_dir="${2:-}"
+    
+    # Isolate local vs remote directory defaults
+    if [[ -z "${remote_dir}" ]]; then
+        if [[ "${env_name}" == "local" ]]; then
+            remote_dir="/var/www/html"
+        else
+            remote_dir="${ENV_SOURCE_DIR:-/var/www/html}"
+        fi
+    fi
 
     # Determine PHP command for local decoding (on the host)
     local php_host_cmd="php"
@@ -17,17 +26,26 @@ function get_db_info() {
     fi
 
     # PHP code to extract from local.xml
-    local php_extract_code="\$x=@simplexml_load_file('${remote_dir}/app/etc/local.xml'); 
-if(!\$x){exit(1);}
-\$c=\$x->global->resources->default_setup->connection; 
-echo base64_encode(json_encode(['host'=>(string)\$c->host,'username'=>(string)\$c->username,'password'=>(string)\$c->password,'dbname'=>(string)\$c->dbname]));"
+    local php_extract_code="
+\$f = '${remote_dir}/app/etc/local.xml';
+if (!file_exists(\$f)) { fwrite(STDERR, \"File not found: \$f\n\"); exit(1); }
+\$x = @simplexml_load_file(\$f); 
+if (!\$x) { fwrite(STDERR, \"Failed to parse XML from \$f\n\"); exit(1); }
+\$c = \$x->global->resources->default_setup->connection; 
+if (!\$c) { fwrite(STDERR, \"Could not find connection node in \$f\n\"); exit(1); }
+echo base64_encode(json_encode([
+    'host' => (string)\$c->host,
+    'username' => (string)\$c->username,
+    'password' => (string)\$c->password,
+    'dbname' => (string)\$c->dbname
+]));"
 
     local db_info_json
     if [[ "${env_name}" == "local" ]]; then
-        db_info_json=$(warden env exec -T php-fpm php -r "${php_extract_code}" 2>/dev/null)
-    elif [[ "${env_name}" == "cloud" ]]; then
-        # Magento Cloud (if ever supported for M1, unlikely but for consistency)
-        return 1
+        db_info_json=$(warden env exec -T php-fpm php -r "${php_extract_code}" 2>&1) || {
+            printf "❌ \033[31mLocal extraction failed:\033[0m\n%s\n" "${db_info_json}" >&2
+            return 1
+        }
     else
         # Remote environment via SSH (normalized details should be available in env)
         local norm_env=$(normalize_env_name "${env_name}")
@@ -43,7 +61,12 @@ echo base64_encode(json_encode(['host'=>(string)\$c->host,'username'=>(string)\$
             return 1
         fi
         
-        db_info_json=$(ssh ${SSH_OPTS:-} -o IdentityAgent=none -p "${r_port}" "${r_user}@${r_host}" "php -r \"${php_extract_code}\"" 2>/dev/null)
+        local php_b64
+        php_b64=$(printf '%s' "${php_extract_code}" | base64 -w 0)
+        db_info_json=$(ssh ${SSH_OPTS:-} -o IdentityAgent=none -p "${r_port}" "${r_user}@${r_host}" "php -r 'eval(base64_decode(\"${php_b64}\"));'" 2>&1) || {
+            printf "❌ \033[31mSSH failed or remote PHP error:\033[0m\n%s\n" "${db_info_json}" >&2
+            return 1
+        }
     fi
 
     if [[ -z "${db_info_json}" ]]; then
@@ -64,10 +87,83 @@ echo base64_encode(json_encode(['host'=>(string)\$c->host,'username'=>(string)\$
     echo "DB_DATABASE=${db_name}"
 }
 
-# Legacy wrapper for backward compatibility
+# Standalone helper to get DB credentials from a remote Magento 1 local.xml via SSH
+# Usage: get_remote_db_info "REMOTE_DIR" ["ENV_NAME"]
+# Returns: newline-separated list of DB_VAR=VALUE
+# NOTE: Self-contained — does NOT call get_db_info() (mirrors magento2 pattern)
 function get_remote_db_info() {
-    get_db_info "$@"
+    local remote_dir="${1:-${ENV_SOURCE_DIR:-/var/www/html}}"
+    local env_name="${2:-${ENV_SOURCE}}"
+
+    # Determine PHP command for local decoding (on the host)
+    local php_host_cmd="php"
+    if ! command -v php &> /dev/null; then
+        if command -v warden &> /dev/null; then
+            php_host_cmd="warden env exec -T php-fpm php"
+        else
+            printf "Error: 'php' command not found locally and 'warden' not available for fallback.\n" >&2
+            return 1
+        fi
+    fi
+
+    # PHP code to extract from local.xml (base64-encoded to survive SSH quoting)
+    local php_extract_code="
+\$f = '${remote_dir}/app/etc/local.xml';
+if (!file_exists(\$f)) { fwrite(STDERR, \"File not found: \$f\n\"); exit(1); }
+\$x = @simplexml_load_file(\$f);
+if (!\$x) { fwrite(STDERR, \"Failed to parse XML from \$f\n\"); exit(1); }
+\$c = \$x->global->resources->default_setup->connection;
+if (!\$c) { fwrite(STDERR, \"Could not find connection node in \$f\n\"); exit(1); }
+echo base64_encode(json_encode([
+    'host' => (string)\$c->host,
+    'username' => (string)\$c->username,
+    'password' => (string)\$c->password,
+    'dbname' => (string)\$c->dbname
+]));"
+
+    local norm_env
+    norm_env=$(normalize_env_name "${env_name}")
+    local host_var="REMOTE_${norm_env}_HOST"
+    local port_var="REMOTE_${norm_env}_PORT"
+    local user_var="REMOTE_${norm_env}_USER"
+
+    local r_host="${!host_var:-}"
+    local r_port="${!port_var:-22}"
+    local r_user="${!user_var:-}"
+
+    if [[ -z "${r_host}" ]]; then
+        printf "❌ \033[31mRemote host not configured for '%s'\033[0m\n" "${env_name}" >&2
+        return 1
+    fi
+
+    local php_b64
+    php_b64=$(printf '%s' "${php_extract_code}" | base64 -w 0)
+
+    local db_info_json
+    db_info_json=$(ssh ${SSH_OPTS:-} -o IdentityAgent=none -p "${r_port}" "${r_user}@${r_host}" "php -r 'eval(base64_decode(\"${php_b64}\"));'" 2>&1) || {
+        printf "❌ \033[31mSSH failed or remote PHP error:\033[0m\n%s\n" "${db_info_json}" >&2
+        return 1
+    }
+
+    if [[ -z "${db_info_json}" ]]; then
+        return 1
+    fi
+
+    # Decode locally
+    local db_host db_port db_user db_pass db_name
+    db_host=$(${php_host_cmd} -r "\$a = json_decode(base64_decode(\$argv[1]), true); echo strpos(\$a['host'] ?? 'db', ':') === false ? (\$a['host'] ?? 'db') : explode(':', \$a['host'])[0];" -- "${db_info_json}")
+    db_port=$(${php_host_cmd} -r "\$a = json_decode(base64_decode(\$argv[1]), true); echo strpos(\$a['host'] ?? '', ':') === false ? '3306' : explode(':', \$a['host'])[1];" -- "${db_info_json}")
+    db_user=$(${php_host_cmd} -r "\$a = json_decode(base64_decode(\$argv[1]), true); echo \$a['username'] ?? '';" -- "${db_info_json}")
+    db_pass=$(${php_host_cmd} -r "\$a = json_decode(base64_decode(\$argv[1]), true); echo \$a['password'] ?? '';" -- "${db_info_json}")
+    db_name=$(${php_host_cmd} -r "\$a = json_decode(base64_decode(\$argv[1]), true); echo \$a['dbname'] ?? '';" -- "${db_info_json}")
+
+    echo "DB_HOST=${db_host}"
+    echo "DB_PORT=${db_port}"
+    echo "DB_USERNAME=${db_user}"
+    echo "DB_PASSWORD=${db_pass}"
+    echo "DB_DATABASE=${db_name}"
 }
+
 # List of tables to ignore during standard (non-full) database dumps
 IGNORED_TABLES=(
     'catalogsearch_fulltext'

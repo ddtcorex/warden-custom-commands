@@ -52,7 +52,7 @@ function get_db_info() {
 }
 
 function remote_db () {
-    local db_info=$(get_remote_db_info "${ENV_SOURCE_HOST}" "${ENV_SOURCE_PORT}" "${ENV_SOURCE_USER}" "${ENV_SOURCE_DIR}")
+    local db_info=$(get_remote_db_info "${ENV_SOURCE_DIR}")
     local db_host=$(echo "${db_info}" | grep "^DB_HOST=" | cut -d= -f2-)
     local db_port=$(echo "${db_info}" | grep "^DB_PORT=" | cut -d= -f2-)
     local db_user=$(echo "${db_info}" | grep "^DB_USERNAME=" | cut -d= -f2-)
