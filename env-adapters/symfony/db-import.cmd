@@ -92,7 +92,7 @@ if [[ "${STREAM_DB}" -eq 1 ]]; then
     db_pass=$(echo "${db_info}" | grep "^DB_PASSWORD=" | cut -d= -f2-)
     db_name=$(echo "${db_info}" | grep "^DB_DATABASE=" | cut -d= -f2-)
     
-    local current_ignored=()
+    current_ignored=()
     if [[ "${it_no_noise:-0}" -eq 1 ]]; then
         current_ignored+=("${IGNORED_TABLES[@]}")
     fi
@@ -100,7 +100,7 @@ if [[ "${STREAM_DB}" -eq 1 ]]; then
         current_ignored+=("${SENSITIVE_TABLES[@]}")
     fi
 
-    local ignored_opts=""
+    ignored_opts=""
     for table in "${current_ignored[@]}"; do
         ignored_opts+=" --ignore-table=${db_name}.${table}"
     done

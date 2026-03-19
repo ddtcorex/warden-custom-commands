@@ -102,7 +102,7 @@ if [[ "${STREAM_DB}" -eq 1 ]]; then
       exit 1
     fi
 
-    local current_ignored=()
+    current_ignored=()
     if [[ "${it_no_noise:-0}" -eq 1 ]]; then
         current_ignored+=("${IGNORED_TABLES[@]}")
     fi
@@ -110,7 +110,7 @@ if [[ "${STREAM_DB}" -eq 1 ]]; then
         current_ignored+=("${SENSITIVE_TABLES[@]}")
     fi
 
-    local ignored_opts=""
+    ignored_opts=""
     for table in "${current_ignored[@]}"; do
         ignored_opts+=" --ignore-table=${db_name}.${DB_PREFIX}${table}"
     done

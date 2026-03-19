@@ -156,6 +156,7 @@ function get_web_root() {
 
 function get_media_path() {
     case "${TEST_ENV_TYPE}" in
+        magento1) echo "media" ;;
         magento2) echo "pub/media" ;;
         laravel)  echo "storage/app/public" ;;
         symfony)  echo "public/uploads" ;;

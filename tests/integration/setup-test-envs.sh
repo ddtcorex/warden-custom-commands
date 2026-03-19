@@ -101,6 +101,11 @@ echo "Step 5: Installing SSH server on dev/staging..."
 pids=""
 for container in "${DEV_CONTAINER}" "${STAGING_CONTAINER}"; do
     (
+        # Handle CentOS 8 Stream EOL mirror changes if needed
+        if docker exec -u root "${container}" [ -f /etc/os-release ] && docker exec -u root "${container}" grep -q "VERSION_ID=\"8\"" /etc/os-release; then
+             docker exec -u root "${container}" bash -c "sed -i 's/mirrorlist/#mirrorlist/g' /etc/yum.repos.d/CentOS-Stream-* && sed -i 's|#baseurl=http://mirror.centos.org|baseurl=http://vault.centos.org|g' /etc/yum.repos.d/CentOS-Stream-* && dnf clean all" >/dev/null 2>&1
+        fi
+
         docker exec --workdir / -u root "${container}" bash -c "dnf install -y openssh-server > /dev/null 2>&1 && ssh-keygen -A > /dev/null 2>&1 && mkdir -p /run/sshd && /usr/sbin/sshd" 2>/dev/null || true
         echo "  ${container}: SSH server installed and started"
     ) &
@@ -151,9 +156,8 @@ for context in local dev staging; do
     
     DB_IP=$(docker inspect -f "{{with index .NetworkSettings.Networks \"${net}\"}}{{.IPAddress}}{{end}}" "${db_cont}")
     if [[ -n "${DB_IP}" ]]; then
-        # Add to /etc/hosts. We use sed to replace or append. 
-        # Since docker already has 'db' there, we want our IP to be first or replace it.
-        docker exec -u root "${php_cont}" bash -c "grep -q 'db' /etc/hosts && sed -i \"s/.*db$/${DB_IP} db/\" /etc/hosts || echo '${DB_IP} db' >> /etc/hosts"
+        # Add to /etc/hosts. Use a temporary file to avoid "Device or resource busy" with sed -i
+        docker exec -u root "${php_cont}" bash -c "cat /etc/hosts | sed \"s/.*db$/${DB_IP} db/\" > /tmp/hosts.tmp && cat /tmp/hosts.tmp > /etc/hosts"
     fi
 done
 
@@ -223,9 +227,9 @@ EOF"
             <default_setup>
                 <connection>
                     <host><![CDATA[db]]></host>
-                    <username><![CDATA[magento1]]></username>
-                    <password><![CDATA[magento1]]></password>
-                    <dbname><![CDATA[magento1]]></dbname>
+                    <username><![CDATA[magento]]></username>
+                    <password><![CDATA[magento]]></password>
+                    <dbname><![CDATA[magento]]></dbname>
                     <initStatements><![CDATA[SET NAMES utf8]]></initStatements>
                     <model><![CDATA[mysql4]]></model>
                     <type><![CDATA[pdo_mysql]]></type>
