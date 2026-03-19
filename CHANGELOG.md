@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.1] - 2026-03-19
+
+**v2.7.1: Magento 1 Integration Tests & CentOS Mirror Fix**
+
+### 🛠 Improvements
+
+- Added a Magento 1 integration test suite to cover bootstrap, sync, and deployment flows, reducing regressions across adapters.
+- Hardened `/etc/hosts` modification logic to avoid duplicate entries and improve reliability on repeated runs.
+
+### 🐛 Bug Fixes
+
+- Resolved CentOS 8 Stream package installation failures by switching to the appropriate vault mirrors now that upstream repos are EOL.
+
+### 🧪 Testing
+
+- New Magento 1 integration tests are now part of the default test matrix.
+
+
 ## [2.7.0] - 2026-03-19
 
 **v2.7.0: Magento 1 Support & Safer Database Sync**
