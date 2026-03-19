@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+[[ ! "${WARDEN_DIR:-}" ]] && >&2 printf "\033[31mNot intended to run directly!\033[0m\n" && exit 1
+
+WARDEN_USAGE=$(cat <<EOF
+\033[33mUsage:\033[0m
+  env-sync [-h|--help] [-e|--environment=<env>] [--db] [--media] [--file] [--code-only] [--path=<path>] [--dry-run] [--delete] [--include-product] [--no-backup] [--no-stream-db]
+
+\033[33mOptions:\033[0m
+  -h, --help              Display this help menu.
+  --db                    Sync the database from the remote source.
+  --media                 Sync the media directory from the remote source.
+  --file                  Sync the codebase (files) from the remote source.
+  --code-only             Alias for --file (sync code, skip db and media).
+  --path=<path>           Sync only a specific path.
+  --dry-run               Perform a dry run (show files that would be synced).
+  --delete                Delete files on destination that don't exist on source.
+  --include-product       Include the catalog/product directory (excluded by default).
+  --no-backup             Do not backup the local environment before syncing.
+  --no-stream-db          Disable database streaming.
+  --no-noise            Exclude noise tables (logs/cache/indexes) from DB sync
+  --no-pii Exclude sensitive data (customers, orders, etc).
+
+\033[33mArguments:\033[0m
+  -e, --environment=<env> Remote environment to source from. Default: staging.
+EOF
+)

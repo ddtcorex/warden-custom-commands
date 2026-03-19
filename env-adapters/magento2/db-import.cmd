@@ -7,7 +7,7 @@ PV="pv"
 if ! command -v pv &>/dev/null; then
     PV="cat"
 fi
-STREAM_DB=0
+STREAM_DB=${STREAM_DB:-0}
 DUMP_FILENAME=""
 
 while (( "$#" )); do

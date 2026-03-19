@@ -146,6 +146,12 @@ function sync_database() {
         -e 's/utf8_unicode_520_ci/utf8_general_ci/g'
     )
 
+    # Calculate ignored tables for sync
+    local current_ignored=("${IGNORED_TABLES[@]}")
+    if [[ "${SYNC_DB_NO_PII:-0}" -eq 1 ]]; then
+        current_ignored+=("${SENSITIVE_TABLES[@]}")
+    fi
+
     # Logic for remote-to-remote DB sync
     if [[ "${SYNC_REMOTE_TO_REMOTE:-0}" -eq 1 ]]; then
         printf "⌛ \033[1;32mSyncing DB from %s to %s ...\033[0m\n" "${SYNC_SOURCE}" "${SYNC_DESTINATION}"
@@ -162,6 +168,13 @@ function sync_database() {
         local src_db_user=$(echo "${src_db_info}" | grep "^DB_USERNAME=" | cut -d= -f2-)
         local src_db_pass=$(echo "${src_db_info}" | grep "^DB_PASSWORD=" | cut -d= -f2-)
         local src_db_name=$(echo "${src_db_info}" | grep "^DB_DATABASE=" | cut -d= -f2-)
+
+        local ignored_opts=""
+        if [[ "${SYNC_DB_NO_NOISE:-0}" -eq 1 ]]; then
+            for table in "${current_ignored[@]}"; do
+                ignored_opts+=" --ignore-table=\"${src_db_name}.${table}\""
+            done
+        fi
 
         # Destination DB info
         local dest_db_info=$(get_remote_db_info "${DEST_REMOTE_DIR}" "${SYNC_DESTINATION}")
@@ -187,7 +200,7 @@ function sync_database() {
         local local_tmp_file="var/${WARDEN_ENV_NAME}_${SYNC_SOURCE}-to-local-$(date +%Y%m%dT%H%M%S).sql.gz"
         printf "  Streaming sync: %s -> %s (through local)...\n" "${SYNC_SOURCE}" "${SYNC_DESTINATION}"
         
-        local dump_cmd="export MYSQL_PWD='${src_db_pass}'; { \$(command -v mariadb-dump || echo mysqldump) --max-allowed-packet=512M --force --single-transaction --no-tablespaces --no-data --routines -h${src_db_host} -P${src_db_port} -u${src_db_user} ${src_db_name} 2>/dev/null; \$(command -v mariadb-dump || echo mysqldump) --max-allowed-packet=512M --force --single-transaction --no-tablespaces --skip-triggers --no-create-info -h${src_db_host} -P${src_db_port} -u${src_db_user} ${src_db_name} 2>/dev/null; } | gzip -1"
+        local dump_cmd="export MYSQL_PWD='${src_db_pass}'; { \$(command -v mariadb-dump || echo mysqldump) --max-allowed-packet=512M --force --single-transaction --no-tablespaces --no-data --routines -h${src_db_host} -P${src_db_port} -u${src_db_user} ${src_db_name} 2>/dev/null; \$(command -v mariadb-dump || echo mysqldump) --max-allowed-packet=512M --force --single-transaction --no-tablespaces --skip-triggers --no-create-info ${ignored_opts} -h${src_db_host} -P${src_db_port} -u${src_db_user} ${src_db_name} 2>/dev/null; } | gzip -1"
         local import_cmd="export MYSQL_PWD='${dest_db_pass}'; { echo \"SET FOREIGN_KEY_CHECKS=0; SET UNIQUE_CHECKS=0; SET AUTOCOMMIT=0; SET SQL_MODE='NO_AUTO_VALUE_ON_ZERO';\"; gunzip -c; echo \"COMMIT; SET FOREIGN_KEY_CHECKS=1; SET UNIQUE_CHECKS=1; SET AUTOCOMMIT=1;\"; } | \$(command -v mariadb || echo mysql) --max-allowed-packet=512M -h${dest_db_host} -P${dest_db_port} -u${dest_db_user} ${dest_db_name} -f"
         local pv_cmd="cat"
         if [[ "${PV}" == "pv" ]]; then pv_cmd="pv -N Syncing"; fi
@@ -236,12 +249,17 @@ function sync_database() {
              fi
         fi
 
+        # Pass flags to local db-dump
+        local dump_flags=""
+        [[ "${SYNC_DB_NO_NOISE:-0}" -eq 1 ]] && dump_flags="${dump_flags} --no-noise"
+        [[ "${SYNC_DB_NO_PII:-0}" -eq 1 ]] && dump_flags="${dump_flags} --no-pii"
+
         # Use host-side warden db-dump to avoid container DNS issues
         local local_dump="var/${WARDEN_ENV_NAME}_local-to-${SYNC_DESTINATION}-$(date +%Y%m%dT%H%M%S).sql.gz"
         mkdir -p var
         
         printf "  Dumping local database to %s ...\n" "${local_dump}"
-        warden db-dump -s local -f "${local_dump}"
+        warden db-dump -s local -f "${local_dump}" ${dump_flags}
 
         if [[ ! -f "${local_dump}" ]]; then
             printf "\033[31mError: Local database dump failed.\033[0m\n" >&2
@@ -299,8 +317,15 @@ function sync_database() {
         return 1
     fi
 
+    local ignored_opts=""
+    if [[ "${SYNC_DB_NO_NOISE:-0}" -eq 1 ]]; then
+        for table in "${current_ignored[@]}"; do
+            ignored_opts+=" --ignore-table=\"${db_name}.${table}\""
+        done
+    fi
+
     local sed_filters="sed -e '/999999.*enable the sandbox mode/d' -e 's/DEFINER=[^*]*\\*/\\*/g' -e 's/ROW_FORMAT=FIXED//g'"
-    local dump_cmd="export MYSQL_PWD='${db_pass}'; { \$(command -v mariadb-dump || echo mysqldump) --max-allowed-packet=512M --force --single-transaction --no-tablespaces --no-data --routines -h${db_host} -P${db_port} -u${db_user} ${db_name} 2>/dev/null | ${sed_filters}; \$(command -v mariadb-dump || echo mysqldump) --max-allowed-packet=512M --force --single-transaction --no-tablespaces --skip-triggers --no-create-info -h${db_host} -P${db_port} -u${db_user} ${db_name} 2>/dev/null | ${sed_filters}; } | gzip -1"
+    local dump_cmd="export MYSQL_PWD='${db_pass}'; { \$(command -v mariadb-dump || echo mysqldump) --max-allowed-packet=512M --force --single-transaction --no-tablespaces --no-data --routines -h${db_host} -P${db_port} -u${db_user} ${db_name} 2>/dev/null | ${sed_filters}; \$(command -v mariadb-dump || echo mysqldump) --max-allowed-packet=512M --force --single-transaction --no-tablespaces --skip-triggers --no-create-info ${ignored_opts} -h${db_host} -P${db_port} -u${db_user} ${db_name} 2>/dev/null | ${sed_filters}; } | gzip -1"
 
     PV=$(command -v pv || echo cat)
     printf "Streaming gzipped mysqldump from %s:%s ...\n" "${ENV_SOURCE_HOST}" "${db_name}"

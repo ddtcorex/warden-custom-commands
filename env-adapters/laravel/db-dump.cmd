@@ -27,12 +27,21 @@ function dump_local () {
     local DB_PASS=$(echo "${db_info}" | grep "^MYSQL_PASSWORD=" | cut -d= -f2-)
     local DB_NAME=$(echo "${db_info}" | grep "^MYSQL_DATABASE=" | cut -d= -f2-)
 
-    local ignored_opts=""
-    if [[ "${EXCLUDE_SENSITIVE_DATA:-0}" -eq "1" ]]; then
-        for table in "${IGNORED_TABLES[@]}"; do
-            ignored_opts+=" --ignore-table=${DB_NAME}.${table}"
-        done
+    # Get local DB prefix
+    local db_prefix=$(warden env exec -T php-fpm bash -c 'grep "^DB_PREFIX=" .env 2>/dev/null | cut -d= -f2- | tr -d "\""' || echo "")
+
+    local current_ignored=()
+    if [[ "${NO_NOISE:-0}" -eq 1 ]]; then
+        current_ignored+=("${IGNORED_TABLES[@]}")
     fi
+    if [[ "${NO_PII:-0}" -eq "1" ]]; then
+        current_ignored+=("${SENSITIVE_TABLES[@]}")
+    fi
+
+    local ignored_opts=""
+    for table in "${current_ignored[@]}"; do
+        ignored_opts+=" --ignore-table=${DB_NAME}.${db_prefix}${table}"
+    done
 
     printf "⌛ \033[1;32mDumping local database (\033[33m%s\033[1;32m)...\033[0m\n" "${DB_NAME}"
 
@@ -59,6 +68,7 @@ function dump_premise () {
     local db_name=$(printf "%s" "${db_vars}" | grep "^DB_DATABASE=" | tail -n 1 | cut -d= -f2- | tr -d '"'"'")
     local db_user=$(printf "%s" "${db_vars}" | grep "^DB_USERNAME=" | tail -n 1 | cut -d= -f2- | tr -d '"'"'")
     local db_pass=$(printf "%s" "${db_vars}" | grep "^DB_PASSWORD=" | tail -n 1 | cut -d= -f2- | tr -d '"'"'")
+    local db_prefix=$(printf "%s" "${db_vars}" | grep "^DB_PREFIX=" | tail -n 1 | cut -d= -f2- | tr -d '"'"'")
 
     # Fallbacks / Defaults
     db_host=${db_host:-127.0.0.1}
@@ -71,12 +81,18 @@ function dump_premise () {
 
     local sed_filters="sed -e 's/DEFINER=[^*]*\\*/\\*/g'"
 
-    local ignored_opts=""
-    if [[ "${EXCLUDE_SENSITIVE_DATA:-0}" -eq "1" ]]; then
-        for table in "${IGNORED_TABLES[@]}"; do
-            ignored_opts+=" --ignore-table=${db_name}.${table}"
-        done
+    local current_ignored=()
+    if [[ "${NO_NOISE:-0}" -eq 1 ]]; then
+        current_ignored+=("${IGNORED_TABLES[@]}")
     fi
+    if [[ "${NO_PII:-0}" -eq "1" ]]; then
+        current_ignored+=("${SENSITIVE_TABLES[@]}")
+    fi
+
+    local ignored_opts=""
+    for table in "${current_ignored[@]}"; do
+        ignored_opts+=" --ignore-table=${db_name}.${db_prefix}${table}"
+    done
 
     if [[ "${LOCAL_DOWNLOAD}" -eq 1 ]]; then
         # Download to local
@@ -116,8 +132,9 @@ function dump_premise () {
 }
 
 DUMP_FILENAME=""
-LOCAL_DOWNLOAD=0
-EXCLUDE_SENSITIVE_DATA=0
+LOCAL_DOWNLOAD=${LOCAL_DOWNLOAD:-0}
+NO_PII=${NO_PII:-0}
+NO_NOISE=${NO_NOISE:-0}
 
 while (( "$#" )); do
     case "$1" in
@@ -133,8 +150,12 @@ while (( "$#" )); do
             LOCAL_DOWNLOAD=1
             shift
             ;;
-        --exclude-sensitive-data)
-            EXCLUDE_SENSITIVE_DATA=1
+        -N|--no-noise)
+            NO_NOISE=1
+            shift
+            ;;
+        -S|--no-pii)
+            NO_PII=1
             shift
             ;;
         *)

@@ -6,6 +6,8 @@
 #   --file    Sync code (excludes: wp-config.php, wp-content/uploads/*, wp-content/cache/*, .git, .env)
 #   --media   Sync wp-content/uploads/ directory
 #   --db      Stream database via mysqldump/mariadb-dump
+#   --no-noise              Exclude noise tables (logs/cache/indexes) when syncing database
+#   --no-pii   Exclude users and usermeta when syncing database
 #
 # Special Behavior:
 #   - Excludes wp-config.php when syncing to protect local config

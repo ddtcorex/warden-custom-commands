@@ -15,6 +15,12 @@ WARDEN_USAGE=$(cat <<EOF
   -e, --environment=<env>      Remote environment to stream from (e.g. staging, prod).
                                Only used with --stream-db.
 
+  --no-noise                 Exclude noise tables (logs/cache/indexes).
+                               Only used with --stream-db.
+
+  --no-pii     Exclude sensitive data (customers, orders, etc).
+                               Only used with --stream-db.
+
 \033[33mExamples:\033[0m
   warden db-import -f var/db.sql.gz        # Import local dump file
   warden db-import --stream-db -e staging  # Stream from staging environment

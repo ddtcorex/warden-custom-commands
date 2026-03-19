@@ -29,6 +29,8 @@ WARDEN_USAGE=$(cat <<EOF
 
 \033[33mDatabase Options:\033[0m
   --db-dump=FILE          Use local SQL dump file for import
+  --no-noise            Exclude noise tables (logs/cache/indexes) in DB sync
+  --no-pii Exclude PII/sensitive data from DB sync
 
 \033[33mCommon Options:\033[0m
   -e, --environment=NAME  Source environment (staging, prod, dev). Default: staging

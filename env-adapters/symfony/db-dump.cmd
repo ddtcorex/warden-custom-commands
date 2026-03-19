@@ -37,15 +37,20 @@ function dump_local () {
     local sed_filters="sed -e 's/DEFINER=[^*]*\\*/\\*/g'"
 
     # Ensure local directory exists
-    # Ensure local directory exists
     mkdir -p "$(dirname "${DUMP_FILENAME}")"
 
-    local ignored_opts=""
-    if [[ "${EXCLUDE_SENSITIVE_DATA:-0}" -eq "1" ]]; then
-        for table in "${IGNORED_TABLES[@]}"; do
-            ignored_opts+=" --ignore-table=${DB_NAME}.${table}"
-        done
+    local current_ignored=()
+    if [[ "${NO_NOISE:-0}" -eq 1 ]]; then
+        current_ignored+=("${IGNORED_TABLES[@]}")
     fi
+    if [[ "${NO_PII:-0}" -eq "1" ]]; then
+        current_ignored+=("${SENSITIVE_TABLES[@]}")
+    fi
+
+    local ignored_opts=""
+    for table in "${current_ignored[@]}"; do
+        ignored_opts+=" --ignore-table=${DB_NAME}.${table}"
+    done
 
     # Execute dump
     warden env exec -T db bash -c "export MYSQL_PWD='${DB_PASS}'; ${dump_bin} --max-allowed-packet=512M --no-tablespaces --single-transaction --routines ${ignored_opts} -hdb -u${DB_USER} ${DB_NAME} 2> >(grep -v 'Deprecated program name' >&2) | ${sed_filters}" | gzip > "${DUMP_FILENAME}"
@@ -64,12 +69,18 @@ function dump_premise () {
     
     local sed_filters="sed -e 's/DEFINER=[^*]*\\*/\\*/g'"
 
-    local ignored_opts=""
-    if [[ "${EXCLUDE_SENSITIVE_DATA:-0}" -eq "1" ]]; then
-        for table in "${IGNORED_TABLES[@]}"; do
-            ignored_opts+=" --ignore-table=${db_name}.${table}"
-        done
+    local current_ignored=()
+    if [[ "${NO_NOISE:-0}" -eq 1 ]]; then
+        current_ignored+=("${IGNORED_TABLES[@]}")
     fi
+    if [[ "${NO_PII:-0}" -eq "1" ]]; then
+        current_ignored+=("${SENSITIVE_TABLES[@]}")
+    fi
+
+    local ignored_opts=""
+    for table in "${current_ignored[@]}"; do
+        ignored_opts+=" --ignore-table=${db_name}.${table}"
+    done
 
     if [[ "${LOCAL_DOWNLOAD}" -eq 1 ]]; then
          # Download to local
@@ -107,8 +118,9 @@ function dump_premise () {
 }
 
 DUMP_FILENAME=""
-LOCAL_DOWNLOAD=0
-EXCLUDE_SENSITIVE_DATA=0
+LOCAL_DOWNLOAD=${LOCAL_DOWNLOAD:-0}
+NO_PII=${NO_PII:-0}
+NO_NOISE=${NO_NOISE:-0}
 
 while (( "$#" )); do
     case "$1" in
@@ -124,8 +136,12 @@ while (( "$#" )); do
             LOCAL_DOWNLOAD=1
             shift
             ;;
-        --exclude-sensitive-data)
-            EXCLUDE_SENSITIVE_DATA=1
+        -N|--no-noise)
+            NO_NOISE=1
+            shift
+            ;;
+        -S|--no-pii)
+            NO_PII=1
             shift
             ;;
         *)

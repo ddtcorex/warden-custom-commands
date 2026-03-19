@@ -213,6 +213,31 @@ return [
 ];
 EOF"
     fi
+
+    # Initialize local.xml for Magento 1
+    if [[ "${ENV_TYPE}" == "magento1" ]]; then
+        docker exec --workdir / -u www-data "${container}" bash -c "mkdir -p /var/www/html/app/etc && cat > /var/www/html/app/etc/local.xml <<EOF
+<config>
+    <global>
+        <resources>
+            <default_setup>
+                <connection>
+                    <host><![CDATA[db]]></host>
+                    <username><![CDATA[magento1]]></username>
+                    <password><![CDATA[magento1]]></password>
+                    <dbname><![CDATA[magento1]]></dbname>
+                    <initStatements><![CDATA[SET NAMES utf8]]></initStatements>
+                    <model><![CDATA[mysql4]]></model>
+                    <type><![CDATA[pdo_mysql]]></type>
+                    <pdoType><![CDATA[]]></pdoType>
+                    <active>1</active>
+                </connection>
+            </default_setup>
+        </resources>
+    </global>
+</config>
+EOF"
+    fi
 done
 echo "  Test directories created for ${ENV_TYPE}"
 

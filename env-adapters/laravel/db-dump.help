@@ -13,7 +13,8 @@ Dump database from local or remote environment.
                               - Absolute (/path/...) or home (~/...) paths used as-is
                               - Relative paths are relative to project root
   -e, --environment=NAME      Environment to dump from. Default: local.
-  --exclude-sensitive-data    Exclude sensitive data (customers, orders, etc).
+  -N, --no-noise     Exclude noise tables (logs/cache/indexes).
+  -S, --no-pii  Exclude sensitive data (users, password_resets, personal_access_tokens).
 
 \033[33mRemote Behavior:\033[0m
   --local                     Download remote dump to local machine.

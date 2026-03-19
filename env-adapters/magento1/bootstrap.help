@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+[[ ! "${WARDEN_DIR:-}" ]] && >&2 printf "\033[31mNot intended to run directly!\033[0m\n" && exit 1
+
+WARDEN_USAGE=$(cat <<EOF
+\033[33mUsage:\033[0m
+  bootstrap [-h|--help] [-e|--environment=<env>] [-c|--clone] [--fresh] [--include-sample] [--code-only] [--no-db] [--no-media] [--no-composer] [--no-admin] [--no-stream-db] [--db-dump=<file>] [--no-noise] [--no-pii]
+
+\033[33mOptions:\033[0m
+  -h, --help                   Display this help menu.
+  -c, --clone                  Clone the environment from a remote source.
+  --fresh, --clean-install     Perform a fresh install of the application.
+  --include-sample             Include sample data in the installation.
+  --code-only                  Download code only from remote, skip database and media.
+  --no-db, --skip-db-import    Skip database import.
+  --no-media, --skip-media-sync Skip media synchronization.
+  --no-composer, --skip-composer-install Skip composer installation.
+  --no-admin, --skip-admin-create Skip admin user creation.
+  --no-stream-db               Disable database streaming and download file instead.
+
+\033[33mArguments:\033[0m
+  -e, --environment=<env>      Remote environment to source from. Default: staging
+  -p, --meta-package=<pkg>     Magento meta-package. Default: magento/project-community-edition
+  --version, --meta-version=<v> Magento version to install.
+  --db-dump=<file>             Path to a database dump file to import.
+  --no-noise                 Exclude noise tables (logs/cache/indexes) in DB sync.
+  --no-pii     Exclude PII/sensitive data from DB sync.
+EOF
+)

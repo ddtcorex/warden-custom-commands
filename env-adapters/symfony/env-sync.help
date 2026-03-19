@@ -6,6 +6,8 @@
 #   --file    Sync code (excludes: vendor/, node_modules/, var/cache/*, var/log/*, .git, .env, .env.local)
 #   --media   Sync public/uploads/ directory
 #   --db      Stream database via mysqldump/mariadb-dump
+#   --no-noise              Exclude noise tables (logs/cache/indexes) when syncing database
+#   --no-pii   Exclude user and reset_password_request when syncing database
 #
 # Special Behavior:
 #   - Excludes .env.local when syncing to protect local config

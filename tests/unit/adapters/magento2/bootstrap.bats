@@ -12,6 +12,8 @@ setup() {
     export ENV_SOURCE="magento2"
     export ENV_SOURCE_HOST_VAR="127.0.0.1" 
     export WARDEN_ENV_NAME="test-env"
+    export MAGE_USERNAME="test"
+    export MAGE_PASSWORD="pw"
     
     # Copy bootstrap to temp location to allow safe mocking of siblings
     export TEST_SCRIPT_DIR="${TEST_TMP_DIR}/magento2-adapter"

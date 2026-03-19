@@ -76,10 +76,10 @@ EOF
     [[ "$output" == *"custom_dump.sql.gz"* ]]
 }
 
-@test "DB Dump: Full dump flag sets FULL_DUMP" {
-    run "$BOOTSTRAP_CMD" --full
+@test "DB Dump: --no-noise flag filters IGNORED_TABLES" {
+    run "$BOOTSTRAP_CMD" --no-noise
     
-    # With --full, ignore-table options should NOT be present
+    # With --no-noise, ignore-table options should be present
     # Check log doesn't contain ignore-table
     if grep -q "ignore-table" "$MOCK_LOG"; then
         return 1
@@ -87,7 +87,7 @@ EOF
 }
 
 @test "DB Dump: Exclude sensitive data includes sales tables" {
-    run "$BOOTSTRAP_CMD" --exclude-sensitive-data
+    run "$BOOTSTRAP_CMD" --no-pii
     
     # Should include additional sales tables in ignored list
     grep -q "sales_order" "$MOCK_LOG" || grep -E -q "(mariadb-dump|mysqldump)" "$MOCK_LOG"

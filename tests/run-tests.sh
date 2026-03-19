@@ -21,7 +21,7 @@ for arg in "$@"; do
         --unit-only)
             UNIT_ONLY=1
             ;;
-        magento2|symfony|laravel|wordpress|all)
+        magento1|magento2|symfony|laravel|wordpress|all)
             ENV_TYPE="$arg"
             ;;
         -h|--help)
@@ -29,6 +29,7 @@ for arg in "$@"; do
             echo ""
             echo "Environment types:"
             echo "  all        Run tests for all adapters (default)"
+            echo "  magento1   Run Magento 1 tests"
             echo "  magento2   Run Magento 2 tests"
             echo "  symfony    Run Symfony tests"
             echo "  laravel    Run Laravel tests"
@@ -73,9 +74,9 @@ mkdir -p .tmp
 # Determine which BATS tests to run
 case "$ENV_TYPE" in
     all)
-        BATS_TESTS="unit/core/*.bats unit/adapters/magento2/*.bats unit/adapters/symfony/*.bats unit/adapters/laravel/*.bats unit/adapters/wordpress/*.bats"
+        BATS_TESTS="unit/core/*.bats unit/adapters/magento1/*.bats unit/adapters/magento2/*.bats unit/adapters/symfony/*.bats unit/adapters/laravel/*.bats unit/adapters/wordpress/*.bats"
         ;;
-    magento2|symfony|laravel|wordpress)
+    magento1|magento2|symfony|laravel|wordpress)
         BATS_TESTS="unit/adapters/${ENV_TYPE}/*.bats"
         ;;
 esac
@@ -99,7 +100,7 @@ if [[ "$UNIT_ONLY" -eq 0 ]]; then
     if [[ -x "$SCRIPT_DIR/integration/run-tests.sh" ]]; then
         if [[ "$ENV_TYPE" == "all" ]]; then
             # Run integration tests for all environment types
-            for env in magento2 symfony laravel wordpress; do
+            for env in magento1 magento2 symfony laravel wordpress; do
                 echo -e "${CYAN}▸ Integration tests for ${env}${NC}"
                 "$SCRIPT_DIR/integration/run-tests.sh" --type="$env" --skip-unit || INTEGRATION_PASSED=$?
             done
