@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.2] - 2026-03-19
+
+**v2.7.2: Magento 1 Database Handling Refinements**
+
+### 🛠 Improvements
+
+- Refined remote database metadata retrieval and error handling for Magento 1 commands to provide clearer diagnostics when connections fail or credentials are missing.
+- Simplified ignored-table logic for Magento 1 database operations to ensure consistent behavior across dump, import, and sync flows.
+
+### 🐛 Bug Fixes
+
+- Fixed edge cases where Magento 1 commands could proceed with incomplete remote DB information, reducing sync/import failures.
+
+
 ## [2.7.1] - 2026-03-19
 
 **v2.7.1: Magento 1 Integration Tests & CentOS Mirror Fix**
