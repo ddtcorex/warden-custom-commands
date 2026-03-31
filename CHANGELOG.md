@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.3] - 2026-03-31
+
+**v2.7.3: Magento 2 Configuration Import Flow Optimization**
+
+### 🛠 Improvements
+
+- Refined the Magento 2 configuration import process by splitting it into initial and finalizing stages, ensuring all environment-specific tweaks (like Redis) are properly synchronized.
+- Updated section headers in `set-config.cmd` for better clarity during the installation and update process.
+
+
 ## [2.7.2] - 2026-03-19
 
 **v2.7.2: Magento 1 Database Handling Refinements**
