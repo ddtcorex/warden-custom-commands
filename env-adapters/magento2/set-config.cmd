@@ -26,8 +26,8 @@ if ! warden env exec php-fpm bin/magento setup:upgrade; then
     warning "setup:upgrade reported errors (non-fatal, continuing)"
 fi
 
-:: Importing config
-# app:config:import may fail if config.php doesn't exist yet
+:: Importing initial configuration
+# app:config:import may fail if app/etc/config.php doesn't exist yet
 if ! warden env exec php-fpm bin/magento app:config:import 2>/dev/null; then
     [[ "${VERBOSE:-0}" -eq 1 ]] && info "No config to import or config:import not available"
 fi
@@ -35,6 +35,19 @@ fi
 if [ ! -f "${WARDEN_ENV_PATH}/app/etc/config.php" ]; then
     :: Enabling all modules
     warden env exec php-fpm bin/magento module:enable --all
+fi
+
+if [[ "$WARDEN_REDIS" -eq "1" ]]; then
+    :: Configuring Redis
+    mage_config_optional setup:config:set --cache-backend=redis --cache-backend-redis-server=redis --cache-backend-redis-db=0 --cache-backend-redis-port=6379 --no-interaction
+    mage_config_optional setup:config:set --page-cache=redis --page-cache-redis-server=redis --page-cache-redis-db=1 --page-cache-redis-port=6379 --no-interaction
+    mage_config_optional setup:config:set --session-save=redis --session-save-redis-host=redis --session-save-redis-max-concurrency=20 --session-save-redis-db=2 --session-save-redis-port=6379 --no-interaction
+fi
+
+:: Finalizing configuration import
+# Ensure all changes are synchronized after module activation and environment tweaks
+if ! warden env exec php-fpm bin/magento app:config:import 2>/dev/null; then
+    [[ "${VERBOSE:-0}" -eq 1 ]] && info "No config to import or config:import not available"
 fi
 
 if [[ "$WARDEN_VARNISH" -eq "1" ]]; then
@@ -87,13 +100,6 @@ if [[ "$WARDEN_ELASTICSEARCH" -eq "1" ]] || [[ "$WARDEN_OPENSEARCH" -eq "1" ]]; 
     mage_config_optional config:set "catalog/search/${CONFIG_PREFIX}_index_prefix" magento2
     mage_config_optional config:set "catalog/search/${CONFIG_PREFIX}_enable_auth" 0
     mage_config_optional config:set "catalog/search/${CONFIG_PREFIX}_server_timeout" 15
-fi
-
-if [[ "$WARDEN_REDIS" -eq "1" ]]; then
-    :: Configuring Redis
-    mage_config_optional setup:config:set --cache-backend=redis --cache-backend-redis-server=redis --cache-backend-redis-db=0 --cache-backend-redis-port=6379 --no-interaction
-    mage_config_optional setup:config:set --page-cache=redis --page-cache-redis-server=redis --page-cache-redis-db=1 --page-cache-redis-port=6379 --no-interaction
-    mage_config_optional setup:config:set --session-save=redis --session-save-redis-host=redis --session-save-redis-max-concurrency=20 --session-save-redis-db=2 --session-save-redis-port=6379 --no-interaction
 fi
 
 :: Update configuration
